@@ -176,9 +176,9 @@ class TestEngine:
         rate, state = compute_rate(10.0, 60.0, 0.0, PROFILE, CFG)
         assert state is WindowState.RECHARGE and rate == pytest.approx(0.1 * 15)
         rate, state = compute_rate(10.0, 60.0, 0.0, PROFILE, CFG, sleeping=True)
-        assert state is WindowState.SLEEP and rate == pytest.approx(0.4 * 15)
+        assert state is WindowState.SLEEP and rate == pytest.approx(CFG.alpha_recharge * 15)
         rate, _ = compute_rate(10.0, 60.0, 0.0, PROFILE, CFG, sleeping=True, ans_charge=5.0)
-        assert rate == pytest.approx(0.4 * 15 / 0.6)
+        assert rate == pytest.approx(CFG.alpha_recharge * 15 / 0.6)
         rate, _ = compute_rate(60.0, 60.0, 0.0, PROFILE, CFG, sleeping=True)
         assert rate == 0.0  # le sommeil ne vide jamais la batterie
         rate, state = compute_rate(75.0, 80.0, 0.0, PROFILE, CFG)

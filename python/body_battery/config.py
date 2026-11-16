@@ -23,7 +23,10 @@ class BodyBatteryConfig:
             repos et effort.
         stress_threshold_recharge: Stress sous lequel la batterie recharge.
         alpha_recharge: Gain de recharge pendant le sommeil, en points/heure par point de
-            stress sous le seuil (jusqu'à 10 points/h).
+            stress sous le seuil (jusqu'à 7,5 points/h). Réglé pour qu'une nuit habituelle
+            (ANS charge 0) ne suffise pas à remplir la batterie depuis un niveau bas : une
+            bonne nuit (ANS charge +4) la remplit, une mauvaise (−4) en regagne moins de la
+            moitié.
         alpha_recharge_awake: Gain de recharge au calme pendant l'éveil, même unité
             (extension). Bien plus faible que la nuit : une soirée calme freine la baisse
             ou recharge un peu, elle ne remplit pas la batterie (≤ 2,5 points/h).
@@ -65,7 +68,7 @@ class BodyBatteryConfig:
     baseline_days: int = 7
     activity_threshold: float = 0.2
     stress_threshold_recharge: float = 25.0
-    alpha_recharge: float = 0.4
+    alpha_recharge: float = 0.3
     alpha_recharge_awake: float = 0.1
     beta_stress_drain: float = 0.1
     gamma_activity_drain: float = 15.0
