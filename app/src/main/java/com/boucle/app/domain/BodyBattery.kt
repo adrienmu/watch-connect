@@ -11,9 +11,9 @@ import kotlin.math.roundToInt
  * modèle est le nôtre. Il suit un réservoir d'énergie sur une grille de 5 minutes :
  *
  *  - **Sommeil** : recharge, répartie sur la nuit selon la profondeur du sommeil. Le total regagné est une
- *    fraction du déficit (100 − niveau au coucher), d'après la qualité de la nuit (sommeil et ANS charge du
- *    Nightly Recharge) : 80 % pour une nuit habituelle, qui ne remplit donc pas la batterie depuis un niveau
- *    bas ; 100 % dès une bonne nuit ; jusqu'à 35 % seulement pour une mauvaise.
+ *    fraction du déficit (100 − niveau au coucher), d'après le Nightly Recharge de Polar ([NightScores]) :
+ *    80 % pour une nuit « OK », qui ne remplit donc pas la batterie depuis un niveau bas ; 100 % dès une
+ *    « bonne » nuit ; jusqu'à 35 % seulement pour une « très mauvaise ».
  *  - **Éveil, repos** : consommation de base, légèrement compensée quand le corps est vraiment au calme
  *    (immobile et FC proche de la FC de repos).
  *  - **Éveil, activité** : consommation proportionnelle à l'effort au-dessus de 1,5 MET.
