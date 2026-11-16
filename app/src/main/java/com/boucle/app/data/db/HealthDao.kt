@@ -32,6 +32,12 @@ interface HealthDao {
     @Query("SELECT * FROM sleep WHERE date = :date")
     fun sleep(date: String): Flow<SleepEntity?>
 
+    @Query("SELECT * FROM sleep WHERE date BETWEEN :from AND :to ORDER BY date")
+    fun sleepRange(from: String, to: String): Flow<List<SleepEntity>>
+
+    @Query("SELECT * FROM nightly_recharge WHERE date BETWEEN :from AND :to ORDER BY date")
+    fun nightlyRechargeRange(from: String, to: String): Flow<List<NightlyRechargeEntity>>
+
     @Query("SELECT * FROM nightly_recharge WHERE date = :date")
     fun nightlyRecharge(date: String): Flow<NightlyRechargeEntity?>
 

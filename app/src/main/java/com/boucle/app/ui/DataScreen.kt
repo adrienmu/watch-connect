@@ -8,17 +8,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.NightlyRechargeEntity
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.domain.RecoveryBand
+import com.boucle.app.domain.RecoveryScore
+import com.boucle.app.domain.SleepBand
+import com.boucle.app.domain.SleepScore
+import com.boucle.app.domain.band
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -54,6 +61,8 @@ fun DataScreen(
             Text("Aucune donnée pour ce jour. Lance une synchronisation depuis l'onglet Bracelet.")
         }
 
+        state.sleepScore?.let { SleepScoreCard(it) }
+        state.recovery?.let { RecoveryScoreCard(it) }
         state.activity?.let { ActivityCard(it, state.minuteStepBlocks) }
         state.heartRate?.let {
             DataCard("Fréquence cardiaque") {
@@ -168,4 +177,94 @@ private fun SessionCard(session: TrainingSessionEntity) {
         DataRow("FC moyenne / max", session.averageHr?.let { "$it / ${session.maxHr ?: "–"} bpm" })
         DataRow("Charge cardio", session.cardioLoad?.let { "%.0f".format(it) })
     }
+}
+
+@Composable
+private fun ScoreCard(
+    title: String,
+    total: Int,
+    label: String,
+    components: List<Pair<String, Int?>>,
+    footnote: String? = null,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(total.toString(), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.SemiBold)
+                Text(label, Modifier.padding(bottom = 8.dp), style = MaterialTheme.typography.titleMedium)
+            }
+            components.forEach { (name, value) ->
+                Column {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(name, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(value?.toString() ?: "–")
+                    }
+                    LinearProgressIndicator(
+                        progress = { (value ?: 0) / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            footnote?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
+@Composable
+private fun SleepScoreCard(score: SleepScore) {
+    val label = when (score.band) {
+        SleepBand.EXCELLENT -> "Excellent"
+        SleepBand.GOOD -> "Bon"
+        SleepBand.FAIR -> "Moyen"
+        SleepBand.POOR -> "Faible"
+    }
+    ScoreCard(
+        title = "Score de sommeil",
+        total = score.total,
+        label = label,
+        components = listOf(
+            "Durée" to score.duration,
+            "Stades (profond, paradoxal)" to score.stages,
+            "Régularité" to score.consistency,
+            "Continuité" to score.interruptions,
+        ),
+        footnote = if (score.consistency == null) {
+            "Régularité indisponible : il faut au moins 3 nuits précédentes."
+        } else null,
+    )
+}
+
+@Composable
+private fun RecoveryScoreCard(score: RecoveryScore) {
+    val label = when (score.band) {
+        RecoveryBand.HIGH -> "Élevée"
+        RecoveryBand.MODERATE -> "Modérée"
+        RecoveryBand.LOW -> "Faible"
+    }
+    val details = buildList {
+        if (score.rmssdMs != null && score.rmssdBaselineMs != null) {
+            add("VFC ${score.rmssdMs} ms (référence ${score.rmssdBaselineMs} ms)")
+        }
+        if (score.nightHeartRate != null && score.heartRateBaseline != null) {
+            add("FC nocturne ${score.nightHeartRate} bpm (référence ${score.heartRateBaseline} bpm)")
+        }
+        if (score.temperaturePenalty > 0) add("Température cutanée élevée : -${score.temperaturePenalty}")
+        add(
+            if (score.personalBaseline) "Référence : tes 28 dernières nuits."
+            else "Référence : celle du bracelet (pas encore assez de nuits enregistrées).",
+        )
+    }
+    ScoreCard(
+        title = "Récupération",
+        total = score.total,
+        label = label,
+        components = listOf(
+            "VFC" to score.hrv,
+            "FC nocturne" to score.heartRate,
+            "Respiration" to score.respiration,
+            "Sommeil" to score.sleep,
+        ),
+        footnote = details.joinToString("\n"),
+    )
 }

@@ -49,4 +49,6 @@ dependencies {
     implementation(libs.polar.ble.sdk)
     // Le SDK expose des messages protobuf (entraînements) sans exporter la dépendance.
     implementation(libs.protobuf.javalite)
+
+    testImplementation(libs.junit)
 }

@@ -8,6 +8,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
+import com.boucle.app.domain.RecoveryScoring
+import com.boucle.app.domain.SleepScoring
+import com.boucle.app.domain.toNight
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
 import com.polar.sdk.api.PolarBleApi.PolarBleSdkFeature
@@ -328,12 +331,36 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 sessions = sessions,
             )
         }
-        return combine(activity, night) { a, n ->
+        // Les scores comparent la nuit à ses propres nuits précédentes : on lit donc une fenêtre de 28 jours.
+        val baselineStart = date.minusDays(RecoveryScoring.BASELINE_WINDOW_NIGHTS.toLong()).toString()
+        val scores = combine(
+            dao.sleepRange(baselineStart, key),
+            dao.nightlyRechargeRange(baselineStart, key),
+        ) { sleeps, recharges ->
+            val tonight = sleeps.firstOrNull { it.date == key }
+            val night = tonight?.toNight()
+            val sleepScore = night?.let {
+                SleepScoring.score(it, sleeps.filter { s -> s.date < key }.mapNotNull { s -> s.toNight() })
+            }
+            val rechargeTonight = recharges.firstOrNull { it.date == key }
+            val recovery = rechargeTonight?.let {
+                RecoveryScoring.score(
+                    night = it,
+                    history = recharges.filter { r -> r.date < key },
+                    sleepScore = sleepScore?.total,
+                    skinTemperatureDeviationC = tonight?.skinTemperatureDeviationC,
+                )
+            }
+            sleepScore to recovery
+        }
+        return combine(activity, night, scores) { a, n, (sleepScore, recovery) ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
                 skinTemperature = n.skinTemperature,
                 sessions = n.sessions,
+                sleepScore = sleepScore,
+                recovery = recovery,
             )
         }
     }
