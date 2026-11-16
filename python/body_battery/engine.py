@@ -131,12 +131,16 @@ def compute_rate(stress: float, hr: float, activity_level: float, profile: UserP
 
     * Effort (``activity_level > activity_threshold``) : ``−γ · r²`` où ``r`` est la
       fraction de réserve cardiaque.
-    * Sommeil : ``+α · max(seuil − stress, 0) · f`` — la nuit ne vide jamais la batterie.
+    * Sommeil : ``+α_nuit · max(seuil − stress, 0) · f`` — la nuit ne vide jamais la batterie.
       ``f`` vaut la qualité tirée de l'ANS charge Polar divisée par celle d'une nuit
       habituelle (de 0 à ≈ 1,67), ou 1 sans ANS charge : comme le Nightly Recharge, la
       récupération du système nerveux module ce que la nuit regagne.
-    * Repos, stress < seuil : ``+α · (seuil − stress)``.
-    * Repos, sinon : ``−β · (stress − seuil)``.
+    * Éveil au repos, stress < seuil : ``+α_jour · (seuil − stress)``.
+    * Éveil au repos, sinon : ``−β · (stress − seuil)``.
+
+    ``α_nuit`` (``alpha_recharge``) est bien plus fort que ``α_jour``
+    (``alpha_recharge_awake``) : c'est le sommeil qui remplit la batterie. Les fenêtres de
+    nuit doivent donc être marquées ``sleeping``, sinon elles ne rechargent qu'au taux de jour.
 
     Args:
         stress: Score de stress [0, 100].
@@ -159,7 +163,7 @@ def compute_rate(stress: float, hr: float, activity_level: float, profile: UserP
         factor = 1.0 if quality is None else quality / config.ans_usual_quality
         return config.alpha_recharge * max(threshold - stress, 0.0) * factor, WindowState.SLEEP
     if stress < threshold:
-        return config.alpha_recharge * (threshold - stress), WindowState.RECHARGE
+        return config.alpha_recharge_awake * (threshold - stress), WindowState.RECHARGE
     return -config.beta_stress_drain * (stress - threshold), WindowState.STRESS_DRAIN
 
 

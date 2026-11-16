@@ -174,7 +174,13 @@ class TestMetrics:
 class TestEngine:
     def test_rate_formulas(self) -> None:
         rate, state = compute_rate(10.0, 60.0, 0.0, PROFILE, CFG)
-        assert state is WindowState.RECHARGE and rate == pytest.approx(0.4 * 15)
+        assert state is WindowState.RECHARGE and rate == pytest.approx(0.1 * 15)
+        rate, state = compute_rate(10.0, 60.0, 0.0, PROFILE, CFG, sleeping=True)
+        assert state is WindowState.SLEEP and rate == pytest.approx(0.4 * 15)
+        rate, _ = compute_rate(10.0, 60.0, 0.0, PROFILE, CFG, sleeping=True, ans_charge=5.0)
+        assert rate == pytest.approx(0.4 * 15 / 0.6)
+        rate, _ = compute_rate(60.0, 60.0, 0.0, PROFILE, CFG, sleeping=True)
+        assert rate == 0.0  # le sommeil ne vide jamais la batterie
         rate, state = compute_rate(75.0, 80.0, 0.0, PROFILE, CFG)
         assert state is WindowState.STRESS_DRAIN and rate == pytest.approx(-0.1 * 50)
         rate, state = compute_rate(10.0, 190.0, 0.9, PROFILE, CFG)
@@ -184,10 +190,10 @@ class TestEngine:
 
     def test_sleep_8h_recharges_to_ceiling(self) -> None:
         engine = BodyBatteryEngine(CFG, PROFILE, baseline_tracker=warmed_baseline())
-        night = make_windows(T0, 8.0, hr=52, rmssd=75, activity=0.0, seed=2)
+        night = make_windows(T0, 8.0, hr=52, rmssd=75, activity=0.0, seed=2).assign(sleeping=True)
         out = engine.process_dataframe(night)
 
-        assert (out["state"] == "recharge").mean() > 0.95
+        assert (out["state"] == "sleep").all()
         assert out["score"].iloc[0] > CFG.initial_score
         assert out["score"].diff().dropna().min() >= -1e-9  # ne fait que monter
         assert out["score"].iloc[-1] == pytest.approx(CFG.max_score)
@@ -195,9 +201,10 @@ class TestEngine:
 
     def test_sleep_on_cold_start_still_recharges(self) -> None:
         engine = BodyBatteryEngine(CFG, PROFILE, initial_score=40.0)
-        out = engine.process_dataframe(make_windows(T0, 8.0, 50, 90, 0.0, seed=3))
+        out = engine.process_dataframe(make_windows(T0, 8.0, 50, 90, 0.0, seed=3).assign(sleeping=True))
         assert out["score"].iloc[-1] > 70.0
-        assert out["baseline_weight"].iloc[-1] == pytest.approx(8 / 24, abs=0.01)
+        # La nuit n'alimente pas la ligne de base d'éveil : on reste sur le prior.
+        assert out["baseline_weight"].iloc[-1] == 0.0
 
     def test_intense_sport_2h_drains_fast(self) -> None:
         engine = BodyBatteryEngine(CFG, PROFILE, baseline_tracker=warmed_baseline())
@@ -216,6 +223,17 @@ class TestEngine:
         assert out["score"].min() == pytest.approx(CFG.min_score)
         assert (out["score"] >= CFG.min_score).all()
         assert out["score"].iloc[-1] == pytest.approx(CFG.min_score)
+
+    def test_calm_evening_recharges_far_less_than_sleep(self) -> None:
+        def end(sleeping: bool) -> float:
+            engine = BodyBatteryEngine(CFG, PROFILE, initial_score=40.0,
+                                       baseline_tracker=warmed_baseline())
+            calm = make_windows(T0, 3.0, 55, 70, 0.0, seed=17).assign(sleeping=sleeping)
+            return float(engine.process_dataframe(calm)["score"].iloc[-1])
+
+        evening, night = end(False), end(True)
+        assert 40.0 < evening < 40.0 + 3 * 2.5 + 1e-9  # ≤ 2,5 points/h éveillé
+        assert night - 40.0 > 3 * (evening - 40.0)
 
     def test_activity_windows_do_not_feed_baseline(self) -> None:
         engine = BodyBatteryEngine(CFG, PROFILE)
@@ -248,7 +266,7 @@ class TestEngine:
 
     def test_4h_sensor_gap_relaxes_toward_neutral(self) -> None:
         engine = BodyBatteryEngine(CFG, PROFILE, baseline_tracker=warmed_baseline())
-        before = engine.process_dataframe(make_windows(T0, 8.0, 52, 75, 0.0, seed=7))
+        before = engine.process_dataframe(make_windows(T0, 8.0, 52, 75, 0.0, seed=7).assign(sleeping=True))
         score_before = before["score"].iloc[-1]
         assert score_before > 90.0
         # Dernière fenêtre en effort intense juste avant le retrait du capteur.

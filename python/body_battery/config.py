@@ -22,8 +22,11 @@ class BodyBatteryConfig:
         activity_threshold: Seuil de niveau d'activité (ENMO, en g) séparant
             repos et effort.
         stress_threshold_recharge: Stress sous lequel la batterie recharge.
-        alpha_recharge: Gain de recharge, en points/heure par point de stress
-            sous le seuil.
+        alpha_recharge: Gain de recharge pendant le sommeil, en points/heure par point de
+            stress sous le seuil (jusqu'à 10 points/h).
+        alpha_recharge_awake: Gain de recharge au calme pendant l'éveil, même unité
+            (extension). Bien plus faible que la nuit : une soirée calme freine la baisse
+            ou recharge un peu, elle ne remplit pas la batterie (≤ 2,5 points/h).
         beta_stress_drain: Perte, en points/heure par point de stress au-dessus
             du seuil.
         gamma_activity_drain: Perte maximale en points/heure à 100 % de la
@@ -63,6 +66,7 @@ class BodyBatteryConfig:
     activity_threshold: float = 0.2
     stress_threshold_recharge: float = 25.0
     alpha_recharge: float = 0.4
+    alpha_recharge_awake: float = 0.1
     beta_stress_drain: float = 0.1
     gamma_activity_drain: float = 15.0
     min_score: float = 5.0
@@ -118,7 +122,8 @@ class BodyBatteryConfig:
             raise ValueError("les constantes de temps doivent être > 0")
         if self.gap_threshold_hours <= self.window_hours:
             raise ValueError("gap_threshold_hours doit dépasser la durée d'une fenêtre")
-        for name in ("alpha_recharge", "beta_stress_drain", "gamma_activity_drain"):
+        for name in ("alpha_recharge", "alpha_recharge_awake", "beta_stress_drain",
+                     "gamma_activity_drain"):
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} doit être >= 0")
 
