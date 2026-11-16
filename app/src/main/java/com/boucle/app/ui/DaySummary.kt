@@ -11,6 +11,7 @@ import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepScore
+import com.boucle.app.domain.Vo2MaxEstimate
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
@@ -45,6 +46,7 @@ data class DayUiState(
     val sleepScore: SleepScore? = null,
     val recovery: RecoveryScore? = null,
     val battery: BodyBatteryDay? = null,
+    val vo2Max: Vo2MaxEstimate? = null,
 ) {
     val isEmpty: Boolean
         get() = activity == null && minuteStepBlocks == 0 && heartRate == null && ppiIntervalCount == 0 &&

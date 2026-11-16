@@ -24,6 +24,15 @@ import kotlin.random.Random
 object DemoData {
     private val zone = ZoneId.of("Europe/Paris")
 
+    /** Profil fictif utilisé par la démo quand aucun vrai profil n'est enregistré. */
+    val profile = UserProfile(
+        female = false,
+        birthDate = LocalDate.of(1990, 6, 15),
+        heightCm = 178f,
+        weightKg = 74f,
+        maxHr = null,
+    )
+
     suspend fun load(dao: HealthDao, days: Int = 14, today: LocalDate = LocalDate.now()) {
         val rnd = Random(7)
         for (offset in days - 1 downTo 0) {

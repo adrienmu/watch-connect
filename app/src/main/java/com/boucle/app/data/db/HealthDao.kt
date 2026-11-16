@@ -56,4 +56,11 @@ interface HealthDao {
             "FROM training_session WHERE date = :date ORDER BY startTime",
     )
     fun trainingSessions(date: String): Flow<List<TrainingSessionEntity>>
+
+    @Query(
+        "SELECT path, date, startTime, durationSec, sportId, name, calories, distanceMeters, " +
+            "averageHr, maxHr, cardioLoad, muscleLoad, hrZoneSec, exerciseCount, NULL AS summaryProto " +
+            "FROM training_session WHERE date BETWEEN :from AND :to ORDER BY date, startTime",
+    )
+    fun trainingSessionsRange(from: String, to: String): Flow<List<TrainingSessionEntity>>
 }

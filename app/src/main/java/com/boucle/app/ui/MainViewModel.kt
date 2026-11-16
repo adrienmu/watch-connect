@@ -8,12 +8,14 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
+import com.boucle.app.data.UserProfile
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.BodyBatteryInputs
 import com.boucle.app.domain.BodyBatteryModel
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.RecoveryScoring
 import com.boucle.app.domain.SleepScore
+import com.boucle.app.domain.Vo2MaxEstimation
 import com.boucle.app.domain.scoreNight
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
@@ -225,6 +227,15 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             local.update { it.copy(savingProfile = true, message = null) }
             try {
                 deviceMutex.withLock { gateway.api.doFirstTimeUse(deviceId, config) }
+                settings.saveProfile(
+                    UserProfile(
+                        female = config.gender == PolarFirstTimeUseConfig.Gender.FEMALE,
+                        birthDate = config.birthDate,
+                        heightCm = config.height,
+                        weightKg = config.weight,
+                        maxHr = config.maxHeartRate,
+                    ),
+                )
                 local.update { it.copy(setupDone = true) }
             } catch (e: CancellationException) {
                 throw e
@@ -264,6 +275,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             try {
                 withContext(Dispatchers.IO) { database.clearAllTables() }
                 DemoData.load(dao)
+                // Un profil fictif seulement s'il n'y en a pas : on n'écrase jamais le vrai.
+                if (settings.flow.first().profile == null) settings.saveProfile(DemoData.profile)
                 onDone()
             } catch (e: CancellationException) {
                 throw e
@@ -300,6 +313,21 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         try {
             val done = deviceMutex.withLock { gateway.api.isFtuDone(deviceId) }
             local.update { it.copy(setupDone = done) }
+            if (done) {
+                // Le profil vit sur le bracelet : on le recopie pour les calculs (âge, sexe, FC max).
+                val physical = deviceMutex.withLock { gateway.api.getUserPhysicalConfiguration(deviceId) }
+                if (physical != null) {
+                    settings.saveProfile(
+                        UserProfile(
+                            female = physical.gender == PolarFirstTimeUseConfig.Gender.FEMALE,
+                            birthDate = physical.birthDate,
+                            heightCm = physical.height,
+                            weightKg = physical.weight,
+                            maxHr = physical.maxHeartRate,
+                        ),
+                    )
+                }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -377,7 +405,23 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             val battery = BodyBatteryModel.summarize(simulation, grid.slots, grid.start, grid.dayFrom, grid.dayTo)
             DayScores(tonight.sleep, tonight.recovery, battery)
         }.flowOn(Dispatchers.Default)
-        return combine(activity, night, scores) { a, n, scores ->
+        // VO2max : profil (âge, sexe, FC max), courses des 6 dernières semaines, FC nocturne des 2 dernières.
+        val vo2Max = combine(
+            settings.flow.map { it.profile }.distinctUntilChanged(),
+            dao.trainingSessionsRange(date.minusDays(Vo2MaxEstimation.RUN_WINDOW_DAYS).toString(), key),
+            dao.nightlyRechargeRange(date.minusDays(14).toString(), key),
+        ) { profile, sessions, recharges ->
+            profile ?: return@combine null
+            val nightlyHr = recharges.mapNotNull { r -> r.meanRriMs?.takeIf { it > 0 }?.let { 60_000.0 / it } }
+            Vo2MaxEstimation.estimate(
+                age = profile.ageOn(date),
+                female = profile.female,
+                profileMaxHr = profile.maxHr,
+                restingHr = if (nightlyHr.isEmpty()) null else nightlyHr.sorted()[nightlyHr.size / 2],
+                sessions = sessions,
+            )
+        }
+        return combine(activity, night, scores, vo2Max) { a, n, scores, vo2 ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
@@ -386,6 +430,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 sleepScore = scores.sleep,
                 recovery = scores.recovery,
                 battery = scores.battery,
+                vo2Max = vo2,
             )
         }
     }

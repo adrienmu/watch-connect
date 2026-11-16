@@ -35,6 +35,9 @@ import com.boucle.app.domain.RecoveryBand
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepBand
 import com.boucle.app.domain.SleepScore
+import com.boucle.app.domain.HrMaxSource
+import com.boucle.app.domain.Vo2MaxEstimate
+import com.boucle.app.domain.Vo2Method
 import com.boucle.app.domain.band
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -74,6 +77,7 @@ fun DataScreen(
         state.sleepScore?.let { SleepScoreCard(it) }
         state.recovery?.let { RecoveryScoreCard(it) }
         state.battery?.let { BodyBatteryCard(it, isToday = state.date == LocalDate.now()) }
+        state.vo2Max?.let { Vo2MaxCard(it) }
         state.activity?.let { ActivityCard(it, state.minuteStepBlocks) }
         state.heartRate?.let {
             DataCard("Fréquence cardiaque") {
@@ -343,5 +347,38 @@ private fun BatteryChart(points: List<BatteryPoint>, modifier: Modifier = Modifi
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         drawPath(path, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
+@Composable
+private fun Vo2MaxCard(estimate: Vo2MaxEstimate) {
+    val method = when (estimate.method) {
+        Vo2Method.RUNNING -> "D'après ${estimate.runCount} course${if (estimate.runCount > 1) "s" else ""} (6 dernières semaines)"
+        Vo2Method.RESTING_HR -> "D'après ta FC de repos et ta FC max"
+    }
+    val hrMaxSource = when (estimate.hrMaxSource) {
+        HrMaxSource.PROFILE -> "profil"
+        HrMaxSource.OBSERVED -> "observée"
+        HrMaxSource.AGE_FORMULA -> "estimée par l'âge"
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("VO2max", style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(estimate.value.toString(), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.SemiBold)
+                Text("ml/kg/min", Modifier.padding(bottom = 8.dp), style = MaterialTheme.typography.titleMedium)
+            }
+            Text(method, style = MaterialTheme.typography.bodyMedium)
+            DataRow("Estimation par la course", estimate.runningEstimate?.toString())
+            DataRow("Estimation par la FC de repos", estimate.restingEstimate?.toString())
+            DataRow("FC max ($hrMaxSource)", "${estimate.hrMax} bpm")
+            DataRow("FC de repos (nocturne)", "${estimate.restingHr} bpm")
+            Text(
+                "Estimation indicative : la distance du Loop vient de l'accéléromètre (pas de GPS). " +
+                    "Une FC max mesurée dans ton profil améliore nettement la précision.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
