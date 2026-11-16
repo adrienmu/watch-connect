@@ -93,6 +93,8 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                     onSubmitProfile = viewModel::submitProfile,
                     onSync = viewModel::sync,
                     onDismissMessage = viewModel::dismissMessage,
+                    onLoadDemo = { viewModel.loadDemo { selectedTab = 1 } },
+                    onClearData = viewModel::clearData,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {

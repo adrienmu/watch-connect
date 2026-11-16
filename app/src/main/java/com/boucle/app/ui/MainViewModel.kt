@@ -6,12 +6,14 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.boucle.app.BoucleApp
+import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
 import com.polar.sdk.api.PolarBleApi.PolarBleSdkFeature
 import com.polar.sdk.api.model.PolarFirstTimeUseConfig
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -71,7 +74,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val gateway = app.gateway
     private val settings = app.settings
     private val syncEngine = app.syncEngine
-    private val dao = app.database.healthDao()
+    private val database = app.database
+    private val dao = database.healthDao()
 
     private data class Local(
         val scanning: Boolean = false,
@@ -237,6 +241,27 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             } finally {
                 local.update { it.copy(syncing = false) }
             }
+        }
+    }
+
+    /** Remplace le contenu de la base par des données fictives, sans bracelet. */
+    fun loadDemo(onDone: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { database.clearAllTables() }
+                DemoData.load(dao)
+                onDone()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Chargement de la démo impossible", e)
+            }
+        }
+    }
+
+    fun clearData() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { database.clearAllTables() }
         }
     }
 

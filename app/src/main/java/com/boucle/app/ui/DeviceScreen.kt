@@ -46,6 +46,8 @@ fun DeviceScreen(
     onSubmitProfile: (ProfileForm) -> Unit,
     onSync: () -> Unit,
     onDismissMessage: () -> Unit,
+    onLoadDemo: () -> Unit,
+    onClearData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -72,6 +74,17 @@ fun DeviceScreen(
                         true -> SyncSection(state, onSync)
                     }
                 }
+            }
+        }
+
+        SectionCard("Mode démo") {
+            Text(
+                "Remplace les données locales par 14 jours de données fictives, pour essayer l'app sans bracelet.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onLoadDemo) { Text("Charger la démo") }
+                TextButton(onClick = onClearData) { Text("Tout effacer") }
             }
         }
     }
