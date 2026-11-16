@@ -119,6 +119,19 @@ object HrvStress {
     }
 
     /**
+     * Fenêtres tirées des mesures ponctuelles de VFC d'une montre (RMSSD déjà calculé), quand il n'y a pas
+     * d'intervalles PPI. La FC n'est pas connue : la fenêtre est supposée au repos.
+     */
+    fun windowsFromRmssd(
+        measurements: List<Pair<LocalDateTime, Double>>,
+        slotMinutes: Int = BodyBatteryModel.SLOT_MINUTES,
+    ): List<Window> = measurements
+        .filter { it.second > 0 }
+        .groupBy { floor(it.first, slotMinutes * 60L) }
+        .map { (start, values) -> Window(start, values.map { it.second }.average(), hr = 0.0, beats = 0, validRatio = 1.0) }
+        .sortedBy { it.start }
+
+    /**
      * Stress de chaque fenêtre d'éveil, indexé par début de créneau. La ligne de base de chaque fenêtre
      * ne contient que des fenêtres antérieures (pas de fuite du futur) des [BASELINE_DAYS] derniers jours.
      */

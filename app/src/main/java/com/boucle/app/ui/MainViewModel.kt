@@ -13,6 +13,7 @@ import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.BodyBatteryInputs
 import com.boucle.app.domain.BodyBatteryModel
 import com.boucle.app.domain.BodyMeasurements
+import com.boucle.app.domain.MeasurementType
 import com.boucle.app.domain.HrvStress
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.RecoveryScoring
@@ -46,7 +47,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -69,6 +72,8 @@ data class HealthConnectUiState(
     val lastSyncAt: String? = null,
     /** Nombre de mesures lues à la dernière lecture de cette session. */
     val lastCount: Int? = null,
+    /** Vrai sans bracelet Polar : la montre fournit alors FC, pas, sommeil et séances. */
+    val replacesBand: Boolean = false,
 )
 
 /** Saisie du profil physique, en texte tant qu'elle n'est pas validée. */
@@ -140,7 +145,10 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 syncing = local.syncing,
                 log = local.log,
                 message = local.message,
-                healthConnect = local.healthConnect.copy(lastSyncAt = saved.lastHealthConnectSyncAt),
+                healthConnect = local.healthConnect.copy(
+                    lastSyncAt = saved.lastHealthConnectSyncAt,
+                    replacesBand = saved.device == null,
+                ),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceUiState())
 
@@ -329,8 +337,14 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         local.update { it.copy(healthConnect = it.healthConnect.copy(syncing = true)) }
         viewModelScope.launch {
             try {
-                val count = healthConnect.sync(dao)
-                settings.saveHealthConnectSync(LocalDateTime.now().format(SYNC_TIME_FORMAT))
+                val saved = settings.flow.first()
+                val today = LocalDate.now()
+                // On relit 2 jours avant la dernière lecture (données arrivées en retard), 30 jours la première fois.
+                val from = saved.lastHealthConnectSyncedDate?.let(LocalDate::parse)?.minusDays(2)
+                    ?: today.minusDays(HEALTH_CONNECT_FIRST_SYNC_DAYS)
+                // Sans bracelet Polar enregistré, la montre le remplace (FC, pas, sommeil, séances).
+                val count = healthConnect.sync(dao, from, replaceBand = saved.device == null)
+                settings.saveHealthConnectSync(LocalDateTime.now().format(SYNC_TIME_FORMAT), today.toString())
                 local.update { it.copy(healthConnect = it.healthConnect.copy(lastCount = count)) }
             } catch (e: CancellationException) {
                 throw e
@@ -455,8 +469,12 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             dao.nightlyRechargeRange(baselineStart, nextDay),
             dao.activitySamplesRange(batteryStart, key),
             dao.hrBlocksRange(batteryStart, key),
-            dao.ppiBlocksRange(ppiStart, key),
-        ) { sleeps, recharges, activitySamples, hrBlocks, ppiBlocks ->
+            // VFC : intervalles PPI du bracelet, ou mesures ponctuelles d'une montre via Health Connect.
+            combine(
+                dao.ppiBlocksRange(ppiStart, key),
+                dao.externalMeasurementsOfType(MeasurementType.HRV_RMSSD.name, ppiStart, key),
+            ) { ppi, hrv -> ppi to hrv },
+        ) { sleeps, recharges, activitySamples, hrBlocks, (ppiBlocks, hrvMeasures) ->
             val tonight = scoreNight(key, sleeps, recharges)
             val batteryDates = (0..BodyBatteryInputs.WARMUP_DAYS + 1).map {
                 date.minusDays(BodyBatteryInputs.WARMUP_DAYS).plusDays(it).toString()
@@ -470,7 +488,12 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 hrBlocks,
             )
             val stress = HrvStress.score(
-                windows = HrvStress.windows(ppiBlocks),
+                windows = (
+                    HrvStress.windows(ppiBlocks) +
+                        HrvStress.windowsFromRmssd(
+                            hrvMeasures.map { Instant.parse(it.time).atZone(ZoneId.systemDefault()).toLocalDateTime() to it.value },
+                        )
+                    ).distinctBy { it.start },
                 asleep = HrvStress.sleepIntervals(sleeps),
                 restingHr = restingHr,
             )
@@ -525,6 +548,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     companion object {
         private const val SCAN_TIMEOUT_MS = 30_000L
         private const val FIRST_SYNC_DAYS = 14L
+        private const val HEALTH_CONNECT_FIRST_SYNC_DAYS = 30L
         private val SYNC_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
         private val BIRTH_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/uuuu")
 

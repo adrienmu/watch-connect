@@ -36,6 +36,8 @@ data class AppSettings(
     val profile: UserProfile? = null,
     /** Date et heure de la dernière lecture Health Connect réussie, pour affichage. */
     val lastHealthConnectSyncAt: String? = null,
+    /** Jour de la dernière lecture Health Connect réussie (yyyy-MM-dd), pour reprendre à partir de là. */
+    val lastHealthConnectSyncedDate: String? = null,
 )
 
 class Settings(private val context: Context) {
@@ -47,6 +49,7 @@ class Settings(private val context: Context) {
             lastSyncedDate = prefs[LAST_SYNCED_DATE],
             lastSyncAt = prefs[LAST_SYNC_AT],
             lastHealthConnectSyncAt = prefs[LAST_HEALTH_CONNECT_SYNC_AT],
+            lastHealthConnectSyncedDate = prefs[LAST_HEALTH_CONNECT_SYNCED_DATE],
             profile = prefs[PROFILE_BIRTH_DATE]?.let { birth ->
                 runCatching {
                     UserProfile(
@@ -92,8 +95,11 @@ class Settings(private val context: Context) {
         }
     }
 
-    suspend fun saveHealthConnectSync(at: String) {
-        context.dataStore.edit { it[LAST_HEALTH_CONNECT_SYNC_AT] = at }
+    suspend fun saveHealthConnectSync(at: String, syncedDate: String) {
+        context.dataStore.edit {
+            it[LAST_HEALTH_CONNECT_SYNC_AT] = at
+            it[LAST_HEALTH_CONNECT_SYNCED_DATE] = syncedDate
+        }
     }
 
     private companion object {
@@ -102,6 +108,7 @@ class Settings(private val context: Context) {
         val LAST_SYNCED_DATE = stringPreferencesKey("last_synced_date")
         val LAST_SYNC_AT = stringPreferencesKey("last_sync_at")
         val LAST_HEALTH_CONNECT_SYNC_AT = stringPreferencesKey("last_health_connect_sync_at")
+        val LAST_HEALTH_CONNECT_SYNCED_DATE = stringPreferencesKey("last_health_connect_synced_date")
         val PROFILE_FEMALE = booleanPreferencesKey("profile_female")
         val PROFILE_BIRTH_DATE = stringPreferencesKey("profile_birth_date")
         val PROFILE_HEIGHT = floatPreferencesKey("profile_height_cm")

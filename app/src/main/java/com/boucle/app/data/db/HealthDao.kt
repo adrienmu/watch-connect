@@ -21,9 +21,8 @@ interface HealthDao {
     @Query("SELECT * FROM external_measurement WHERE date BETWEEN :from AND :to ORDER BY time")
     fun externalMeasurementsRange(from: String, to: String): Flow<List<ExternalMeasurementEntity>>
 
-    /** Instant ISO de la mesure Health Connect la plus récente, pour reprendre la lecture à partir de là. */
-    @Query("SELECT MAX(time) FROM external_measurement")
-    suspend fun latestExternalMeasurementTime(): String?
+    @Query("SELECT * FROM external_measurement WHERE type = :type AND date BETWEEN :from AND :to ORDER BY time")
+    fun externalMeasurementsOfType(type: String, from: String, to: String): Flow<List<ExternalMeasurementEntity>>
 
     @Query("SELECT * FROM daily_activity WHERE date = :date")
     fun dailyActivity(date: String): Flow<DailyActivityEntity?>

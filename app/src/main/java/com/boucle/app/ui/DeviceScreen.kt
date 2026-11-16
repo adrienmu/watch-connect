@@ -211,8 +211,17 @@ private fun HealthConnectSection(
 ) {
     SectionCard("Health Connect") {
         Text(
-            "Lit les pesées de ta balance Withings (poids, masse grasse, maigre, osseuse, hydrique) et la SpO2 " +
-                "de ta montre. Dans l'app Withings : Partager › Health Connect, puis coche ces données.",
+            "Lit les pesées de ta balance Withings (poids, masse grasse, maigre, osseuse, hydrique), la SpO2 et la " +
+                "VFC de ta montre. " +
+                (
+                    if (state.replacesBand) {
+                        "Sans bracelet Polar, la FC, les pas, le sommeil et les séances de la montre le remplacent " +
+                            "pour tous les scores. "
+                    } else {
+                        "Le bracelet Polar reste la source de la FC, des pas et du sommeil. "
+                    }
+                    ) +
+                "Dans l'app Withings : Partager › Health Connect, puis coche ces données.",
             style = MaterialTheme.typography.bodySmall,
         )
         when (state.availability) {

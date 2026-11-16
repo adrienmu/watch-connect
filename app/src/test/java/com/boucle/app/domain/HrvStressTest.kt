@@ -139,4 +139,15 @@ class HrvStressTest {
         assertEquals(listOf(date.minusDays(1).atTime(23, 0)..date.atTime(7, 0)), HrvStress.sleepIntervals(listOf(sleep)))
         assertEquals(ln(40.0), window(date.atStartOfDay(), 40.0).lnRmssd, 1e-12)
     }
+
+    @Test
+    fun watchRmssdBecomesSlotWindows() {
+        val windows = HrvStress.windowsFromRmssd(
+            listOf(date.atTime(10, 1) to 30.0, date.atTime(10, 4) to 50.0, date.atTime(10, 7) to 0.0, date.atTime(11, 0) to 45.0),
+        )
+        assertEquals(listOf(date.atTime(10, 0), date.atTime(11, 0)), windows.map { it.start })
+        assertEquals(40.0, windows[0].rmssd, 1e-9)
+        val stress = HrvStress.score(windows, emptyList(), restingHr = 55.0)
+        assertEquals(2, stress.size)
+    }
 }

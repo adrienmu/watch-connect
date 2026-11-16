@@ -192,7 +192,9 @@ private fun SleepCard(sleep: SleepStats) {
 
 @Composable
 private fun RechargeCard(recharge: NightlyRechargeEntity) {
-    DataCard("Nightly Recharge") {
+    // Sans statut Polar, ce sont les mesures nocturnes d'une montre (via Health Connect).
+    val fromBand = recharge.ansStatus != null || recharge.recoveryIndicator != null
+    DataCard(if (fromBand) "Nightly Recharge" else "Mesures nocturnes") {
         DataRow("Statut SNA", recharge.ansStatus?.let { "%+.1f".format(it) })
         DataRow("Niveau de récupération", recharge.recoveryIndicator?.toString())
         DataRow("VFC (RMSSD)", recharge.meanRmssdMs?.let { "$it ms" })

@@ -11,6 +11,8 @@ enum class MeasurementType(val unit: String) {
     BONE_MASS("kg"),
     WATER_MASS("kg"),
     SPO2("%"),
+    /** VFC ponctuelle de la montre (RMSSD), pour le stress en journée et la récupération sans bracelet. */
+    HRV_RMSSD("ms"),
 }
 
 /** Dernière pesée à la date affichée et son évolution. */
