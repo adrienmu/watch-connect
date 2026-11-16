@@ -10,7 +10,7 @@ import java.time.LocalTime
 import java.time.ZonedDateTime
 
 /**
- * Projette les données stockées (MET, FC 24/7, phases de sommeil) sur la grille de 5 minutes du
+ * Projette les données stockées (MET, FC 24/7, stress VFC, phases de sommeil) sur la grille de 5 minutes du
  * modèle. La simulation démarre [WARMUP_DAYS] jours avant le jour affiché : une ou deux nuits suffisent
  * à effacer l'effet du niveau de départ arbitraire.
  */
@@ -23,6 +23,11 @@ object BodyBatteryInputs {
     private const val LOW_ACTIVITY_HR_INTERVAL_SEC = 300L
     private const val HIGH_ACTIVITY_HR_INTERVAL_SEC = 1L
     private const val DEFAULT_RESTING_HR = 60.0
+    /**
+     * Le bracelet n'enregistre des PPI que par moments : une mesure de stress VFC vaut aussi pour les
+     * créneaux suivants sans mesure, jusqu'à 25 minutes après.
+     */
+    private const val STRESS_HOLD_SLOTS = 5
 
     private val sleepWeights = mapOf("NONREM3" to 1.0, "REM" to 0.8, "NONREM12" to 0.6)
 
@@ -36,6 +41,7 @@ object BodyBatteryInputs {
     /**
      * @param qualityByWakeDate qualité de chaque nuit, indexée par sa date de réveil (yyyy-MM-dd).
      * @param now les créneaux postérieurs sont ignorés (utile pour le jour en cours).
+     * @param stress stress VFC indexé par début de créneau, tel que le renvoie [HrvStress.score].
      */
     fun build(
         date: LocalDate,
@@ -44,6 +50,7 @@ object BodyBatteryInputs {
         heartRate: List<HrBlockEntity>,
         sleeps: List<SleepEntity>,
         qualityByWakeDate: Map<String, Double>,
+        stress: Map<LocalDateTime, Double> = emptyMap(),
     ): Grid {
         val start = date.minusDays(WARMUP_DAYS).atStartOfDay()
         // Un jour de plus après le jour affiché : une nuit commencée avant minuit doit être vue en entier,
@@ -112,12 +119,30 @@ object BodyBatteryInputs {
             }
         }
 
+        val stressBySlot = arrayOfNulls<Double>(n)
+        stress.forEach { (moment, value) ->
+            val index = slotIndex(start, moment) ?: return@forEach
+            if (index < limit) stressBySlot[index] = value
+        }
+        var held: Double? = null
+        var heldFor = 0
+        for (i in 0 until limit) {
+            val own = stressBySlot[i]
+            if (own != null) {
+                held = own
+                heldFor = 0
+            } else if (held != null && ++heldFor <= STRESS_HOLD_SLOTS) {
+                stressBySlot[i] = held
+            }
+        }
+
         val slots = List(n) { i ->
             BatterySlot(
                 sleepWeight = sleepWeight[i],
                 nightQuality = nightQuality[i],
                 met = if (metCount[i] > 0) metSum[i] / metCount[i] else null,
                 hr = if (hrCount[i] > 0) hrSum[i] / hrCount[i] else null,
+                stress = stressBySlot[i],
             )
         }
         val dayFrom = WARMUP_DAYS.toInt() * BodyBatteryModel.SLOTS_PER_DAY

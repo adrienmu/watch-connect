@@ -114,4 +114,33 @@ class BodyBatteryModelTest {
         val sim = BodyBatteryModel.simulate(slots, resting)
         assertNull(BodyBatteryModel.summarize(sim, slots, start, 0, slots.size))
     }
+
+    @Test
+    fun calmHrvStressRechargesWhileSitting() {
+        val calm = BodyBatteryModel.simulate(hours(2, BatterySlot(met = 1.2, hr = resting + 5, stress = 5.0)), resting, 50.0)
+        assertTrue(calm.levels.last() > 50.5)
+        assertTrue(calm.charged.sum() > 0.0)
+    }
+
+    @Test
+    fun highHrvStressDrainsMoreThanLowStress() {
+        val low = BodyBatteryModel.simulate(hours(4, BatterySlot(met = 1.2, hr = resting + 5, stress = 30.0)), resting, 80.0)
+        val high = BodyBatteryModel.simulate(hours(4, BatterySlot(met = 1.2, hr = resting + 5, stress = 90.0)), resting, 80.0)
+        assertTrue("low=${low.levels.last()} high=${high.levels.last()}", high.levels.last() < low.levels.last() - 15)
+    }
+
+    @Test
+    fun hrvStressReplacesTheHeartRateProxy() {
+        // FC élevée au repos (le proxy y verrait du stress) mais VFC habituelle : la VFC l'emporte.
+        val proxy = BodyBatteryModel.simulate(hours(2, stressed()), resting, 80.0).levels.last()
+        val hrv = BodyBatteryModel.simulate(hours(2, stressed().copy(stress = 30.0)), resting, 80.0).levels.last()
+        assertTrue("proxy=$proxy hrv=$hrv", hrv > proxy + 5)
+    }
+
+    @Test
+    fun hrvStressIsIgnoredDuringActivity() {
+        val plain = BodyBatteryModel.simulate(hours(1, running()), resting, 80.0).levels.last()
+        val withStress = BodyBatteryModel.simulate(hours(1, running().copy(stress = 100.0)), resting, 80.0).levels.last()
+        assertEquals(plain, withStress, 1e-9)
+    }
 }

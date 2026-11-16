@@ -16,8 +16,9 @@ import kotlin.math.roundToInt
  *  - **Éveil, repos** : consommation de base, légèrement compensée quand le corps est vraiment au calme
  *    (immobile et FC proche de la FC de repos).
  *  - **Éveil, activité** : consommation proportionnelle à l'effort au-dessus de 1,5 MET.
- *  - **Éveil, stress** : un proxy, la FC élevée alors qu'on est immobile. Garmin utilise la VFC ; la VFC
- *    diurne du Loop est trop clairsemée pour qu'on s'y fie à ce stade.
+ *  - **Éveil, stress** : quand le créneau a des intervalles PPI exploitables, le stress de 0 à 100 calculé
+ *    sur la VFC ([HrvStress]), comme Garmin : au-dessus de 25 il vide la batterie, en dessous (vrai calme)
+ *    il la recharge un peu, même assis. Sinon, un proxy : la FC élevée alors qu'on est immobile.
  *
  * Les taux ci-dessous sont des valeurs de départ réglables, à ajuster sur de vraies journées.
  */
@@ -30,8 +31,10 @@ data class BatterySlot(
     val met: Double? = null,
     /** FC moyenne du créneau, en bpm. */
     val hr: Double? = null,
+    /** Stress de 0 à 100 calculé sur la VFC du créneau ([HrvStress]), s'il a des PPI exploitables. */
+    val stress: Double? = null,
 ) {
-    val hasData: Boolean get() = sleepWeight > 0.0 || met != null || hr != null
+    val hasData: Boolean get() = sleepWeight > 0.0 || met != null || hr != null || stress != null
 }
 
 data class BatteryPoint(val time: LocalDateTime, val level: Double)
@@ -94,6 +97,12 @@ object BodyBatteryModel {
     private const val REST_MAX_MET = 1.15
     private const val REST_HR_MARGIN = 3.0
     private const val UNKNOWN_MET = 1.2
+    /** Stress VFC sous lequel on est au repos (échelle de Garmin : 0–25) ; au-dessus, il vide la batterie. */
+    private const val CALM_STRESS = 25.0
+    /** Le drain de stress atteint [STRESS_DRAIN] à CALM_STRESS + STRESS_SPAN (stress élevé, 75). */
+    private const val STRESS_SPAN = 50.0
+    /** La recharge au calme atteint [REST_RECHARGE] à CALM_STRESS − CALM_SPAN (stress 10). */
+    private const val CALM_SPAN = 15.0
 
     fun simulate(
         slots: List<BatterySlot>,
@@ -143,7 +152,11 @@ object BodyBatteryModel {
                     val activity = ACTIVITY_DRAIN_PER_MET * max(0.0, met - ACTIVITY_MET_THRESHOLD)
                     var stress = 0.0
                     var rest = 0.0
-                    slot.hr?.let { hr ->
+                    val hrvStress = slot.stress
+                    if (hrvStress != null && met < STRESS_MAX_MET) {
+                        stress = STRESS_DRAIN * ((hrvStress - CALM_STRESS) / STRESS_SPAN).coerceIn(0.0, 1.0)
+                        rest = REST_RECHARGE * ((CALM_STRESS - hrvStress) / CALM_SPAN).coerceIn(0.0, 1.0)
+                    } else slot.hr?.let { hr ->
                         if (met < STRESS_MAX_MET) {
                             stress = STRESS_DRAIN * ((hr - restingHr - STRESS_HR_MARGIN) / STRESS_HR_RANGE).coerceIn(0.0, 1.0)
                         }

@@ -126,8 +126,8 @@ object DemoData {
             )
         }
 
-    private fun ppiBlocks(date: LocalDate, rnd: Random): List<PpiBlockEntity> =
-        listOf(2, 3, 4, 5).map { hour ->
+    private fun ppiBlocks(date: LocalDate, rnd: Random): List<PpiBlockEntity> {
+        val night = listOf(2, 3, 4, 5).map { hour ->
             val intervals = List(60) { 1_100 + rnd.nextInt(-60, 61) }
             PpiBlockEntity(
                 date = date.toString(),
@@ -137,6 +137,28 @@ object DemoData {
                 errorEstimateMs = intervals.joinToString(",") { "8" },
             )
         }
+        // Journée : 2 min de PPI toutes les 30 min, VFC basse aux heures de bureau (stress), haute le soir.
+        val day = (8 * 2 until 23 * 2).map { half ->
+            val hour = half / 2
+            val (hr, rmssd) = when (hour) {
+                in 9..11, in 14..16 -> 80 to 20 + rnd.nextInt(-4, 5)
+                in 19..22 -> 64 to 48 + rnd.nextInt(-6, 7)
+                else -> 70 to 35 + rnd.nextInt(-6, 7)
+            }
+            val meanMs = 60_000 / hr
+            // Bruit blanc uniforme sur ±s : RMSSD ≈ 0,82 s.
+            val spread = (rmssd / 0.82).roundToInt()
+            val intervals = List(120_000 / meanMs) { meanMs + rnd.nextInt(-spread, spread + 1) }
+            PpiBlockEntity(
+                date = date.toString(),
+                startTime = "%02d:%02d".format(hour, (half % 2) * 30),
+                trigger = "TRIGGER_TYPE_AUTOMATIC",
+                ppiMs = intervals.joinToString(","),
+                errorEstimateMs = intervals.joinToString(",") { "8" },
+            )
+        }
+        return night + day
+    }
 
     private fun skinTemperature(date: LocalDate, rnd: Random): SkinTemperatureEntity {
         val base = 33.5f + rnd.nextInt(-5, 6) / 10f

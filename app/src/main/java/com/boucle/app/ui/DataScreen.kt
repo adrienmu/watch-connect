@@ -315,8 +315,9 @@ private fun BodyBatteryCard(battery: BodyBatteryDay, isToday: Boolean) {
             DataRow("Rechargé", "+${battery.charged}")
             DataRow("Dépensé", "-${battery.drained}")
             Text(
-                "Modèle maison : le sommeil recharge selon sa qualité, l'activité et le stress (FC élevée au repos) " +
-                    "consomment. Ce n'est pas l'algorithme de Garmin.",
+                "Modèle maison : le sommeil recharge selon sa qualité (sommeil et ANS charge du Nightly Recharge), " +
+                    "l'activité et le stress (VFC, à défaut FC élevée au repos) consomment, le calme recharge un peu. " +
+                    "Ce n'est pas l'algorithme de Garmin.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

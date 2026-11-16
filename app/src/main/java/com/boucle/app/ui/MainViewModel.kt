@@ -12,6 +12,7 @@ import com.boucle.app.data.UserProfile
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.BodyBatteryInputs
 import com.boucle.app.domain.BodyBatteryModel
+import com.boucle.app.domain.HrvStress
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.RecoveryScoring
 import com.boucle.app.domain.SleepScore
@@ -371,7 +372,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             )
         }
         // Les scores comparent la nuit à ses propres nuits précédentes : on lit donc une fenêtre de 28 jours.
-        // Le Body Battery simule les 2 jours précédents et a besoin de la nuit qui commence le soir même.
+        // Le Body Battery simule les 2 jours précédents et a besoin de la nuit qui commence le soir même ;
+        // son stress VFC compare chaque créneau aux 7 jours qui précèdent, d'où une fenêtre PPI plus large.
+        val ppiStart = date.minusDays(BodyBatteryInputs.WARMUP_DAYS + HrvStress.BASELINE_DAYS).toString()
         val baselineStart = date.minusDays(RecoveryScoring.BASELINE_WINDOW_NIGHTS.toLong()).toString()
         val batteryStart = date.minusDays(BodyBatteryInputs.WARMUP_DAYS).toString()
         val nextDay = date.plusDays(1).toString()
@@ -380,7 +383,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             dao.nightlyRechargeRange(baselineStart, nextDay),
             dao.activitySamplesRange(batteryStart, key),
             dao.hrBlocksRange(batteryStart, key),
-        ) { sleeps, recharges, activitySamples, hrBlocks ->
+            dao.ppiBlocksRange(ppiStart, key),
+        ) { sleeps, recharges, activitySamples, hrBlocks, ppiBlocks ->
             val tonight = scoreNight(key, sleeps, recharges)
             val batteryDates = (0..BodyBatteryInputs.WARMUP_DAYS + 1).map {
                 date.minusDays(BodyBatteryInputs.WARMUP_DAYS).plusDays(it).toString()
@@ -389,6 +393,15 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 val scores = if (wake == key) tonight else scoreNight(wake, sleeps, recharges)
                 scores.quality?.let { wake to it }
             }.toMap()
+            val restingHr = BodyBatteryInputs.restingHeartRate(
+                recharges.lastOrNull { it.date <= key && (it.meanRriMs ?: 0) > 0 }?.meanRriMs,
+                hrBlocks,
+            )
+            val stress = HrvStress.score(
+                windows = HrvStress.windows(ppiBlocks),
+                asleep = HrvStress.sleepIntervals(sleeps),
+                restingHr = restingHr,
+            )
             val grid = BodyBatteryInputs.build(
                 date = date,
                 now = LocalDateTime.now(),
@@ -396,10 +409,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 heartRate = hrBlocks,
                 sleeps = sleeps.filter { it.date in batteryDates },
                 qualityByWakeDate = quality,
-            )
-            val restingHr = BodyBatteryInputs.restingHeartRate(
-                recharges.lastOrNull { it.date <= key && (it.meanRriMs ?: 0) > 0 }?.meanRriMs,
-                hrBlocks,
+                stress = stress,
             )
             val simulation = BodyBatteryModel.simulate(grid.slots, restingHr)
             val battery = BodyBatteryModel.summarize(simulation, grid.slots, grid.start, grid.dayFrom, grid.dayTo)

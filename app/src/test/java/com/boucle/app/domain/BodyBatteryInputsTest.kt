@@ -137,4 +137,25 @@ class BodyBatteryInputsTest {
         assertEquals(45.0, BodyBatteryInputs.restingHeartRate(null, blocks), 0.001)
         assertEquals(60.0, BodyBatteryInputs.restingHeartRate(null, emptyList()), 0.001)
     }
+
+    @Test
+    fun hrvStressLandsInItsSlot() {
+        val grid = BodyBatteryInputs.build(
+            date = date,
+            now = LocalDateTime.of(2026, 11, 17, 0, 0),
+            activity = emptyList(),
+            heartRate = emptyList(),
+            sleeps = emptyList(),
+            qualityByWakeDate = emptyMap(),
+            stress = mapOf(date.atTime(14, 35) to 42.0, date.plusDays(1).atTime(9, 0) to 10.0),
+        )
+        assertEquals(42.0, grid.slots[slot(14, 35)].stress!!, 0.0)
+        assertTrue(grid.slots[slot(14, 35)].hasData)
+        assertNull(grid.slots[slot(14, 30)].stress)
+        // Tenue 25 min faute de nouvelle mesure, puis plus rien.
+        assertEquals(42.0, grid.slots[slot(15, 0)].stress!!, 0.0)
+        assertNull(grid.slots[slot(15, 5)].stress)
+        // Après « now » : ignoré.
+        assertNull(grid.slots[slot(9) + perDay].stress)
+    }
 }
