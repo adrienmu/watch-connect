@@ -11,8 +11,10 @@ import kotlin.math.roundToInt
  * modèle est le nôtre. Il suit un réservoir d'énergie sur une grille de 5 minutes :
  *
  *  - **Sommeil** : recharge, répartie sur la nuit selon la profondeur du sommeil. Le total regagné est une
- *    fraction du déficit (100 − niveau au coucher) : de 35 % après une très mauvaise nuit à 100 % après une
- *    nuit parfaite, d'après la qualité de la nuit (score de sommeil et de récupération).
+ *    fraction du déficit (100 − niveau au coucher), d'après la qualité de la nuit (sommeil et ANS charge du
+ *    Nightly Recharge) : 80 % pour une nuit habituelle, qui ne remplit donc pas la batterie depuis un niveau
+ *    bas ; 100 % dès une bonne nuit ; jusqu'à 35 % seulement pour une mauvaise. Même réglage que le module
+ *    `python/body_battery` (α nuit = 0,3).
  *  - **Éveil, repos** : consommation de base, légèrement compensée quand le corps est vraiment au calme
  *    (immobile et FC proche de la FC de repos).
  *  - **Éveil, activité** : consommation proportionnelle à l'effort au-dessus de 1,5 MET.
@@ -78,6 +80,10 @@ object BodyBatteryModel {
     const val DEFAULT_QUALITY = 0.6
     /** Part du déficit regagnée après la pire nuit possible. */
     const val MIN_RESTORE = 0.35
+    /** Part du déficit regagnée par une nuit de qualité [DEFAULT_QUALITY] (ANS charge habituelle). */
+    const val USUAL_RESTORE = 0.80
+    /** Part supplémentaire regagnée par point de qualité : +0,1 de qualité ≈ +13,5 % du déficit. */
+    const val RESTORE_PER_QUALITY = 1.35
     /** Un éveil de plus d'une heure sépare deux nuits. */
     const val MAX_WAKE_GAP_SLOTS = 60 / SLOT_MINUTES
 
@@ -103,6 +109,14 @@ object BodyBatteryModel {
     private const val STRESS_SPAN = 50.0
     /** La recharge au calme atteint [REST_RECHARGE] à CALM_STRESS − CALM_SPAN (stress 10). */
     private const val CALM_SPAN = 15.0
+
+    /**
+     * Part du déficit regagnée par une nuit de [quality] (0 à 1) : 80 % pour une nuit habituelle (0,6),
+     * 100 % dès 0,75 environ, 35 % au minimum. Pour une nuit jugée sur la seule ANS charge, cela donne
+     * 37 % à −4, 80 % à 0 et 100 % à +4, comme le module Python.
+     */
+    fun restoredShare(quality: Double): Double =
+        (USUAL_RESTORE + RESTORE_PER_QUALITY * (quality - DEFAULT_QUALITY)).coerceIn(MIN_RESTORE, 1.0)
 
     fun simulate(
         slots: List<BatterySlot>,
@@ -135,7 +149,7 @@ object BodyBatteryModel {
                 val quality = night.mapNotNull { slots[it].nightQuality }
                     .let { if (it.isEmpty()) DEFAULT_QUALITY else it.average() }
                     .coerceIn(0.0, 1.0)
-                chargePerWeight = (100.0 - level) * (MIN_RESTORE + (1.0 - MIN_RESTORE) * quality) / totalWeight
+                chargePerWeight = (100.0 - level) * restoredShare(quality) / totalWeight
                 nightEnd = last
                 nights += night
             }

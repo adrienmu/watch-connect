@@ -143,4 +143,21 @@ class BodyBatteryModelTest {
         val withStress = BodyBatteryModel.simulate(hours(1, running().copy(stress = 100.0)), resting, 80.0).levels.last()
         assertEquals(plain, withStress, 1e-9)
     }
+
+    @Test
+    fun ansChargeSeparatesGoodUsualAndPoorNights() {
+        // Coucher à 35 %, nuit jugée sur la seule ANS charge : mêmes niveaux que le module Python.
+        fun wake(ans: Double) =
+            BodyBatteryModel.simulate(sleepHours(8, NightScores(null, null, ans).quality), resting, 35.0).levels.last()
+        assertEquals(59.0, wake(-4.0), 1.0)
+        assertEquals(87.0, wake(0.0), 1.0)
+        assertEquals(100.0, wake(4.0), 0.5)
+    }
+
+    @Test
+    fun restoredShareIsBounded() {
+        assertEquals(BodyBatteryModel.USUAL_RESTORE, BodyBatteryModel.restoredShare(BodyBatteryModel.DEFAULT_QUALITY), 1e-9)
+        assertEquals(1.0, BodyBatteryModel.restoredShare(1.0), 0.0)
+        assertEquals(BodyBatteryModel.MIN_RESTORE, BodyBatteryModel.restoredShare(0.0), 0.0)
+    }
 }
