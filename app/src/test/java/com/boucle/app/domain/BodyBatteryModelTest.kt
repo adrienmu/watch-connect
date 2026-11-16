@@ -146,7 +146,7 @@ class BodyBatteryModelTest {
 
     @Test
     fun ansChargeSeparatesGoodUsualAndPoorNights() {
-        // Coucher à 35 %, nuit jugée sur la seule ANS charge : mêmes niveaux que le module Python.
+        // Coucher à 35 %, nuit jugée sur la seule ANS charge.
         fun wake(ans: Double) =
             BodyBatteryModel.simulate(sleepHours(8, NightScores(null, null, ans).quality), resting, 35.0).levels.last()
         assertEquals(59.0, wake(-4.0), 1.0)

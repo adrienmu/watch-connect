@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * capteur, battements ectopiques), puis on calcule le RMSSD de chaque créneau de 5 minutes. Son
  * logarithme est comparé à ta ligne de base des [BASELINE_DAYS] derniers jours d'éveil (Z-score), et le
  * Z-score passe dans une sigmoïde inversée : une VFC au-dessus de ta normale donne un stress bas, en
- * dessous un stress élevé. Même pipeline que le module de référence `python/body_battery`.
+ * dessous un stress élevé.
  *
  * Seules les fenêtres d'éveil comptent (la VFC nocturne est bien plus haute et relève du Nightly
  * Recharge), et les fenêtres à l'effort n'alimentent pas la ligne de base : la VFC y reflète la charge,

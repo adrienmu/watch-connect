@@ -13,8 +13,7 @@ import kotlin.math.roundToInt
  *  - **Sommeil** : recharge, répartie sur la nuit selon la profondeur du sommeil. Le total regagné est une
  *    fraction du déficit (100 − niveau au coucher), d'après la qualité de la nuit (sommeil et ANS charge du
  *    Nightly Recharge) : 80 % pour une nuit habituelle, qui ne remplit donc pas la batterie depuis un niveau
- *    bas ; 100 % dès une bonne nuit ; jusqu'à 35 % seulement pour une mauvaise. Même réglage que le module
- *    `python/body_battery` (α nuit = 0,3).
+ *    bas ; 100 % dès une bonne nuit ; jusqu'à 35 % seulement pour une mauvaise.
  *  - **Éveil, repos** : consommation de base, légèrement compensée quand le corps est vraiment au calme
  *    (immobile et FC proche de la FC de repos).
  *  - **Éveil, activité** : consommation proportionnelle à l'effort au-dessus de 1,5 MET.
@@ -113,7 +112,7 @@ object BodyBatteryModel {
     /**
      * Part du déficit regagnée par une nuit de [quality] (0 à 1) : 80 % pour une nuit habituelle (0,6),
      * 100 % dès 0,75 environ, 35 % au minimum. Pour une nuit jugée sur la seule ANS charge, cela donne
-     * 37 % à −4, 80 % à 0 et 100 % à +4, comme le module Python.
+     * 37 % à −4, 80 % à 0 et 100 % à +4.
      */
     fun restoredShare(quality: Double): Double =
         (USUAL_RESTORE + RESTORE_PER_QUALITY * (quality - DEFAULT_QUALITY)).coerceIn(MIN_RESTORE, 1.0)
