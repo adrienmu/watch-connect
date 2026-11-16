@@ -11,7 +11,10 @@ import com.boucle.app.data.db.TrainingExerciseEntity
 import com.boucle.app.data.db.TrainingSessionEntity
 import com.polar.sdk.api.model.PolarSkinTemperatureData
 import com.polar.sdk.api.model.activity.Polar247HrSamplesData
+import com.polar.sdk.api.model.activity.IntervalStatus
+import com.polar.sdk.api.model.activity.Movement
 import com.polar.sdk.api.model.activity.Polar247PPiSamplesData
+import com.polar.sdk.api.model.activity.SkinContact
 import com.polar.sdk.api.model.activity.PolarActiveTime
 import com.polar.sdk.api.model.activity.PolarActivitySamplesDayData
 import com.polar.sdk.api.model.activity.PolarDailySummaryData
@@ -83,13 +86,31 @@ fun Polar247HrSamplesData.toEntities(): List<HrBlockEntity> = samples.map {
     )
 }
 
-fun Polar247PPiSamplesData.toEntity(): PpiBlockEntity = PpiBlockEntity(
-    date = date.toString(),
-    startTime = samples.startTime.toString(),
-    trigger = samples.triggerType.name,
-    ppiMs = samples.ppiValueList.joinToString(","),
-    errorEstimateMs = samples.ppiErrorEstimateList.joinToString(","),
-)
+/** Estimation d'erreur donnée aux battements que Polar demande d'écarter : bien au-delà du seuil de [com.boucle.app.domain.HrvStress]. */
+const val REJECTED_PPI_ERROR_MS = 999
+
+fun Polar247PPiSamplesData.toEntity(): PpiBlockEntity {
+    // Polar : un intervalle sans contact avec la peau, pris pendant un mouvement ou marquant une période hors
+    // ligne n'est pas valide. Le statut n'a pas de colonne : ces battements reçoivent une erreur estimée
+    // énorme, que le calcul du stress écarte déjà.
+    val statuses = samples.statusList.takeIf { it.size == samples.ppiValueList.size }
+    val errors = samples.ppiErrorEstimateList.mapIndexed { i, error ->
+        val status = statuses?.get(i)
+        val rejected = status != null && (
+            status.skinContact == SkinContact.NO_SKIN_CONTACT ||
+                status.movement == Movement.MOVING_DETECTED ||
+                status.intervalStatus == IntervalStatus.INTERVAL_DENOTES_OFFLINE_PERIOD
+            )
+        if (rejected) REJECTED_PPI_ERROR_MS else error
+    }
+    return PpiBlockEntity(
+        date = date.toString(),
+        startTime = samples.startTime.toString(),
+        trigger = samples.triggerType.name,
+        ppiMs = samples.ppiValueList.joinToString(","),
+        errorEstimateMs = errors.joinToString(","),
+    )
+}
 
 fun PolarSleepData.toEntity(): SleepEntity? {
     val analysis = result ?: return null
