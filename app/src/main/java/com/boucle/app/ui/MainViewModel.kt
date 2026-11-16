@@ -12,12 +12,14 @@ import com.boucle.app.data.UserProfile
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.BodyBatteryInputs
 import com.boucle.app.domain.BodyBatteryModel
+import com.boucle.app.domain.BodyMeasurements
 import com.boucle.app.domain.HrvStress
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.RecoveryScoring
 import com.boucle.app.domain.SleepScore
 import com.boucle.app.domain.Vo2MaxEstimation
 import com.boucle.app.domain.scoreNight
+import com.boucle.app.healthconnect.HealthConnectAvailability
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
 import com.polar.sdk.api.PolarBleApi.PolarBleSdkFeature
@@ -58,6 +60,17 @@ private data class DayScores(
 
 data class FoundDevice(val id: String, val name: String, val rssi: Int)
 
+data class HealthConnectUiState(
+    /** `null` tant que la disponibilité n'a pas été vérifiée. */
+    val availability: HealthConnectAvailability? = null,
+    val granted: Int = 0,
+    val requested: Int = 0,
+    val syncing: Boolean = false,
+    val lastSyncAt: String? = null,
+    /** Nombre de mesures lues à la dernière lecture de cette session. */
+    val lastCount: Int? = null,
+)
+
 /** Saisie du profil physique, en texte tant qu'elle n'est pas validée. */
 data class ProfileForm(
     val female: Boolean = false,
@@ -84,6 +97,7 @@ data class DeviceUiState(
     val syncing: Boolean = false,
     val log: List<String> = emptyList(),
     val message: String? = null,
+    val healthConnect: HealthConnectUiState = HealthConnectUiState(),
 )
 
 class MainViewModel(app: BoucleApp) : ViewModel() {
@@ -93,6 +107,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val syncEngine = app.syncEngine
     private val database = app.database
     private val dao = database.healthDao()
+    private val healthConnect = app.healthConnect
 
     private data class Local(
         val scanning: Boolean = false,
@@ -102,6 +117,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         val syncing: Boolean = false,
         val log: List<String> = emptyList(),
         val message: String? = null,
+        val healthConnect: HealthConnectUiState = HealthConnectUiState(),
     )
 
     private val local = MutableStateFlow(Local())
@@ -124,6 +140,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 syncing = local.syncing,
                 log = local.log,
                 message = local.message,
+                healthConnect = local.healthConnect.copy(lastSyncAt = saved.lastHealthConnectSyncAt),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceUiState())
 
@@ -135,6 +152,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState(LocalDate.now()))
 
     init {
+        refreshHealthConnect()
         viewModelScope.launch {
             gateway.state
                 .map {
@@ -208,7 +226,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 }
             }
             settings.forgetDevice()
-            local.update { Local() }
+            local.update { Local(healthConnect = it.healthConnect) }
         }
     }
 
@@ -266,6 +284,60 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 if (ok) settings.saveSync(today.toString(), LocalDateTime.now().format(SYNC_TIME_FORMAT))
             } finally {
                 local.update { it.copy(syncing = false) }
+            }
+            // Les pesées et la SpO2 Withings suivent la synchronisation du bracelet.
+            syncHealthConnect()
+        }
+    }
+
+    /** Autorisations Health Connect à demander (lecture seule). */
+    val healthConnectPermissions: Set<String> get() = healthConnect.permissions
+
+    fun healthConnectInstallIntent() = healthConnect.installIntent()
+
+    /** Vérifie la disponibilité et les autorisations ; lit les nouvelles mesures si c'est autorisé. */
+    fun refreshHealthConnect() {
+        viewModelScope.launch {
+            val availability = healthConnect.availability()
+            val granted = if (availability == HealthConnectAvailability.AVAILABLE) {
+                try {
+                    healthConnect.grantedPermissions().size
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    0
+                }
+            } else {
+                0
+            }
+            val requested = healthConnect.permissions.size
+            local.update {
+                it.copy(healthConnect = it.healthConnect.copy(availability = availability, granted = granted, requested = requested))
+            }
+            if (granted > 0 && local.value.healthConnect.lastCount == null) syncHealthConnect()
+        }
+    }
+
+    fun onHealthConnectPermissionsResult(granted: Set<String>) {
+        local.update { it.copy(healthConnect = it.healthConnect.copy(granted = granted.intersect(healthConnect.permissions).size)) }
+        if (granted.isNotEmpty()) syncHealthConnect()
+    }
+
+    fun syncHealthConnect() {
+        if (local.value.healthConnect.syncing) return
+        if (local.value.healthConnect.availability != HealthConnectAvailability.AVAILABLE) return
+        local.update { it.copy(healthConnect = it.healthConnect.copy(syncing = true)) }
+        viewModelScope.launch {
+            try {
+                val count = healthConnect.sync(dao)
+                settings.saveHealthConnectSync(LocalDateTime.now().format(SYNC_TIME_FORMAT))
+                local.update { it.copy(healthConnect = it.healthConnect.copy(lastCount = count)) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Lecture Health Connect impossible", e)
+            } finally {
+                local.update { it.copy(healthConnect = it.healthConnect.copy(syncing = false)) }
             }
         }
     }
@@ -431,7 +503,10 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 sessions = sessions,
             )
         }
-        return combine(activity, night, scores, vo2Max) { a, n, scores, vo2 ->
+        // Poids : la dernière pesée peut dater de plusieurs jours, et l'évolution remonte jusqu'à 30 jours avant.
+        val body = dao.externalMeasurementsRange(date.minusDays(BodyMeasurements.HISTORY_DAYS).toString(), key)
+            .map { BodyMeasurements.body(it, date) to BodyMeasurements.spo2(it, date) }
+        return combine(activity, night, scores, vo2Max, body) { a, n, scores, vo2, (bodySummary, spo2) ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
@@ -441,6 +516,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 recovery = scores.recovery,
                 battery = scores.battery,
                 vo2Max = vo2,
+                body = bodySummary,
+                spo2 = spo2,
             )
         }
     }

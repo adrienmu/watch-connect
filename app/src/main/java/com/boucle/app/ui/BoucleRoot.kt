@@ -29,6 +29,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -65,6 +67,15 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
         }
     }
 
+    val healthConnectLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { granted -> viewModel.onHealthConnectPermissionsResult(granted) }
+    // Au retour dans l'app (installation de Health Connect, autorisations changées dans les réglages).
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshHealthConnect()
+        onPauseOrDispose { }
+    }
+
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -92,6 +103,11 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                     onRecheckSetup = viewModel::recheckSetup,
                     onSubmitProfile = viewModel::submitProfile,
                     onSync = viewModel::sync,
+                    onRequestHealthConnect = { healthConnectLauncher.launch(viewModel.healthConnectPermissions) },
+                    onSyncHealthConnect = viewModel::syncHealthConnect,
+                    onInstallHealthConnect = {
+                        runCatching { context.startActivity(viewModel.healthConnectInstallIntent()) }
+                    },
                     onDismissMessage = viewModel::dismissMessage,
                     onLoadDemo = { viewModel.loadDemo { selectedTab = 1 } },
                     onClearData = viewModel::clearData,

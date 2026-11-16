@@ -9,8 +9,10 @@ import com.boucle.app.data.db.SkinTemperatureEntity
 import com.boucle.app.data.db.SleepEntity
 import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.BodyBatteryDay
+import com.boucle.app.domain.BodySummary
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepScore
+import com.boucle.app.domain.Spo2Stats
 import com.boucle.app.domain.Vo2MaxEstimate
 import java.time.Duration
 import java.time.LocalDate
@@ -47,10 +49,13 @@ data class DayUiState(
     val recovery: RecoveryScore? = null,
     val battery: BodyBatteryDay? = null,
     val vo2Max: Vo2MaxEstimate? = null,
+    val body: BodySummary? = null,
+    val spo2: Spo2Stats? = null,
 ) {
     val isEmpty: Boolean
         get() = activity == null && minuteStepBlocks == 0 && heartRate == null && ppiIntervalCount == 0 &&
-            sleep == null && recharge == null && skinTemperature == null && sessions.isEmpty()
+            sleep == null && recharge == null && skinTemperature == null && sessions.isEmpty() &&
+            body?.weighedOn != date && spo2 == null
 }
 
 private fun String.csv(): List<String> = if (isEmpty()) emptyList() else split(',')

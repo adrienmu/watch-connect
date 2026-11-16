@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.polar.ble.sdk)
     // Le SDK expose des messages protobuf (entraînements) sans exporter la dépendance.
     implementation(libs.protobuf.javalite)
+    // Lecture des données d'autres apps (balance et montre Withings) via Health Connect.
+    implementation(libs.health.connect)
 
     testImplementation(libs.junit)
 }

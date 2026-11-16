@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.boucle.app.healthconnect.HealthConnectAvailability
 import com.boucle.app.polar.Connection
 import com.polar.sdk.api.model.PolarFirstTimeUseConfig.TypicalDay
 
@@ -45,6 +46,9 @@ fun DeviceScreen(
     onRecheckSetup: () -> Unit,
     onSubmitProfile: (ProfileForm) -> Unit,
     onSync: () -> Unit,
+    onRequestHealthConnect: () -> Unit,
+    onSyncHealthConnect: () -> Unit,
+    onInstallHealthConnect: () -> Unit,
     onDismissMessage: () -> Unit,
     onLoadDemo: () -> Unit,
     onClearData: () -> Unit,
@@ -76,6 +80,8 @@ fun DeviceScreen(
                 }
             }
         }
+
+        HealthConnectSection(state.healthConnect, onRequestHealthConnect, onSyncHealthConnect, onInstallHealthConnect)
 
         SectionCard("Mode démo") {
             Text(
@@ -192,6 +198,50 @@ private fun StatusCard(state: DeviceUiState, onReconnect: () -> Unit, onForget: 
                 Button(onClick = onReconnect) { Text("Reconnecter") }
             }
             TextButton(onClick = onForget) { Text("Oublier ce bracelet") }
+        }
+    }
+}
+
+@Composable
+private fun HealthConnectSection(
+    state: HealthConnectUiState,
+    onRequest: () -> Unit,
+    onSync: () -> Unit,
+    onInstall: () -> Unit,
+) {
+    SectionCard("Health Connect") {
+        Text(
+            "Lit les pesées de ta balance Withings (poids, masse grasse, maigre, osseuse, hydrique) et la SpO2 " +
+                "de ta montre. Dans l'app Withings : Partager › Health Connect, puis coche ces données.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        when (state.availability) {
+            null -> Text("Vérification…", style = MaterialTheme.typography.bodySmall)
+            HealthConnectAvailability.NOT_INSTALLED -> {
+                Text("Health Connect n'est pas installé sur ce téléphone.")
+                Button(onClick = onInstall) { Text("Installer Health Connect") }
+            }
+            HealthConnectAvailability.UPDATE_REQUIRED -> {
+                Text("Health Connect doit être mis à jour.")
+                Button(onClick = onInstall) { Text("Mettre à jour") }
+            }
+            HealthConnectAvailability.AVAILABLE -> if (state.granted == 0) {
+                Button(onClick = onRequest) { Text("Autoriser la lecture") }
+            } else {
+                Text(
+                    "${state.granted} type(s) de données autorisé(s) sur ${state.requested}. " +
+                        (state.lastSyncAt?.let { "Dernière lecture : $it" } ?: "Jamais lu.") +
+                        (state.lastCount?.let { " ($it mesure(s))" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onSync, enabled = !state.syncing) {
+                        Text(if (state.syncing) "Lecture…" else "Lire maintenant")
+                    }
+                    TextButton(onClick = onRequest) { Text("Autorisations") }
+                }
+                if (state.syncing) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
         }
     }
 }

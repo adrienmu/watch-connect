@@ -2,6 +2,7 @@ package com.boucle.app.data
 
 import com.boucle.app.data.db.ActivitySamplesEntity
 import com.boucle.app.data.db.DailyActivityEntity
+import com.boucle.app.data.db.ExternalMeasurementEntity
 import com.boucle.app.data.db.HealthDao
 import com.boucle.app.data.db.HrBlockEntity
 import com.boucle.app.data.db.NightlyRechargeEntity
@@ -9,6 +10,7 @@ import com.boucle.app.data.db.PpiBlockEntity
 import com.boucle.app.data.db.SkinTemperatureEntity
 import com.boucle.app.data.db.SleepEntity
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.domain.MeasurementType
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -53,8 +55,36 @@ object DemoData {
             dao.upsertDailyActivity(listOf(dailyActivity(date, steps, trained, rnd)))
 
             if (trained) dao.upsertTrainingSessions(listOf(trainingSession(date, rnd)))
+            dao.upsertExternalMeasurements(withingsMeasurements(date, offset, rnd))
         }
     }
+
+    /** Pesée Withings du matin (pas tous les jours) et SpO2 de la montre pendant la nuit. */
+    private fun withingsMeasurements(date: LocalDate, daysAgo: Int, rnd: Random): List<ExternalMeasurementEntity> {
+        fun at(hour: Int, minute: Int) = date.atTime(hour, minute).atZone(zone).toInstant().toString()
+        fun item(type: MeasurementType, time: String, value: Double, k: Int = 0) =
+            ExternalMeasurementEntity("demo-${type.name}-$date-$k", type.name, time, date.toString(), value, WITHINGS)
+
+        val out = mutableListOf<ExternalMeasurementEntity>()
+        if (rnd.nextInt(100) < 70) {
+            // Légère perte de poids sur les 14 jours.
+            val weight = 74.5 - (13 - daysAgo) * 0.05 + rnd.nextInt(-3, 4) / 10.0
+            val fat = 18.5 + rnd.nextInt(-3, 4) / 10.0
+            val time = at(7, 30)
+            out += item(MeasurementType.WEIGHT, time, weight)
+            out += item(MeasurementType.BODY_FAT, time, fat)
+            out += item(MeasurementType.LEAN_MASS, time, weight * (1 - fat / 100))
+            out += item(MeasurementType.BONE_MASS, time, 3.1)
+            out += item(MeasurementType.WATER_MASS, time, weight * 0.55)
+        }
+        listOf(1 to 15, 3 to 40, 5 to 10).forEachIndexed { k, (hour, minute) ->
+            out += item(MeasurementType.SPO2, at(hour, minute), 95.0 + rnd.nextInt(0, 4), k)
+        }
+        return out
+    }
+
+    /** Balance et montre passent toutes deux par l'app Withings. */
+    private const val WITHINGS = "com.withings.wiscale2"
 
     private fun Float.oneDecimal(): String = ((this * 10).roundToInt() / 10f).toString()
 

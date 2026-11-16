@@ -31,6 +31,7 @@ import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.BatteryBand
 import com.boucle.app.domain.BatteryPoint
 import com.boucle.app.domain.BodyBatteryDay
+import com.boucle.app.domain.BodySummary
 import com.boucle.app.domain.RecoveryBand
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepBand
@@ -45,6 +46,7 @@ import java.util.Locale
 
 private val dayFormat = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
+private val shortDayFormat = DateTimeFormatter.ofPattern("d MMMM", Locale.FRENCH)
 
 @Composable
 fun DataScreen(
@@ -78,6 +80,13 @@ fun DataScreen(
         state.recovery?.let { RecoveryScoreCard(it) }
         state.battery?.let { BodyBatteryCard(it, isToday = state.date == LocalDate.now()) }
         state.vo2Max?.let { Vo2MaxCard(it) }
+        state.body?.let { BodyCard(it, state.date) }
+        state.spo2?.let {
+            DataCard("Saturation en oxygène (SpO2)") {
+                DataRow("Moyenne / min", "%.0f / %.0f %%".format(it.average, it.min))
+                DataRow("Mesures", it.count.toString())
+            }
+        }
         state.activity?.let { ActivityCard(it, state.minuteStepBlocks) }
         state.heartRate?.let {
             DataCard("Fréquence cardiaque") {
@@ -95,6 +104,21 @@ fun DataScreen(
             }
         }
         state.sessions.forEach { SessionCard(it) }
+    }
+}
+
+@Composable
+private fun BodyCard(body: BodySummary, date: LocalDate) {
+    fun signed(kg: Double?) = kg?.let { "%+.1f kg".format(it) }
+    DataCard("Poids") {
+        val day = if (body.weighedOn == date) "ce jour" else "le ${body.weighedOn.format(shortDayFormat)}"
+        DataRow("Pesée ($day)", "%.1f kg".format(body.weightKg))
+        DataRow("Sur 7 jours", signed(body.change7Days))
+        DataRow("Sur 30 jours", signed(body.change30Days))
+        DataRow("Masse grasse", body.bodyFatPct?.let { "%.1f %%".format(it) })
+        DataRow("Masse maigre", body.leanMassKg?.let { "%.1f kg".format(it) })
+        DataRow("Masse osseuse", body.boneMassKg?.let { "%.1f kg".format(it) })
+        DataRow("Masse hydrique", body.waterMassKg?.let { "%.1f kg".format(it) })
     }
 }
 

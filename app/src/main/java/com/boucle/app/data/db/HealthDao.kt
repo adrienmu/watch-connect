@@ -16,6 +16,14 @@ interface HealthDao {
     @Upsert suspend fun upsertSkinTemperature(items: List<SkinTemperatureEntity>)
     @Upsert suspend fun upsertTrainingSessions(items: List<TrainingSessionEntity>)
     @Upsert suspend fun upsertTrainingExercises(items: List<TrainingExerciseEntity>)
+    @Upsert suspend fun upsertExternalMeasurements(items: List<ExternalMeasurementEntity>)
+
+    @Query("SELECT * FROM external_measurement WHERE date BETWEEN :from AND :to ORDER BY time")
+    fun externalMeasurementsRange(from: String, to: String): Flow<List<ExternalMeasurementEntity>>
+
+    /** Instant ISO de la mesure Health Connect la plus récente, pour reprendre la lecture à partir de là. */
+    @Query("SELECT MAX(time) FROM external_measurement")
+    suspend fun latestExternalMeasurementTime(): String?
 
     @Query("SELECT * FROM daily_activity WHERE date = :date")
     fun dailyActivity(date: String): Flow<DailyActivityEntity?>

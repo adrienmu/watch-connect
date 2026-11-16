@@ -134,3 +134,21 @@ data class TrainingExerciseEntity(
     val baseProto: ByteArray?,
     val samplesProto: ByteArray?,
 )
+
+/**
+ * Mesure ponctuelle lue dans Health Connect, écrite par une autre app (balance et montre Withings…).
+ * Voir [com.boucle.app.domain.MeasurementType] pour les types et leurs unités.
+ */
+@Entity(tableName = "external_measurement")
+data class ExternalMeasurementEntity(
+    /** Identifiant de l'enregistrement dans Health Connect : une relecture remplace au lieu de dupliquer. */
+    @PrimaryKey val id: String,
+    val type: String,
+    /** Instant ISO-8601 (UTC) de la mesure. */
+    val time: String,
+    /** Jour local de la mesure (yyyy-MM-dd), pour les requêtes par jour. */
+    val date: String,
+    val value: Double,
+    /** Paquet de l'app qui a écrit la mesure (ex. com.withings.wiscale2). */
+    val source: String,
+)
