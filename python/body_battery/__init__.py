@@ -3,7 +3,7 @@
 from body_battery.config import BodyBatteryConfig
 from body_battery.engine import (BodyBatteryEngine, UserProfile, WindowResult, WindowState,
                                  compute_rate)
-from body_battery.metrics import (Baseline, BaselineTracker, WindowMetrics,
+from body_battery.metrics import (Baseline, BaselineTracker, WindowMetrics, ans_quality,
                                   compute_stress_score, compute_window_metrics)
 from body_battery.preprocessing import (CleaningResult, InsufficientDataError,
                                         assess_rr_intervals, clean_rr_intervals)
@@ -20,6 +20,7 @@ __all__ = [
     "WindowMetrics",
     "WindowResult",
     "WindowState",
+    "ans_quality",
     "assess_rr_intervals",
     "clean_rr_intervals",
     "compute_enmo",

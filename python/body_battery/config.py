@@ -39,7 +39,15 @@ class BodyBatteryConfig:
         baseline_cold_start_hours: Durée de convergence du prior vers les données
             de l'utilisateur (extension).
         baseline_min_std: Plancher de σ pour éviter des Z-scores explosifs (extension).
-        stress_sigmoid_slope: Pente k de la sigmoïde S = 100 / (1 + e^(k·Z)) (extension).
+        stress_sigmoid_slope: Pente k de la sigmoïde S = 100 / (1 + e^(k·(Z + z₀))) (extension).
+        stress_sigmoid_offset: Décalage z₀ de la sigmoïde : avec 0,55, une VFC habituelle (Z = 0)
+            donne un stress ≈ 30, dans la zone « faible » de l'échelle de Garmin, plutôt que 50 qui
+            viderait la batterie toute la journée ; 0 redonne la formule d'origine (extension).
+        max_error_estimate_ms: Battement écarté si le capteur estime son erreur au-delà (extension).
+        baseline_exercise_hr_margin: Une fenêtre à plus de FC de repos + cette marge n'alimente pas
+            la ligne de base, même sans accéléromètre (extension).
+        ans_usual_quality: Qualité de nuit attribuée à une ANS charge Polar habituelle (0) (extension).
+        ans_quality_per_point: Pente de la qualité par point d'ANS charge (−10 à +10) (extension).
         gap_threshold_hours: Au-delà de cet écart entre deux fenêtres valides,
             l'intervalle est traité comme un trou de données (extension).
         gap_target_score: Valeur neutre vers laquelle le score relaxe pendant un
@@ -69,6 +77,11 @@ class BodyBatteryConfig:
     baseline_cold_start_hours: float = 24.0
     baseline_min_std: float = 0.1
     stress_sigmoid_slope: float = 1.5
+    stress_sigmoid_offset: float = 0.55
+    max_error_estimate_ms: float = 25.0
+    baseline_exercise_hr_margin: float = 30.0
+    ans_usual_quality: float = 0.6
+    ans_quality_per_point: float = 0.08
     gap_threshold_hours: float = 0.25
     gap_target_score: float = 50.0
     gap_relaxation_tau_hours: float = 4.0

@@ -27,7 +27,8 @@ def compute_enmo(acc_xyz_g: npt.ArrayLike) -> npt.NDArray[np.float64]:
 def segment_windows(beat_times: npt.ArrayLike, rr_ms: npt.ArrayLike,
                     acc_times: npt.ArrayLike, acc_xyz_g: npt.ArrayLike,
                     config: BodyBatteryConfig | None = None,
-                    origin: pd.Timestamp | None = None) -> pd.DataFrame:
+                    origin: pd.Timestamp | None = None,
+                    error_estimates_ms: npt.ArrayLike | None = None) -> pd.DataFrame:
     """Regroupe des flux bruts en fenêtres fixes de ``window_minutes``.
 
     Chaque battement est rangé dans la fenêtre contenant son horodatage ; le niveau
@@ -43,10 +44,13 @@ def segment_windows(beat_times: npt.ArrayLike, rr_ms: npt.ArrayLike,
         config: Paramètres (taille de fenêtre).
         origin: Origine de la grille ; par défaut le premier battement arrondi à la
             fenêtre inférieure.
+        error_estimates_ms: Estimation d'erreur de chaque battement (PPI Polar) ; ajoute
+            alors une colonne ``rr_errors``.
 
     Returns:
-        Colonnes ``timestamp`` (fin de fenêtre), ``rr_intervals`` (np.ndarray) et
-        ``activity_level``, prêtes pour :meth:`BodyBatteryEngine.process_dataframe`.
+        Colonnes ``timestamp`` (fin de fenêtre), ``rr_intervals`` (np.ndarray),
+        ``activity_level`` et éventuellement ``rr_errors``, prêtes pour
+        :meth:`BodyBatteryEngine.process_dataframe`.
     """
     cfg = config or BodyBatteryConfig()
     window = pd.Timedelta(minutes=cfg.window_minutes)
@@ -61,6 +65,11 @@ def segment_windows(beat_times: npt.ArrayLike, rr_ms: npt.ArrayLike,
     if bt.size == 0:
         return pd.DataFrame({c: [] for c in ("timestamp", "rr_intervals", "activity_level")})
 
+    errors = None
+    if error_estimates_ms is not None:
+        errors = np.asarray(error_estimates_ms, dtype=np.float64)
+        if errors.size != rr.size:
+            raise ValueError("error_estimates_ms doit avoir la longueur de rr_ms")
     order = np.argsort(bt, kind="stable")
     bt, rr = bt[order], rr[order]
     start = origin if origin is not None else pd.Timestamp(bt[0]).floor(window)
@@ -74,8 +83,11 @@ def segment_windows(beat_times: npt.ArrayLike, rr_ms: npt.ArrayLike,
     windows, bounds = np.unique(beat_idx, return_index=True)
     groups = np.split(rr, bounds[1:])
     activity = acc_df.reindex(windows).fillna(0.0).to_numpy()
-    return pd.DataFrame({
+    out = pd.DataFrame({
         "timestamp": start + (windows + 1) * window,
         "rr_intervals": groups,
         "activity_level": activity,
     })
+    if errors is not None:
+        out["rr_errors"] = np.split(errors[order], bounds[1:])
+    return out

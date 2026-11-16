@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from body_battery import (BaselineTracker, BodyBatteryConfig, BodyBatteryEngine,
-                          InsufficientDataError, UserProfile, WindowState,
+                          InsufficientDataError, UserProfile, WindowState, ans_quality,
                           assess_rr_intervals, clean_rr_intervals, compute_rate,
                           compute_stress_score, compute_window_metrics, segment_windows)
 from body_battery.synthetic import generate_rr
@@ -89,6 +89,25 @@ class TestCleaning:
         rr = np.r_[np.full(20, 800.0), [np.nan]]
         assert clean_rr_intervals(rr, CFG).size == 20
 
+    def test_sensor_error_estimate_rejects_beats(self) -> None:
+        rr = np.full(40, 800.0)
+        errors = np.full(40, 8.0)
+        errors[[5, 6]] = 80.0
+        errors[7] = np.nan  # pas d'estimation : conservé
+        assert clean_rr_intervals(rr, CFG, errors).size == 38
+        with pytest.raises(ValueError):
+            clean_rr_intervals(rr, CFG, errors[:10])
+
+    def test_rmssd_does_not_bridge_removed_beats(self) -> None:
+        # Alternance 790/810 (RMSSD 20) ; un battement retiré au milieu ne doit pas créer
+        # une fausse différence 790 → 790 entre ses voisins.
+        rr = np.array([790.0, 810.0] * 20)
+        rr[21] = 0.0
+        report = assess_rr_intervals(rr, CFG)
+        assert np.isnan(report.rr_with_gaps[21])
+        assert compute_window_metrics(report.rr_with_gaps)["rmssd"] == pytest.approx(20.0)
+        assert compute_window_metrics(report.rr_clean)["rmssd"] < 20.0
+
 
 # --------------------------------------------------------------------------- métriques
 
@@ -107,6 +126,20 @@ class TestMetrics:
         assert 0.0 <= compute_stress_score(100.0, 3.8, 0.5) <= compute_stress_score(-100, 3.8, 0.5) <= 100.0
         with pytest.raises(ValueError):
             compute_stress_score(3.8, 3.8, 0.0)
+
+    def test_stress_offset_centres_usual_hrv_on_low_stress(self) -> None:
+        assert compute_stress_score(3.8, 3.8, 0.5, offset=0.55) == pytest.approx(
+            100 / (1 + math.exp(1.5 * 0.55)))
+        assert 25.0 < compute_stress_score(3.8, 3.8, 0.5, offset=CFG.stress_sigmoid_offset) < 35.0
+
+    def test_ans_quality(self) -> None:
+        assert ans_quality(0.0) == pytest.approx(0.6)
+        assert ans_quality(5.0) == pytest.approx(1.0)
+        assert ans_quality(-3.0) == pytest.approx(0.36)
+        assert ans_quality(-10.0) == 0.0
+        assert ans_quality(None) is None
+        assert ans_quality(float("nan")) is None
+        assert ans_quality(42.0) is None
 
     def test_baseline_cold_start_converges(self) -> None:
         tracker = BaselineTracker(CFG)
@@ -188,6 +221,30 @@ class TestEngine:
         engine = BodyBatteryEngine(CFG, PROFILE)
         engine.process_dataframe(make_windows(T0, 1.0, 170, 8, 0.9, seed=6))
         assert len(engine.baseline_tracker) == 0
+
+    def test_high_heart_rate_at_rest_does_not_feed_baseline(self) -> None:
+        engine = BodyBatteryEngine(CFG, PROFILE)
+        engine.process_dataframe(make_windows(T0, 1.0, 120, 10, 0.1, seed=14))
+        assert len(engine.baseline_tracker) == 0
+
+    def test_sleep_windows_do_not_feed_baseline_and_never_drain(self) -> None:
+        engine = BodyBatteryEngine(CFG, PROFILE, initial_score=50.0)
+        night = make_windows(T0, 2.0, 70, 10, 0.0, seed=15).assign(sleeping=True)
+        out = engine.process_dataframe(night)
+        assert len(engine.baseline_tracker) == 0
+        assert (out["state"] == "sleep").all()
+        assert (out["delta_rate"] >= 0.0).all()
+
+    def test_ans_charge_scales_the_night_recharge(self) -> None:
+        def night_end(ans: float | None) -> float:
+            engine = BodyBatteryEngine(CFG, PROFILE, initial_score=30.0,
+                                       baseline_tracker=warmed_baseline())
+            night = make_windows(T0, 4.0, 52, 75, 0.0, seed=16).assign(sleeping=True, ans_charge=ans)
+            return float(engine.process_dataframe(night)["score"].iloc[-1])
+
+        poor, usual, good, unknown = night_end(-5.0), night_end(0.0), night_end(4.0), night_end(None)
+        assert poor < usual - 5 < good - 10
+        assert unknown == pytest.approx(usual)
 
     def test_4h_sensor_gap_relaxes_toward_neutral(self) -> None:
         engine = BodyBatteryEngine(CFG, PROFILE, baseline_tracker=warmed_baseline())
@@ -271,3 +328,10 @@ def test_segment_windows_from_raw_streams() -> None:
     assert list(df["timestamp"]) == [T0 + pd.Timedelta(minutes=m) for m in (3, 6, 9)]
     assert df["activity_level"].tolist() == pytest.approx([0.5, 0.0, 0.0])
     assert sum(len(x) for x in df["rr_intervals"]) == rr.size
+    assert "rr_errors" not in df
+
+    with_errors = segment_windows(beat_times, rr, acc_times, acc, CFG, origin=T0,
+                                  error_estimates_ms=np.full(rr.size, 8.0))
+    assert [len(e) for e in with_errors["rr_errors"]] == [len(r) for r in df["rr_intervals"]]
+    out = BodyBatteryEngine(CFG, PROFILE).process_dataframe(with_errors)
+    assert out["valid"].all()

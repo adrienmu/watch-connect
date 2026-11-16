@@ -13,12 +13,14 @@ Scénario (FC de repos 55, FC max 190) :
 * 19:20–23:00  soirée calme       FC ≈ 62, RMSSD ≈ 50 ms
 * 23:00–24:00  endormissement     FC ≈ 55, RMSSD ≈ 65 ms
 
-Les flux bruts (un intervalle RR par battement, accéléromètre 3 axes à 5 Hz, avec
-artefacts injectés) sont découpés en fenêtres de 3 min puis intégrés par le moteur.
-Une ligne de base de 3 jours est préchargée : sans elle, le démarrage à froid
-s'appuie sur le prior (μ = 3,8, σ = 0,5).
+Les flux bruts (un intervalle RR par battement avec l'estimation d'erreur du capteur,
+accéléromètre 3 axes à 5 Hz, artefacts injectés) sont découpés en fenêtres de 3 min
+puis intégrés par le moteur. Les fenêtres de nuit sont marquées comme du sommeil :
+elles rechargent selon l'ANS charge du Nightly Recharge Polar (``--ans-charge``) et
+n'alimentent pas la ligne de base d'éveil. Une ligne de base de 3 jours d'éveil est
+préchargée : sans elle, le démarrage à froid s'appuie sur le prior (μ = 3,8, σ = 0,5).
 
-Usage : ``python example_usage.py [--cold-start] [--csv sortie.csv]``
+Usage : ``python example_usage.py [--cold-start] [--ans-charge 2.5] [--start 35] [--csv sortie.csv]``
 """
 
 from __future__ import annotations
@@ -64,12 +66,13 @@ PHASES: tuple[Phase, ...] = (
 )
 
 
-def synthesize_day(rng: np.random.Generator) -> tuple[pd.DatetimeIndex, np.ndarray,
+def synthesize_day(rng: np.random.Generator) -> tuple[pd.DatetimeIndex, np.ndarray, np.ndarray,
                                                        pd.DatetimeIndex, np.ndarray]:
     """Génère les flux bruts de la journée.
 
     Returns:
-        (horodatages des battements, RR en ms, horodatages accéléromètre, accélérations (n, 3) en g).
+        (horodatages des battements, RR en ms, estimation d'erreur par battement en ms,
+        horodatages accéléromètre, accélérations (n, 3) en g).
     """
     beat_t: list[np.ndarray] = []
     beat_rr: list[np.ndarray] = []
@@ -109,16 +112,25 @@ def synthesize_day(rng: np.random.Generator) -> tuple[pd.DatetimeIndex, np.ndarr
     rr_all[rng.choice(n, n // 400, replace=False)] *= 2.0
     rr_all[rng.choice(n, n // 400, replace=False)] *= 0.45
     rr_all[rng.choice(n, n // 1000, replace=False)] = 0.0
-    return (pd.DatetimeIndex(np.concatenate(beat_t)), rr_all,
+    # Estimation d'erreur du capteur : ≈ 8 ms, avec quelques battements douteux (> 25 ms).
+    errors = rng.gamma(4.0, 2.0, n)
+    errors[rng.choice(n, n // 300, replace=False)] = 60.0
+    return (pd.DatetimeIndex(np.concatenate(beat_t)), rr_all, errors,
             pd.DatetimeIndex(np.concatenate([t.to_numpy() for t in acc_t])), np.vstack(acc_v))
 
 
+def is_asleep(ts: pd.Timestamp) -> bool:
+    """Vrai si la fenêtre se termine pendant la nuit (avant 7 h ou après 23 h)."""
+    t = ts - pd.Timedelta(seconds=1)
+    return t.hour < 7 or t.hour >= 23
+
+
 def warm_baseline(config: BodyBatteryConfig, rng: np.random.Generator) -> BaselineTracker:
-    """Ligne de base de 3 jours de repos (nuits ≈ ln 75 ms, journées ≈ ln 30 ms)."""
+    """Ligne de base de 3 jours d'éveil au repos (RMSSD ≈ 32 ms) ; les nuits n'y entrent pas."""
     tracker = BaselineTracker(config)
     for ts in pd.date_range(DAY - pd.Timedelta(days=3), DAY, freq="3min", inclusive="left"):
-        asleep = ts.hour < 7 or ts.hour >= 23
-        tracker.update(ts, float(rng.normal(np.log(75 if asleep else 32), 0.25)))
+        if not is_asleep(ts):
+            tracker.update(ts, float(rng.normal(np.log(32), 0.25)))
     return tracker
 
 
@@ -134,6 +146,10 @@ def main() -> None:
     parser.add_argument("--cold-start", action="store_true",
                         help="ne pas précharger de ligne de base")
     parser.add_argument("--csv", help="écrire le détail par fenêtre dans ce fichier")
+    parser.add_argument("--ans-charge", type=float, default=1.0,
+                        help="ANS charge Polar de la nuit (−10 à +10, 0 = habituel)")
+    parser.add_argument("--start", type=float, default=35.0,
+                        help="score à minuit (veille éprouvante par défaut)")
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
 
@@ -141,13 +157,16 @@ def main() -> None:
     config = BodyBatteryConfig()
     profile = UserProfile(hr_rest=55.0, hr_max=190.0)
 
-    beat_t, rr, acc_t, acc = synthesize_day(rng)
-    windows = segment_windows(beat_t, rr, acc_t, acc, config, origin=DAY)
+    beat_t, rr, errors, acc_t, acc = synthesize_day(rng)
+    windows = segment_windows(beat_t, rr, acc_t, acc, config, origin=DAY, error_estimates_ms=errors)
+    windows["sleeping"] = windows["timestamp"].map(is_asleep)
+    # L'ANS charge connue est celle de la nuit qui se termine ce matin.
+    windows["ans_charge"] = np.where(windows["timestamp"].dt.hour < 12, args.ans_charge, np.nan)
     print(f"{rr.size} battements, {acc_t.size} échantillons d'accéléromètre "
           f"→ {len(windows)} fenêtres de {config.window_minutes} min\n")
 
     baseline = None if args.cold_start else warm_baseline(config, rng)
-    engine = BodyBatteryEngine(config, profile, baseline_tracker=baseline)
+    engine = BodyBatteryEngine(config, profile, initial_score=args.start, baseline_tracker=baseline)
     out = engine.process_dataframe(windows)
 
     def phase_of(ts: pd.Timestamp) -> str:

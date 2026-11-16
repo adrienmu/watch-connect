@@ -29,40 +29,46 @@ class WindowMetrics(TypedDict):
 def compute_window_metrics(rr_clean: npt.ArrayLike) -> WindowMetrics:
     """Calcule RMSSD, ln(RMSSD) et FC moyenne d'une fenêtre nettoyée.
 
+    Les NaN marquent des battements retirés (voir ``CleaningResult.rr_with_gaps``) : les
+    différences successives qui les touchent sont ignorées, la suite n'est pas recollée.
+
     Args:
-        rr_clean: Intervalles RR nettoyés, en millisecondes (au moins 2).
+        rr_clean: Intervalles RR nettoyés, en millisecondes.
 
     Returns:
         ``rmssd`` (ms), ``ln_rmssd`` (ln de ms, RMSSD plancher à 1 ms) et
         ``hr_mean`` (bpm, 60000 / RR moyen).
 
     Raises:
-        ValueError: Si moins de 2 intervalles sont fournis.
+        ValueError: S'il n'y a aucune paire de battements consécutifs valides.
     """
     rr = np.asarray(rr_clean, dtype=np.float64).ravel()
-    if rr.size < 2:
-        raise ValueError("au moins 2 intervalles RR sont nécessaires")
-    rmssd = float(np.sqrt(np.mean(np.diff(rr) ** 2)))
+    diffs = np.diff(rr)
+    diffs = diffs[np.isfinite(diffs)]
+    if diffs.size == 0:
+        raise ValueError("au moins 2 intervalles RR consécutifs sont nécessaires")
+    rmssd = float(np.sqrt(np.mean(diffs**2)))
     return WindowMetrics(
         rmssd=rmssd,
         ln_rmssd=math.log(max(rmssd, RMSSD_FLOOR_MS)),
-        hr_mean=float(60_000.0 / rr.mean()),
+        hr_mean=float(60_000.0 / np.nanmean(rr)),
     )
 
 
 def compute_stress_score(ln_rmssd: float, baseline_mean: float, baseline_std: float,
-                         slope: float = 1.5) -> float:
+                         slope: float = 1.5, offset: float = 0.0) -> float:
     """Projette le Z-score de VFC sur un stress [0, 100] par sigmoïde inversée.
 
-    ``S = 100 / (1 + exp(slope · Z))`` avec ``Z = (ln_rmssd − μ) / σ`` : une VFC
-    au-dessus de la ligne de base donne un stress faible, en dessous un stress élevé,
-    et Z = 0 donne 50.
+    ``S = 100 / (1 + exp(slope · (Z + offset)))`` avec ``Z = (ln_rmssd − μ) / σ`` : une VFC
+    au-dessus de la ligne de base donne un stress faible, en dessous un stress élevé.
+    Sans décalage, Z = 0 donne 50 ; le moteur utilise ``config.stress_sigmoid_offset``.
 
     Args:
         ln_rmssd: ln(RMSSD) de la fenêtre.
         baseline_mean: Moyenne μ de la ligne de base de ln(RMSSD).
         baseline_std: Écart-type σ de la ligne de base (> 0).
         slope: Pente k de la sigmoïde.
+        offset: Décalage z₀ ajouté au Z-score.
 
     Returns:
         Le score de stress dans [0, 100].
@@ -74,7 +80,25 @@ def compute_stress_score(ln_rmssd: float, baseline_mean: float, baseline_std: fl
         raise ValueError("baseline_std doit être > 0")
     z = (ln_rmssd - baseline_mean) / baseline_std
     # expit(-k·z) = 1 / (1 + e^(k·z)), numériquement stable pour |z| grand.
-    return float(100.0 * expit(-slope * z))
+    return float(100.0 * expit(-slope * (z + offset)))
+
+
+def ans_quality(ans_charge: float | None, config: BodyBatteryConfig | None = None) -> float | None:
+    """Projette l'ANS charge du Nightly Recharge Polar (−10 à +10) sur une qualité de nuit [0, 1].
+
+    0 (niveau habituel) donne ``ans_usual_quality`` (0,6), +5 donne 1, −7,5 donne 0.
+
+    Args:
+        ans_charge: ANS charge de la nuit, ou None.
+        config: Paramètres (qualité habituelle, pente).
+
+    Returns:
+        La qualité, ou None si l'ANS charge est absente ou hors de [−10, 10].
+    """
+    if ans_charge is None or not math.isfinite(ans_charge) or not -10.0 <= ans_charge <= 10.0:
+        return None
+    cfg = config or BodyBatteryConfig()
+    return float(np.clip(cfg.ans_usual_quality + cfg.ans_quality_per_point * ans_charge, 0.0, 1.0))
 
 
 @dataclass(frozen=True, slots=True)
