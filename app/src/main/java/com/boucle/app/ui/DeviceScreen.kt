@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -148,7 +149,9 @@ private fun PairingSection(
         Text(
             "Le Polar Loop n'accepte qu'un seul téléphone ou une seule app. S'il a déjà été utilisé avec " +
                 "Polar Flow, il reste invisible : il faut d'abord le réinitialiser (bouton sous le bracelet, " +
-                "pendant qu'il est sur son chargeur), puis garder le téléphone à moins d'un mètre.",
+                "pendant qu'il est sur son chargeur), puis garder le téléphone à moins d'un mètre. Une fois " +
+                "appairé, ne le supprime pas des réglages Bluetooth du téléphone : il faudrait le réinitialiser " +
+                "pour le reconnecter.",
         )
     }
     SectionCard("Bracelets à proximité") {
@@ -176,6 +179,7 @@ private fun PairingSection(
 @Composable
 private fun StatusCard(state: DeviceUiState, onReconnect: () -> Unit, onForget: () -> Unit) {
     val link = state.link
+    var confirmForget by rememberSaveable { mutableStateOf(false) }
     SectionCard(state.savedDevice?.name ?: "Bracelet") {
         val status = when (link.connection) {
             Connection.CONNECTED -> "Connecté"
@@ -198,8 +202,34 @@ private fun StatusCard(state: DeviceUiState, onReconnect: () -> Unit, onForget: 
             if (link.connection == Connection.DISCONNECTED) {
                 Button(onClick = onReconnect) { Text("Reconnecter") }
             }
-            TextButton(onClick = onForget) { Text("Oublier ce bracelet") }
+            TextButton(onClick = { confirmForget = true }) { Text("Oublier ce bracelet") }
         }
+    }
+    if (confirmForget) {
+        AlertDialog(
+            onDismissRequest = { confirmForget = false },
+            title = { Text("Oublier ce bracelet ?") },
+            text = {
+                Text(
+                    "L'app se déconnecte du bracelet, mais il reste appairé à ce téléphone : tu pourras le " +
+                        "retrouver ici.\n\n" +
+                        "Ne le supprime pas des réglages Bluetooth du téléphone : le Polar Loop refuse un nouvel " +
+                        "appairage avec le même téléphone, il faudrait le réinitialiser (bouton sous le bracelet, " +
+                        "pendant qu'il est sur son chargeur). Il faut aussi le réinitialiser pour l'utiliser avec " +
+                        "un autre téléphone.\n\n" +
+                        "Les données déjà synchronisées restent dans l'app.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmForget = false
+                        onForget()
+                    },
+                ) { Text("Oublier") }
+            },
+            dismissButton = { TextButton(onClick = { confirmForget = false }) { Text("Annuler") } },
+        )
     }
 }
 
