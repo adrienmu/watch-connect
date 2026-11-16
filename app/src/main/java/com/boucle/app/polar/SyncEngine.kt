@@ -12,8 +12,12 @@ import java.time.LocalDateTime
  * Récupère toutes les données du bracelet sur une plage de dates et les range dans Room.
  *
  * Les étapes s'enchaînent strictement une par une (exigence du bracelet) et sont indépendantes :
- * une étape en échec est journalisée et n'empêche pas les suivantes. Rien n'est effacé sur le
- * bracelet pour l'instant, tant que la lecture n'a pas été validée sur un vrai appareil.
+ * une étape en échec est journalisée et n'empêche pas les suivantes.
+ *
+ * Le Loop n'a que 15 Mo de mémoire : comme le recommande Polar, les jours déjà copiés sont ensuite effacés
+ * du bracelet. Seulement si toutes les étapes ont réussi, seulement les jours lus par cette synchronisation,
+ * et jamais les [KEEP_RECENT_DAYS] derniers jours (le sommeil et le Nightly Recharge d'une nuit n'arrivent
+ * qu'environ 90 minutes après le réveil, et la journée en cours change encore).
  */
 class SyncEngine(
     private val gateway: PolarGateway,
@@ -107,6 +111,15 @@ class SyncEngine(
                 }
                 references.size
             }
+            val cleanUntil = to.minusDays(KEEP_RECENT_DAYS)
+            if (allOk && !from.isAfter(cleanUntil)) {
+                step("Nettoyage du bracelet (du $from au $cleanUntil)") {
+                    api.deleteDeviceDateFolders(deviceId, from, cleanUntil)
+                    (from.datesUntil(cleanUntil.plusDays(1)).count()).toInt()
+                }
+            } else if (!allOk) {
+                log("· Bracelet non nettoyé : une étape a échoué, ses données y restent pour la prochaine fois.")
+            }
         } finally {
             // Le bracelet doit toujours être sorti du mode synchronisation, même en cas d'annulation.
             withContext(NonCancellable) {
@@ -123,4 +136,9 @@ class SyncEngine(
     }
 
     private fun Exception.describe(): String = message?.takeIf { it.isNotBlank() } ?: this::class.java.simpleName
+
+    companion object {
+        /** Jours les plus récents jamais effacés du bracelet : aujourd'hui et hier. */
+        const val KEEP_RECENT_DAYS = 2L
+    }
 }

@@ -85,7 +85,8 @@ fun DeviceScreen(
 
         SectionCard("Mode démo") {
             Text(
-                "Remplace les données locales par 14 jours de données fictives, pour essayer l'app sans bracelet.",
+                "Remplace les données locales par 14 jours de données fictives, pour essayer l'app sans bracelet. " +
+                    "Attention : les jours déjà synchronisés sont effacés du bracelet, ils seraient perdus.",
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
