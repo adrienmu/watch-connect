@@ -1,9 +1,11 @@
 package com.boucle.app.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,12 +17,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.NightlyRechargeEntity
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.domain.BatteryBand
+import com.boucle.app.domain.BatteryPoint
+import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.RecoveryBand
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepBand
@@ -63,6 +73,7 @@ fun DataScreen(
 
         state.sleepScore?.let { SleepScoreCard(it) }
         state.recovery?.let { RecoveryScoreCard(it) }
+        state.battery?.let { BodyBatteryCard(it, isToday = state.date == LocalDate.now()) }
         state.activity?.let { ActivityCard(it, state.minuteStepBlocks) }
         state.heartRate?.let {
             DataCard("Fréquence cardiaque") {
@@ -267,4 +278,70 @@ private fun RecoveryScoreCard(score: RecoveryScore) {
         ),
         footnote = details.joinToString("\n"),
     )
+}
+
+@Composable
+private fun BodyBatteryCard(battery: BodyBatteryDay, isToday: Boolean) {
+    val label = when (battery.band) {
+        BatteryBand.FULL -> "Pleine forme"
+        BatteryBand.GOOD -> "Bonne"
+        BatteryBand.MEDIUM -> "Moyenne"
+        BatteryBand.LOW -> "Basse"
+    }
+    val endTime = battery.points.last().time.format(timeFormat)
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Body Battery", style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(battery.current.toString(), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (isToday) "$label · à $endTime" else "$label · fin de journée",
+                    Modifier.padding(bottom = 8.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            BatteryChart(battery.points)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf("0 h", "6 h", "12 h", "18 h", "24 h").forEach {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            DataRow("Au réveil", battery.wake?.toString())
+            DataRow("Plus haut / plus bas", "${battery.high} / ${battery.low}")
+            DataRow("Rechargé", "+${battery.charged}")
+            DataRow("Dépensé", "-${battery.drained}")
+            Text(
+                "Modèle maison : le sommeil recharge selon sa qualité, l'activité et le stress (FC élevée au repos) " +
+                    "consomment. Ce n'est pas l'algorithme de Garmin.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatteryChart(points: List<BatteryPoint>, modifier: Modifier = Modifier) {
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    Canvas(
+        modifier
+            .fillMaxWidth()
+            .height(120.dp),
+    ) {
+        val width = size.width
+        val height = size.height
+        listOf(0f, 50f, 100f).forEach { level ->
+            val y = height * (1f - level / 100f)
+            drawLine(gridColor, Offset(0f, y), Offset(width, y), strokeWidth = 1.dp.toPx())
+        }
+        if (points.size < 2) return@Canvas
+        val path = Path()
+        points.forEachIndexed { index, point ->
+            val x = width * point.time.toLocalTime().toSecondOfDay() / 86_400f
+            val y = height * (1f - point.level.toFloat() / 100f)
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(path, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
 }

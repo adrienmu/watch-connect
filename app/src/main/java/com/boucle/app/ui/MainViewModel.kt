@@ -8,9 +8,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
+import com.boucle.app.domain.BodyBatteryDay
+import com.boucle.app.domain.BodyBatteryInputs
+import com.boucle.app.domain.BodyBatteryModel
+import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.RecoveryScoring
-import com.boucle.app.domain.SleepScoring
-import com.boucle.app.domain.toNight
+import com.boucle.app.domain.SleepScore
+import com.boucle.app.domain.scoreNight
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
 import com.polar.sdk.api.PolarBleApi.PolarBleSdkFeature
@@ -28,6 +32,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -41,6 +46,12 @@ import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+
+private data class DayScores(
+    val sleep: SleepScore?,
+    val recovery: RecoveryScore?,
+    val battery: BodyBatteryDay?,
+)
 
 data class FoundDevice(val id: String, val name: String, val rssi: Int)
 
@@ -332,35 +343,49 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             )
         }
         // Les scores comparent la nuit à ses propres nuits précédentes : on lit donc une fenêtre de 28 jours.
+        // Le Body Battery simule les 2 jours précédents et a besoin de la nuit qui commence le soir même.
         val baselineStart = date.minusDays(RecoveryScoring.BASELINE_WINDOW_NIGHTS.toLong()).toString()
+        val batteryStart = date.minusDays(BodyBatteryInputs.WARMUP_DAYS).toString()
+        val nextDay = date.plusDays(1).toString()
         val scores = combine(
-            dao.sleepRange(baselineStart, key),
-            dao.nightlyRechargeRange(baselineStart, key),
-        ) { sleeps, recharges ->
-            val tonight = sleeps.firstOrNull { it.date == key }
-            val night = tonight?.toNight()
-            val sleepScore = night?.let {
-                SleepScoring.score(it, sleeps.filter { s -> s.date < key }.mapNotNull { s -> s.toNight() })
+            dao.sleepRange(baselineStart, nextDay),
+            dao.nightlyRechargeRange(baselineStart, nextDay),
+            dao.activitySamplesRange(batteryStart, key),
+            dao.hrBlocksRange(batteryStart, key),
+        ) { sleeps, recharges, activitySamples, hrBlocks ->
+            val tonight = scoreNight(key, sleeps, recharges)
+            val batteryDates = (0..BodyBatteryInputs.WARMUP_DAYS + 1).map {
+                date.minusDays(BodyBatteryInputs.WARMUP_DAYS).plusDays(it).toString()
             }
-            val rechargeTonight = recharges.firstOrNull { it.date == key }
-            val recovery = rechargeTonight?.let {
-                RecoveryScoring.score(
-                    night = it,
-                    history = recharges.filter { r -> r.date < key },
-                    sleepScore = sleepScore?.total,
-                    skinTemperatureDeviationC = tonight?.skinTemperatureDeviationC,
-                )
-            }
-            sleepScore to recovery
-        }
-        return combine(activity, night, scores) { a, n, (sleepScore, recovery) ->
+            val quality = batteryDates.mapNotNull { wake ->
+                val scores = if (wake == key) tonight else scoreNight(wake, sleeps, recharges)
+                scores.quality?.let { wake to it }
+            }.toMap()
+            val grid = BodyBatteryInputs.build(
+                date = date,
+                now = LocalDateTime.now(),
+                activity = activitySamples,
+                heartRate = hrBlocks,
+                sleeps = sleeps.filter { it.date in batteryDates },
+                qualityByWakeDate = quality,
+            )
+            val restingHr = BodyBatteryInputs.restingHeartRate(
+                recharges.lastOrNull { it.date <= key && (it.meanRriMs ?: 0) > 0 }?.meanRriMs,
+                hrBlocks,
+            )
+            val simulation = BodyBatteryModel.simulate(grid.slots, restingHr)
+            val battery = BodyBatteryModel.summarize(simulation, grid.slots, grid.start, grid.dayFrom, grid.dayTo)
+            DayScores(tonight.sleep, tonight.recovery, battery)
+        }.flowOn(Dispatchers.Default)
+        return combine(activity, night, scores) { a, n, scores ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
                 skinTemperature = n.skinTemperature,
                 sessions = n.sessions,
-                sleepScore = sleepScore,
-                recovery = recovery,
+                sleepScore = scores.sleep,
+                recovery = scores.recovery,
+                battery = scores.battery,
             )
         }
     }

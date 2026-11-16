@@ -8,6 +8,7 @@ import com.boucle.app.data.db.PpiBlockEntity
 import com.boucle.app.data.db.SkinTemperatureEntity
 import com.boucle.app.data.db.SleepEntity
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepScore
 import java.time.Duration
@@ -43,6 +44,7 @@ data class DayUiState(
     val sessions: List<TrainingSessionEntity> = emptyList(),
     val sleepScore: SleepScore? = null,
     val recovery: RecoveryScore? = null,
+    val battery: BodyBatteryDay? = null,
 ) {
     val isEmpty: Boolean
         get() = activity == null && minuteStepBlocks == 0 && heartRate == null && ppiIntervalCount == 0 &&
