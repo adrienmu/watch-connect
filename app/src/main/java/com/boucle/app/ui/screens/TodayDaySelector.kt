@@ -1,5 +1,6 @@
 package com.boucle.app.ui.screens
 
+import com.boucle.app.ui.components.rememberHaptics
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +53,7 @@ internal fun TodayDaySelector(
     onSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberHaptics()
     val days = remember(today) { (6L downTo 0L).map { today.minusDays(it) } }
     Row(
         modifier
@@ -83,7 +85,10 @@ internal fun TodayDaySelector(
             )
             ToggleButton(
                 checked = checked,
-                onCheckedChange = { onSelect(day) },
+                onCheckedChange = {
+                    if (!checked) haptics.select()
+                    onSelect(day)
+                },
                 modifier = Modifier
                     .weight(weight)
                     .heightIn(min = 56.dp),

@@ -43,6 +43,8 @@ import com.boucle.app.ui.components.RowChevron
 import com.boucle.app.ui.components.ScreenHeader
 import com.boucle.app.ui.components.StatTile
 import com.boucle.app.ui.components.formatThousands
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.navigation.Destination
 import com.boucle.app.ui.screens.ActivityFormat.NBSP
@@ -105,7 +107,7 @@ fun ActivityScreen(
                     modifier = Modifier.staggeredEntrance(index++),
                 )
             } else {
-                StepsHero(activity, state.weekSteps, Modifier.staggeredEntrance(index++))
+                StepsHero(activity, state.weekSteps, Modifier.sharedContainer(SharedKeys.ACTIVITY, Radii.Hero, entranceIndex = index++))
                 EnergyTiles(activity, Modifier.staggeredEntrance(index++))
                 if (activity.hasActivityGoal()) ActivityGoalCard(activity, Modifier.staggeredEntrance(index++))
             }
@@ -113,7 +115,11 @@ fun ActivityScreen(
                 SessionCard(session, Modifier.staggeredEntrance(index++))
             }
             state.vo2Max?.let { vo2 ->
-                Vo2MaxRow(vo2, onClick = { onNavigate(Destination.Vo2Max) }, modifier = Modifier.staggeredEntrance(index))
+                Vo2MaxRow(
+                    vo2,
+                    onClick = { onNavigate(Destination.Vo2Max) },
+                    modifier = Modifier.sharedContainer(SharedKeys.VO2MAX, Radii.Tile, entranceIndex = index),
+                )
             }
         }
     }

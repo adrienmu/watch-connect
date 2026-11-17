@@ -1,5 +1,6 @@
 package com.boucle.app.ui.screens
 
+import com.boucle.app.ui.components.rememberHaptics
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -234,8 +235,12 @@ fun DevicesScreen(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AddBandButton(onClick: () -> Unit) {
+    val haptics = rememberHaptics()
     FilledIconButton(
-        onClick = onClick,
+        onClick = {
+            haptics.tap()
+            onClick()
+        },
         shapes = IconButtonDefaults.shapes(),
         modifier = Modifier.size(44.dp),
         colors = IconButtonDefaults.filledIconButtonColors(
@@ -473,8 +478,12 @@ private fun SyncLog(lines: List<String>) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun DevicesTextButton(text: String, onClick: () -> Unit, color: Color = BoucleColors.Primary) {
+    val haptics = rememberHaptics()
     TextButton(
-        onClick = onClick,
+        onClick = {
+            haptics.tap()
+            onClick()
+        },
         shapes = ButtonDefaults.shapes(),
         modifier = Modifier.heightIn(min = 44.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = color),

@@ -1,5 +1,6 @@
 package com.boucle.app.ui.screens
 
+import com.boucle.app.ui.components.rememberHaptics
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -259,6 +260,7 @@ private fun ProfileHeader(onBack: () -> Unit) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SexChoice(female: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = rememberHaptics()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ProfileLabel("Sexe")
         Row(horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
@@ -272,7 +274,10 @@ private fun SexChoice(female: Boolean, onChange: (Boolean) -> Unit, modifier: Mo
                 )
                 ToggleButton(
                     checked = checked,
-                    onCheckedChange = { onChange(value) },
+                    onCheckedChange = {
+                        if (!checked) haptics.select()
+                        onChange(value)
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp),
@@ -351,6 +356,7 @@ private fun <T> ProfileDropdown(
 /** Objectif de sommeil : curseur Expressive de 5 à 11 h par demi-heure, valeur affichée à droite. */
 @Composable
 private fun SleepGoal(hours: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = rememberHaptics()
     val label = formatSleepGoal(hours)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ProfileLabel("Objectif de sommeil")
@@ -360,7 +366,9 @@ private fun SleepGoal(hours: Float, onChange: (Float) -> Unit, modifier: Modifie
                 state = state,
                 onValueChange = {
                     state.value = it
-                    onChange(Math.round(it * 2) / 2f)
+                    val stepped = Math.round(it * 2) / 2f
+                    if (stepped != hours) haptics.tick()
+                    onChange(stepped)
                 },
                 modifier = Modifier
                     .weight(1f)

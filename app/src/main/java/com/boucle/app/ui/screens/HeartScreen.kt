@@ -23,6 +23,8 @@ import com.boucle.app.ui.components.ExpressiveSurface
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.animatedValue
 import com.boucle.app.ui.components.formatThousands
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.theme.BoucleColors
 import com.boucle.app.ui.theme.BoucleType
@@ -57,7 +59,7 @@ fun HeartScreen(
             val resting = state.recovery?.nightHeartRate
                 ?: state.recharge?.meanRriMs?.takeIf { it > 0 }?.let { (60_000f / it).roundToInt() }
                 ?: stats.min
-            HeartHero(resting, stats, Modifier.staggeredEntrance(0))
+            HeartHero(resting, stats, Modifier.sharedContainer(SharedKeys.HEART, Radii.Hero))
             val hasHourly = state.hourlyHeartRate.isNotEmpty()
             if (hasHourly) HeartHourlyCard(state, Modifier.staggeredEntrance(1))
             HeartDetails(state, Modifier.staggeredEntrance(if (hasHourly) 2 else 1))

@@ -32,6 +32,8 @@ import com.boucle.app.ui.components.LegendDot
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.SegmentedBar
 import com.boucle.app.ui.components.StatTile
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.theme.BoucleColors
 import com.boucle.app.ui.theme.BoucleType
@@ -81,7 +83,7 @@ fun EnergyScreen(
                 EnergyEmpty(Modifier.staggeredEntrance(0))
                 return@Column
             }
-            EnergyHero(battery, state.date, Modifier.staggeredEntrance(0))
+            EnergyHero(battery, state.date, Modifier.sharedContainer(SharedKeys.ENERGY, Radii.Hero))
             EnergyDayCard(battery, state, Modifier.staggeredEntrance(1))
             EnergyTiles(battery, Modifier.staggeredEntrance(2))
             Text(

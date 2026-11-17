@@ -1,5 +1,6 @@
 package com.boucle.app.ui.screens
 
+import com.boucle.app.ui.components.rememberHaptics
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -60,8 +61,12 @@ internal fun SetupFilledButton(
     loadingText: String = text,
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
 ) {
+    val haptics = rememberHaptics()
     Button(
-        onClick = onClick,
+        onClick = {
+            haptics.tap()
+            onClick()
+        },
         shapes = ButtonDefaults.shapes(shape = shape, pressedShape = ButtonDefaults.pressedShape),
         modifier = modifier.heightIn(min = height),
         enabled = enabled && !loading,
@@ -90,8 +95,12 @@ internal fun SetupOutlinedButton(
     enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
+    val haptics = rememberHaptics()
     OutlinedButton(
-        onClick = onClick,
+        onClick = {
+            haptics.tap()
+            onClick()
+        },
         shapes = ButtonDefaults.shapes(shape = shape, pressedShape = ButtonDefaults.pressedShape),
         modifier = modifier.heightIn(min = height),
         enabled = enabled,

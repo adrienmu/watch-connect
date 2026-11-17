@@ -1,5 +1,6 @@
 package com.boucle.app.ui.screens
 
+import com.boucle.app.ui.components.rememberHaptics
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -38,6 +39,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +64,8 @@ import com.boucle.app.ui.DayUiState
 import com.boucle.app.ui.components.AnimatedNumber
 import com.boucle.app.ui.components.BadgeShape
 import com.boucle.app.ui.components.ExpressiveSurface
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.IconBadge
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.RowChevron
@@ -105,6 +112,10 @@ fun TodayScreen(
 ) {
     val today = LocalDate.now()
     val pullState = rememberPullToRefreshState()
+    // Vibration au moment où le geste dépasse le seuil qui déclenche la synchronisation.
+    val pullHaptics = rememberHaptics()
+    val pastThreshold by remember { derivedStateOf { pullState.distanceFraction >= 1f } }
+    LaunchedEffect(pastThreshold) { if (pastThreshold && !refreshing) pullHaptics.threshold() }
     PullToRefreshBox(
         isRefreshing = refreshing,
         onRefresh = onRefresh,
@@ -156,7 +167,11 @@ fun TodayScreen(
                     if (day.isEmpty) {
                         EmptyDayCard(onSyncClick, Modifier.staggeredEntrance(2))
                     } else {
-                        ActivityHero(day, onClick = { onNavigate(Destination.Activity) }, modifier = Modifier.staggeredEntrance(2))
+                        ActivityHero(
+                            day,
+                            onClick = { onNavigate(Destination.Activity) },
+                            modifier = Modifier.sharedContainer(SharedKeys.ACTIVITY, Radii.Hero, entranceIndex = 2),
+                        )
                         MetricGrid(day, onNavigate, Modifier.staggeredEntrance(3))
                         DayList(day, onNavigate, Modifier.staggeredEntrance(4))
                     }
@@ -186,8 +201,12 @@ private fun TodayHeader(syncLabel: String, refreshing: Boolean, onSyncClick: () 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("Aujourd'hui", style = BoucleType.screenTitle, color = BoucleColors.OnSurface, modifier = Modifier.weight(1f))
+        val haptics = rememberHaptics()
         Button(
-            onClick = onSyncClick,
+            onClick = {
+                haptics.tap()
+                onSyncClick()
+            },
             shapes = ButtonDefaults.shapes(shape = RoundedCornerShape(16.dp), pressedShape = RoundedCornerShape(10.dp)),
             modifier = Modifier
                 .size(48.dp)
@@ -301,6 +320,7 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                     else -> null
                 },
                 hint = "Aucune nuit enregistrée",
+                sharedKey = SharedKeys.SLEEP,
                 onClick = { onNavigate(Destination.Sleep) },
             )
             MetricTile(
@@ -313,6 +333,7 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                     listOfNotNull(score.label, score.rmssdMs?.let { "VFC $it${SleepFormat.NBSP}ms" }).joinToString(" · ")
                 },
                 hint = "Mesures de nuit manquantes",
+                sharedKey = SharedKeys.RECOVERY,
                 onClick = { onNavigate(Destination.Recovery) },
             )
         }
@@ -325,6 +346,7 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                 value = battery?.current,
                 detail = battery?.let { it.wake?.let { wake -> "$wake au réveil" } ?: "Niveau actuel" },
                 hint = "Pas assez de mesures",
+                sharedKey = SharedKeys.ENERGY,
                 onClick = { onNavigate(Destination.Energy) },
             )
             MetricTile(
@@ -336,6 +358,7 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                 unit = "bpm",
                 detail = restingHeartRate?.let { listOfNotNull("Au repos", day.heartRate?.max?.let { "max $it" }).joinToString(" · ") },
                 hint = "Aucune mesure",
+                sharedKey = SharedKeys.HEART,
                 onClick = { onNavigate(Destination.Heart) },
             )
         }
@@ -355,6 +378,7 @@ private fun RowScope.MetricTile(
     value: Int?,
     detail: String?,
     hint: String,
+    sharedKey: String,
     onClick: () -> Unit,
     unit: String? = null,
 ) {
@@ -363,7 +387,8 @@ private fun RowScope.MetricTile(
         radii = radii,
         modifier = Modifier
             .weight(1f)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            .sharedContainer(sharedKey, radii, entrance = false),
         contentColor = colors.onContainer,
         onClick = onClick,
         onClickLabel = "Voir le détail",
@@ -424,6 +449,7 @@ private fun WeightRow(body: BodySummary, date: LocalDate, radii: Radii, onClick:
         detail = listOfNotNull(weighed, change).joinToString(" · "),
         radii = radii,
         onClick = onClick,
+        sharedKey = SharedKeys.BODY,
     ) {
         IconBadge(BoucleIcons.Scale, MetricPalette.Body.container, MetricPalette.Body.onContainer)
     }
@@ -452,13 +478,22 @@ private fun SessionRow(session: TrainingSessionEntity, radii: Radii, onClick: ()
 }
 
 @Composable
-private fun ListRow(title: String, detail: String, radii: Radii, onClick: () -> Unit, badge: @Composable () -> Unit) {
+private fun ListRow(
+    title: String,
+    detail: String,
+    radii: Radii,
+    onClick: () -> Unit,
+    sharedKey: String? = null,
+    badge: @Composable () -> Unit,
+) {
+    val shared = if (sharedKey != null) Modifier.sharedContainer(sharedKey, radii, entrance = false) else Modifier
     ExpressiveSurface(
         color = BoucleColors.Surface,
         radii = radii,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp),
+            .heightIn(min = 72.dp)
+            .then(shared),
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center,
@@ -501,8 +536,12 @@ private fun EmptyDayCard(onSyncClick: () -> Unit, modifier: Modifier = Modifier)
             color = BoucleColors.OnSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        val haptics = rememberHaptics()
         Button(
-            onClick = onSyncClick,
+            onClick = {
+                haptics.tap()
+                onSyncClick()
+            },
             shapes = ButtonDefaults.shapes(),
             modifier = Modifier.heightIn(min = 48.dp),
         ) {

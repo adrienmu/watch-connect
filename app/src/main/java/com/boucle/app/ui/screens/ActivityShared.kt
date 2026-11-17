@@ -1,5 +1,6 @@
 package com.boucle.app.ui.screens
 
+import com.boucle.app.ui.components.rememberHaptics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -123,8 +124,12 @@ internal fun ActivityProportionBar(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ActivityPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = rememberHaptics()
     Button(
-        onClick = onClick,
+        onClick = {
+            haptics.tap()
+            onClick()
+        },
         shapes = ButtonDefaults.shapes(),
         modifier = modifier.heightIn(min = 44.dp),
         colors = ButtonDefaults.buttonColors(containerColor = BoucleColors.Primary, contentColor = BoucleColors.OnPrimary),

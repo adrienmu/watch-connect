@@ -46,6 +46,8 @@ import com.boucle.app.ui.components.LegendDot
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.RowChevron
 import com.boucle.app.ui.components.animatedValue
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.navigation.Destination
 import com.boucle.app.ui.screens.ActivityFormat.NBSP
@@ -94,7 +96,7 @@ fun BodyScreen(
                     onAction = { onNavigate(Destination.Devices) },
                 )
             } else {
-                WeightHero(body, state.date, state.weightHistory, Modifier.staggeredEntrance(index++))
+                WeightHero(body, state.date, state.weightHistory, Modifier.sharedContainer(SharedKeys.BODY, Radii.Hero, entranceIndex = index++))
                 if (body.hasComposition()) CompositionCard(body, Modifier.staggeredEntrance(index++))
             }
             state.spo2?.let { Spo2Card(it, Modifier.staggeredEntrance(index++)) }
