@@ -20,6 +20,11 @@ import com.boucle.app.data.db.TrainingRouteEntity
 import com.boucle.app.data.db.TrainingSessionEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.boucle.app.data.backup.BackupCrypto
+import com.boucle.app.data.backup.BackupKey
+import com.boucle.app.data.backup.EncryptedHeader
+import com.boucle.app.data.backup.WrongPassphraseException
+import java.io.BufferedInputStream
 import java.io.IOException
 import java.io.InputStream
 
@@ -89,9 +94,31 @@ data class ImportSummary(
  */
 class DataImporter(private val database: BoucleDatabase, private val settings: Settings) {
 
-    /** Importe l'archive choisie par l'utilisateur (sélecteur de fichiers du système). */
-    suspend fun import(resolver: ContentResolver, uri: Uri): ImportSummary =
-        import { resolver.openInputStream(uri) ?: throw IOException("fichier inaccessible") }
+    /** Importe l'archive choisie par l'utilisateur (sélecteur de fichiers du système), non chiffrée. */
+    suspend fun import(resolver: ContentResolver, uri: Uri): ImportSummary = import { openFile(resolver, uri) }
+
+    /**
+     * Importe une sauvegarde chiffrée avec [key], dérivée une seule fois de la phrase de passe
+     * ([BackupCrypto.deriveKey]) : les deux lectures rouvrent le fichier et le redéchiffrent en flux, sans copie en
+     * clair. [key] n'est pas effacée ici.
+     *
+     * @throws WrongPassphraseException si [key] ne correspond pas au fichier ; rien n'est alors modifié.
+     */
+    suspend fun importEncrypted(resolver: ContentResolver, uri: Uri, key: BackupKey): ImportSummary =
+        import { BackupCrypto.decryptingStream(BufferedInputStream(openFile(resolver, uri), BUFFER_SIZE), key) }
+
+    /** Vrai si le fichier commence par l'en-tête des sauvegardes chiffrées. */
+    suspend fun isEncrypted(resolver: ContentResolver, uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        openFile(resolver, uri).use { BackupCrypto.isEncrypted(it) }
+    }
+
+    /** En-tête d'une sauvegarde chiffrée (sel et itérations, pour dériver la clé). */
+    suspend fun readEncryptedHeader(resolver: ContentResolver, uri: Uri): EncryptedHeader = withContext(Dispatchers.IO) {
+        openFile(resolver, uri).use { BackupCrypto.readHeader(it) }
+    }
+
+    private fun openFile(resolver: ContentResolver, uri: Uri): InputStream =
+        resolver.openInputStream(uri) ?: throw IOException("fichier inaccessible")
 
     /**
      * Importe l'archive que [open] ouvre : appelé deux fois, il doit rendre à chaque fois un nouveau flux sur le
@@ -101,7 +128,12 @@ class DataImporter(private val database: BoucleDatabase, private val settings: S
      */
     suspend fun import(open: () -> InputStream): ImportSummary = withContext(Dispatchers.IO) {
         val checked = CountingSink()
-        val header = open().use { BackupReader.readArchive(it, checked) }
+        val header = open().use {
+            val header = BackupReader.readArchive(it, checked)
+            // Lu jusqu'au bout : un fichier chiffré n'est authentifié qu'une fois son dernier segment vérifié.
+            drain(it)
+            header
+        }
 
         database.withTransaction {
             val writer = WritingSink(database.healthDao())
@@ -124,6 +156,15 @@ class DataImporter(private val database: BoucleDatabase, private val settings: S
         )
         ImportSummary(checked.counts(), header.exportedAt, restored)
     }
+}
+
+private const val BUFFER_SIZE = 64 * 1024
+
+private fun drain(input: InputStream) {
+    val buffer = ByteArray(BUFFER_SIZE)
+    do {
+        val n = input.read(buffer)
+    } while (n >= 0)
 }
 
 /** Compte les lignes sans rien écrire : première lecture, de validation. */

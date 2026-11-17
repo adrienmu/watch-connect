@@ -435,6 +435,9 @@ class DataExporter(private val dao: HealthDao) {
             Restaurer : dans Boucle, Appareils > Importer une sauvegarde, puis choisir cette archive (sans la
             décompresser). Les données sont fusionnées avec celles du téléphone, sans doublon ; réimporter la
             même archive ne change rien. Seul $JSON_FILE est relu : les fichiers GPX ne servent pas à l'import.
+            Une sauvegarde automatique chiffrée (boucle-sauvegarde-….boucle) contient cette même archive,
+            chiffrée par une phrase de passe ; Boucle l'importe de la même façon, après avoir demandé la phrase
+            de passe. Son format est public (docs/format-sauvegarde.md dans le dépôt de Boucle).
 
             Attention : ces fichiers contiennent des données de santé. Une fois exportés, ils ne sont plus
             protégés par l'espace privé de l'application ; à vous de les conserver en lieu sûr.

@@ -61,9 +61,27 @@ data class BackupSettings(
     val lastError: String? = null,
     /** [AppSettings.dataVersion] lu au début de la dernière sauvegarde réussie. */
     val lastDataVersion: Long? = null,
+    /** Chiffrement des sauvegardes ; `null` quand elles sont écrites en clair. */
+    val encryption: BackupEncryptionSettings? = null,
 ) {
     val enabled: Boolean get() = folderUri != null
 }
+
+/**
+ * Clé des sauvegardes chiffrées. La phrase de passe n'est jamais enregistrée : seule la clé qui en est dérivée l'est,
+ * chiffrée par une clé non exportable du Keystore Android ([com.boucle.app.data.backup.BackupKeyStore]). Ce fichier de
+ * réglages est copié par le transfert d'appareil à appareil, mais pas la clé du Keystore : sur le nouveau téléphone,
+ * [wrappedKey] est indéchiffrable et la phrase de passe doit être ressaisie.
+ *
+ * Tant que [wrappedKey] manque ou ne se déchiffre pas, la sauvegarde automatique échoue au lieu d'écrire en clair.
+ */
+data class BackupEncryptionSettings(
+    /** Sel PBKDF2 (base64), pas secret. */
+    val salt: String?,
+    val iterations: Int?,
+    /** Clé dérivée chiffrée par le Keystore (base64) : IV ‖ texte chiffré AES-GCM. */
+    val wrappedKey: String?,
+)
 
 /** Réglages repris d'une sauvegarde par [Settings.restoreIfEmpty]. */
 data class RestoredSettings(val profile: Boolean = false, val device: Boolean = false, val sync: Boolean = false)
@@ -88,6 +106,11 @@ class Settings(private val context: Context) {
                 lastErrorAt = prefs[BACKUP_LAST_ERROR_AT],
                 lastError = prefs[BACKUP_LAST_ERROR],
                 lastDataVersion = prefs[BACKUP_LAST_DATA_VERSION],
+                encryption = if (prefs[BACKUP_ENCRYPT] == true) {
+                    BackupEncryptionSettings(prefs[BACKUP_KEY_SALT], prefs[BACKUP_KEY_ITERATIONS], prefs[BACKUP_KEY_WRAPPED])
+                } else {
+                    null
+                },
             ),
             profile = prefs[PROFILE_BIRTH_DATE]?.let { birth ->
                 runCatching {
@@ -183,6 +206,31 @@ class Settings(private val context: Context) {
         }
     }
 
+    /**
+     * Chiffre les prochaines sauvegardes avec cette clé (nouvelle phrase de passe ou phrase ressaisie). La prochaine
+     * sauvegarde automatique se fera même sans changement des données, pour que la plus récente soit chiffrée ainsi.
+     */
+    suspend fun saveBackupEncryption(salt: String, iterations: Int, wrappedKey: String) {
+        context.dataStore.edit {
+            it[BACKUP_ENCRYPT] = true
+            it[BACKUP_KEY_SALT] = salt
+            it[BACKUP_KEY_ITERATIONS] = iterations
+            it[BACKUP_KEY_WRAPPED] = wrappedKey
+            it.remove(BACKUP_LAST_DATA_VERSION)
+        }
+    }
+
+    /** Les prochaines sauvegardes seront écrites en clair ; la clé stockée est effacée. */
+    suspend fun clearBackupEncryption() {
+        context.dataStore.edit {
+            it.remove(BACKUP_ENCRYPT)
+            it.remove(BACKUP_KEY_SALT)
+            it.remove(BACKUP_KEY_ITERATIONS)
+            it.remove(BACKUP_KEY_WRAPPED)
+            it.remove(BACKUP_LAST_DATA_VERSION)
+        }
+    }
+
     private fun clearBackupResult(prefs: androidx.datastore.preferences.core.MutablePreferences) {
         prefs.remove(BACKUP_LAST_SUCCESS_AT)
         prefs.remove(BACKUP_LAST_FILE)
@@ -263,5 +311,9 @@ class Settings(private val context: Context) {
         val BACKUP_LAST_ERROR_AT = stringPreferencesKey("backup_last_error_at")
         val BACKUP_LAST_ERROR = stringPreferencesKey("backup_last_error")
         val BACKUP_LAST_DATA_VERSION = longPreferencesKey("backup_last_data_version")
+        val BACKUP_ENCRYPT = booleanPreferencesKey("backup_encrypt")
+        val BACKUP_KEY_SALT = stringPreferencesKey("backup_key_salt")
+        val BACKUP_KEY_ITERATIONS = intPreferencesKey("backup_key_iterations")
+        val BACKUP_KEY_WRAPPED = stringPreferencesKey("backup_key_wrapped")
     }
 }

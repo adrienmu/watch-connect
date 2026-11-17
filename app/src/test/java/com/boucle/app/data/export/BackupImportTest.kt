@@ -264,6 +264,37 @@ class BackupImportTest {
     }
 
     @Test
+    fun `aller-retour export chiffré puis import`() {
+        val key = com.boucle.app.data.backup.BackupKey.fromRaw(ByteArray(16) { 3 }, 600_000, ByteArray(32) { 5 })
+        val plain = exportArchive(sampleDao())
+        val out = ByteArrayOutputStream()
+        val encrypted = com.boucle.app.data.backup.BackupCrypto.encryptingStream(out, key)
+        runBlocking { DataExporter(sampleDao()).export(encrypted, settings, Instant.parse("2026-11-17T10:00:00Z")) }
+        encrypted.finish()
+        val file = out.toByteArray()
+        assertTrue(com.boucle.app.data.backup.BackupCrypto.isEncrypted(ByteArrayInputStream(file)))
+
+        val sink = CollectingSink()
+        com.boucle.app.data.backup.BackupCrypto.decryptingStream(ByteArrayInputStream(file), key).use { input ->
+            runBlocking { BackupReader.readArchive(input, sink) }
+        }
+        val reference = CollectingSink()
+        runBlocking { BackupReader.readArchive(ByteArrayInputStream(plain), reference) }
+        assertEquals(reference.daily, sink.daily)
+        assertEquals(reference.sleep, sink.sleep)
+        assertEquals(reference.measurements, sink.measurements)
+        assertEquals(reference.routes, sink.routes)
+
+        // Un fichier chiffré lu comme une archive en clair n'est pas pris pour une sauvegarde.
+        try {
+            runBlocking { BackupReader.readArchive(ByteArrayInputStream(file), CollectingSink()) }
+            fail("fichier chiffré lu en clair")
+        } catch (e: BackupFormatException) {
+            assertEquals(BackupReader.NOT_A_BACKUP_MESSAGE, e.message)
+        }
+    }
+
+    @Test
     fun `réimporter l'export d'une base importée donne le même fichier`() {
         val first = exportArchive(sampleDao())
         val imported = FakeDao()

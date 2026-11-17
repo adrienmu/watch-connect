@@ -289,4 +289,4 @@ internal class JsonPullReader(private val input: Reader, private val maxStringLe
 }
 
 /** Sauvegarde illisible ou refusée ; le message, en français, est montré tel quel à l'utilisateur. */
-class BackupFormatException(message: String) : java.io.IOException(message)
+open class BackupFormatException(message: String) : java.io.IOException(message)

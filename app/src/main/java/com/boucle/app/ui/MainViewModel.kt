@@ -9,7 +9,13 @@ import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
+import com.boucle.app.data.backup.BackupCrypto
 import com.boucle.app.data.backup.BackupFolder
+import com.boucle.app.data.backup.BackupKey
+import com.boucle.app.data.backup.WrongPassphraseException
+import com.boucle.app.data.backup.wipe
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import com.boucle.app.data.export.BackupFormatException
 import com.boucle.app.data.export.DataExporter
 import com.boucle.app.data.export.DataImporter
@@ -144,6 +150,12 @@ data class BackupUiState(
     /** Échec de la dernière tentative, effacé à la sauvegarde réussie suivante. */
     val lastErrorAt: String? = null,
     val lastError: String? = null,
+    /** Sauvegardes chiffrées par une phrase de passe. */
+    val encrypted: Boolean = false,
+    /** Faux quand la clé de chiffrement ne se relit pas sur ce téléphone (transfert) : phrase de passe à ressaisir. */
+    val keyAvailable: Boolean = true,
+    /** Dérivation et enregistrement d'une nouvelle clé en cours. */
+    val savingKey: Boolean = false,
 )
 
 data class DeviceUiState(
@@ -163,6 +175,12 @@ data class DeviceUiState(
     val exporting: Boolean = false,
     /** Sauvegarde choisie, en attente de confirmation avant l'import. */
     val importPending: Boolean = false,
+    /** La sauvegarde choisie est chiffrée : la confirmation demande la phrase de passe. */
+    val importEncrypted: Boolean = false,
+    /** Vérification de la phrase de passe saisie pour l'import. */
+    val importChecking: Boolean = false,
+    /** « Phrase de passe incorrecte. », affiché dans le dialogue d'import. */
+    val importPassphraseError: String? = null,
     /** Import d'une sauvegarde en cours. */
     val importing: Boolean = false,
     val backup: BackupUiState = BackupUiState(),
@@ -184,6 +202,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val exporter = DataExporter(dao)
     private val importer = DataImporter(database, settings)
     private val autoBackup = app.autoBackup
+    private val backupKeys = app.backupKeys
 
     private data class Local(
         val scanning: Boolean = false,
@@ -196,9 +215,22 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         val healthConnect: HealthConnectUiState = HealthConnectUiState(),
         val exporting: Boolean = false,
         val pendingImport: Uri? = null,
+        val pendingImportEncrypted: Boolean = false,
+        val importChecking: Boolean = false,
+        val importPassphraseError: String? = null,
         val importing: Boolean = false,
         val backupFolderAccessible: Boolean = true,
+        val backupKeyAvailable: Boolean = true,
+        val savingBackupKey: Boolean = false,
     )
+
+    /**
+     * Activation de la sauvegarde automatique en cours : clé en cours de dérivation pendant que l'utilisateur choisit
+     * le dossier (`null` si elle se fait sans chiffrement). La phrase de passe elle-même est effacée dès la dérivation.
+     */
+    private var enabling: Enabling? = null
+
+    private class Enabling(val key: Deferred<BackupKey>?)
 
     private val local = MutableStateFlow(Local())
 
@@ -222,6 +254,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 message = local.message,
                 exporting = local.exporting,
                 importPending = local.pendingImport != null,
+                importEncrypted = local.pendingImportEncrypted,
+                importChecking = local.importChecking,
+                importPassphraseError = local.importPassphraseError,
                 importing = local.importing,
                 backup = BackupUiState(
                     enabled = saved.backup.enabled,
@@ -232,6 +267,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                     lastFile = saved.backup.lastFile,
                     lastErrorAt = saved.backup.lastErrorAt,
                     lastError = saved.backup.lastError,
+                    encrypted = saved.backup.encryption != null,
+                    keyAvailable = saved.backup.encryption == null || local.backupKeyAvailable,
+                    savingKey = local.savingBackupKey,
                 ),
                 healthConnect = local.healthConnect.copy(
                     lastSyncAt = saved.lastHealthConnectSyncAt,
@@ -335,7 +373,13 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 }
             }
             settings.forgetDevice()
-            local.update { Local(healthConnect = it.healthConnect, backupFolderAccessible = it.backupFolderAccessible) }
+            local.update {
+                Local(
+                    healthConnect = it.healthConnect,
+                    backupFolderAccessible = it.backupFolderAccessible,
+                    backupKeyAvailable = it.backupKeyAvailable,
+                )
+            }
         }
     }
 
@@ -587,29 +631,82 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     /** Sauvegarde choisie dans le sélecteur de fichiers : l'import attend la confirmation de l'utilisateur. */
     fun onImportFilePicked(uri: Uri) {
         if (local.value.importing) return
-        local.update { it.copy(pendingImport = uri, message = null) }
+        viewModelScope.launch {
+            // Fichier illisible : l'import le dira avec son message habituel.
+            val encrypted = runCatching { importer.isEncrypted(contentResolver, uri) }.getOrDefault(false)
+            local.update {
+                it.copy(pendingImport = uri, pendingImportEncrypted = encrypted, importPassphraseError = null, message = null)
+            }
+        }
     }
 
     fun cancelImport() {
-        local.update { it.copy(pendingImport = null) }
+        local.update { it.copy(pendingImport = null, pendingImportEncrypted = false, importPassphraseError = null) }
     }
 
-    /** Importe la sauvegarde choisie : fusion avec les données du téléphone, sans doublon. */
-    fun confirmImport() {
-        val uri = local.value.pendingImport ?: return
-        if (local.value.importing) return
-        if (local.value.syncing) {
+    /**
+     * Importe la sauvegarde choisie : fusion avec les données du téléphone, sans doublon. Pour une sauvegarde
+     * chiffrée, [passphrase] (effacée ici) est vérifiée d'abord : si elle est fausse, le dialogue reste ouvert avec
+     * « Phrase de passe incorrecte. ». La clé n'est dérivée qu'une fois pour les deux lectures de l'import.
+     */
+    fun confirmImport(passphrase: CharArray? = null) {
+        val current = local.value
+        val uri = current.pendingImport
+        if (uri == null || current.importing || current.importChecking) {
+            passphrase?.wipe()
+            return
+        }
+        if (current.syncing) {
+            passphrase?.wipe()
             local.update { it.copy(pendingImport = null, message = "Attends la fin de la synchronisation pour importer une sauvegarde") }
             return
         }
-        local.update { it.copy(pendingImport = null, importing = true, message = null) }
+        if (!current.pendingImportEncrypted) {
+            passphrase?.wipe()
+            runImport { importer.import(contentResolver, uri) }
+            return
+        }
+        if (passphrase == null) return
+        local.update { it.copy(importChecking = true, importPassphraseError = null) }
+        viewModelScope.launch {
+            val key = try {
+                val header = importer.readEncryptedHeader(contentResolver, uri)
+                withContext(Dispatchers.Default) {
+                    val key = BackupCrypto.deriveKey(passphrase, header)
+                    if (BackupCrypto.matches(key, header)) key else null.also { key.close() }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                local.update { it.copy(importChecking = false, pendingImport = null, pendingImportEncrypted = false) }
+                if (e is BackupFormatException) local.update { it.copy(message = e.message) } else report("Import impossible", e)
+                return@launch
+            } finally {
+                passphrase.wipe()
+            }
+            if (key == null) {
+                local.update { it.copy(importChecking = false, importPassphraseError = BackupCrypto.WRONG_PASSPHRASE_MESSAGE) }
+                return@launch
+            }
+            local.update { it.copy(importChecking = false) }
+            runImport { key.use { importer.importEncrypted(contentResolver, uri, it) } }
+        }
+    }
+
+    private fun runImport(import: suspend () -> com.boucle.app.data.export.ImportSummary) {
+        local.update {
+            it.copy(pendingImport = null, pendingImportEncrypted = false, importPassphraseError = null, importing = true, message = null)
+        }
         viewModelScope.launch {
             try {
-                val summary = importer.import(contentResolver, uri)
+                val summary = import()
                 onDataChanged()
                 local.update { it.copy(message = summary.message()) }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: WrongPassphraseException) {
+                // Vérifiée juste avant : le fichier a été remplacé entre-temps.
+                local.update { it.copy(message = "Le fichier a changé pendant l'import. Rien n'a été modifié : réessaie.") }
             } catch (e: BackupFormatException) {
                 local.update { it.copy(message = e.message) }
             } catch (e: Exception) {
@@ -620,10 +717,57 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
     }
 
-    /** Dossier choisi pour la sauvegarde automatique (nouveau ou changement) : on garde l'accès et on sauvegarde aussitôt. */
+    /**
+     * Début de l'activation de la sauvegarde automatique, juste avant le choix du dossier. Avec [passphrase]
+     * (chiffrement, proposé par défaut), la clé est dérivée pendant que l'utilisateur choisit le dossier, et la
+     * phrase de passe effacée aussitôt après. Sans, les sauvegardes seront en clair.
+     */
+    fun startEnableBackup(passphrase: CharArray?) {
+        abandonEnabling()
+        val key = passphrase?.let {
+            viewModelScope.async(Dispatchers.Default) {
+                try {
+                    BackupCrypto.deriveKey(it)
+                } finally {
+                    it.wipe()
+                }
+            }
+        }
+        enabling = Enabling(key)
+    }
+
+    /** Sélecteur de dossier fermé sans choix : l'activation est abandonnée, la clé dérivée effacée. */
+    fun onBackupFolderPickCancelled() {
+        abandonEnabling()
+    }
+
+    private fun abandonEnabling() {
+        val pending = enabling?.key ?: run {
+            enabling = null
+            return
+        }
+        enabling = null
+        viewModelScope.launch { runCatching { pending.await() }.getOrNull()?.close() }
+    }
+
+    /**
+     * Dossier choisi pour la sauvegarde automatique (nouveau ou changement) : on garde l'accès et on sauvegarde
+     * aussitôt. À l'activation, le chiffrement est réglé avant que le dossier soit enregistré : aucune sauvegarde ne
+     * peut partir en clair si l'utilisateur a choisi de chiffrer.
+     */
     fun onBackupFolderPicked(uri: Uri) {
+        val activation = enabling
+        enabling = null
         viewModelScope.launch {
             try {
+                if (activation != null) {
+                    local.update { it.copy(savingBackupKey = activation.key != null) }
+                    val key = activation.key?.await()
+                    withContext(Dispatchers.IO) {
+                        if (key != null) key.use { backupKeys.save(it) } else backupKeys.clear()
+                    }
+                    local.update { it.copy(backupKeyAvailable = true, savingBackupKey = false) }
+                }
                 withContext(Dispatchers.IO) {
                     contentResolver.takePersistableUriPermission(uri, BackupFolder.PERSISTABLE_FLAGS)
                     val previous = settings.flow.first().backup.folderUri
@@ -637,19 +781,80 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                local.update { it.copy(savingBackupKey = false) }
                 report("Dossier de sauvegarde inutilisable", e)
             }
         }
     }
 
-    /** Désactive la sauvegarde automatique ; les sauvegardes déjà écrites restent dans le dossier. */
+    /** Désactive la sauvegarde automatique ; les sauvegardes déjà écrites restent dans le dossier. La clé est effacée. */
     fun disableBackup() {
         viewModelScope.launch {
             autoBackup.cancelAll()
             val previous = settings.flow.first().backup.folderUri
             settings.clearBackupFolder()
-            previous?.let { withContext(Dispatchers.IO) { releaseFolder(it) } }
-            local.update { it.copy(backupFolderAccessible = true) }
+            withContext(Dispatchers.IO) {
+                backupKeys.clear()
+                previous?.let { releaseFolder(it) }
+            }
+            local.update { it.copy(backupFolderAccessible = true, backupKeyAvailable = true) }
+        }
+    }
+
+    /**
+     * Chiffre les prochaines sauvegardes avec [passphrase] (effacée ici) : activation du chiffrement, nouvelle phrase
+     * de passe ou phrase ressaisie après un transfert. Les sauvegardes déjà écrites gardent leur phrase de passe.
+     */
+    fun setBackupPassphrase(passphrase: CharArray) {
+        if (local.value.savingBackupKey) {
+            passphrase.wipe()
+            return
+        }
+        local.update { it.copy(savingBackupKey = true, message = null) }
+        viewModelScope.launch {
+            try {
+                val wasEncrypted = settings.flow.first().backup.encryption != null
+                withContext(Dispatchers.Default) {
+                    try {
+                        BackupCrypto.deriveKey(passphrase)
+                    } finally {
+                        passphrase.wipe()
+                    }
+                }.use { key -> withContext(Dispatchers.IO) { backupKeys.save(key) } }
+                local.update {
+                    it.copy(
+                        backupKeyAvailable = true,
+                        message = if (wasEncrypted) {
+                            "Phrase de passe enregistrée : les prochaines sauvegardes l'utiliseront. Les précédentes " +
+                                "gardent celle avec laquelle elles ont été chiffrées."
+                        } else {
+                            "Les prochaines sauvegardes seront chiffrées. Celles déjà écrites en clair restent " +
+                                "lisibles jusqu'à leur remplacement par la rotation."
+                        },
+                    )
+                }
+                if (settings.flow.first().backup.enabled) autoBackup.requestNow()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Chiffrement impossible", e)
+            } finally {
+                local.update { it.copy(savingBackupKey = false) }
+            }
+        }
+    }
+
+    /** Les prochaines sauvegardes seront en clair ; celles déjà chiffrées le restent. */
+    fun disableBackupEncryption() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { backupKeys.clear() }
+            local.update {
+                it.copy(
+                    backupKeyAvailable = true,
+                    message = "Chiffrement désactivé : les prochaines sauvegardes seront en clair. Celles déjà " +
+                        "chiffrées le restent, avec leur phrase de passe.",
+                )
+            }
         }
     }
 
@@ -659,14 +864,19 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
     }
 
-    /** Vérifie, au retour dans l'app, que l'accès au dossier de sauvegarde est toujours accordé. */
+    /**
+     * Vérifie, au retour dans l'app, que l'accès au dossier de sauvegarde est toujours accordé et que la clé des
+     * sauvegardes chiffrées se relit sur ce téléphone (elle ne survit pas à un transfert d'appareil).
+     */
     fun refreshBackupFolder() {
         viewModelScope.launch {
-            val uri = settings.flow.first().backup.folderUri
+            val backup = settings.flow.first().backup
+            val uri = backup.folderUri
             val accessible = uri == null || withContext(Dispatchers.IO) {
                 runCatching { BackupFolder.hasPermission(contentResolver, Uri.parse(uri)) }.getOrDefault(false)
             }
-            local.update { it.copy(backupFolderAccessible = accessible) }
+            val keyAvailable = backup.encryption?.let { enc -> withContext(Dispatchers.IO) { backupKeys.canUnlock(enc) } } ?: true
+            local.update { it.copy(backupFolderAccessible = accessible, backupKeyAvailable = keyAvailable) }
         }
     }
 

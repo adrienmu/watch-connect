@@ -3,6 +3,11 @@
     Aucune sauvegarde dans le cloud : les données de santé ne partent jamais vers Google Drive.
     Seul le transfert local d'un téléphone à l'autre (câble ou Wi-Fi direct, à la configuration
     du nouvel appareil) copie la base et les réglages.
+
+    Rien de secret n'est copié en clair : les réglages ne contiennent jamais la phrase de passe des
+    sauvegardes chiffrées, seulement la clé qui en est dérivée, chiffrée par une clé du Keystore Android
+    qui, elle, ne voyage pas. Sur le nouveau téléphone, cette clé est donc illisible : l'app demande de
+    ressaisir la phrase de passe et la sauvegarde automatique échoue proprement en attendant.
 -->
 <data-extraction-rules>
     <cloud-backup>

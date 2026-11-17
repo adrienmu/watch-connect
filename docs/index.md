@@ -22,5 +22,6 @@ Seule exception : l'affichage de la carte d'un parcours GPS télécharge des ima
 
 - [Politique de confidentialité](confidentialite/)
 - [Conditions d'utilisation et avertissement santé](conditions/)
+- [Format des sauvegardes chiffrées](format-sauvegarde/)
 
 Boucle est une application indépendante, non affiliée à Polar, Garmin ni Withings.

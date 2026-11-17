@@ -62,7 +62,8 @@ interface BackupSink {
 object BackupReader {
 
     const val NOT_A_BACKUP_MESSAGE =
-        "Ce fichier n'est pas une sauvegarde Boucle : choisis l'archive .zip créée par « Exporter mes données »."
+        "Ce fichier n'est pas une sauvegarde Boucle : choisis l'archive .zip créée par « Exporter mes données », " +
+            "ou un fichier de la sauvegarde automatique (.zip ou .boucle)."
 
     /** Lit l'archive ZIP [input] (sans la fermer) : seul le fichier JSON est relu, les GPX sont ignorés. */
     suspend fun readArchive(input: InputStream, sink: BackupSink): BackupHeader {

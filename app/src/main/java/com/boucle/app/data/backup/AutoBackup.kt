@@ -41,25 +41,37 @@ sealed interface BackupOutcome {
  * est écrite dans un dossier choisi par l'utilisateur (stockage du téléphone, carte SD, clé USB, dossier
  * synchronisé par une autre app…), après chaque synchronisation et une fois par jour.
  *
- * Écriture : `boucle-sauvegarde-AAAAMMJJ-HHMMSS.zip.partial`, renommé en `.zip` une fois complet ; si le
- * fournisseur du dossier ne sait pas renommer, écriture directe sous le nom final, supprimé en cas d'échec. Une
+ * Chiffrement facultatif par phrase de passe ([BackupCrypto], clé gardée par [BackupKeyStore]) : l'archive est alors
+ * chiffrée en flux pendant l'écriture, sans aucun fichier temporaire en clair, et nommée `….boucle` au lieu de
+ * `….zip`. Si le chiffrement est activé mais que la clé est indisponible (transfert vers un autre téléphone), la
+ * sauvegarde échoue avec un message clair : elle n'est jamais écrite en clair à la place.
+ *
+ * Écriture : `boucle-sauvegarde-AAAAMMJJ-HHMMSS.zip.partial` (ou `.boucle.partial`), renommé une fois complet ; si
+ * le fournisseur du dossier ne sait pas renommer, écriture directe sous le nom final, supprimé en cas d'échec. Une
  * sauvegarde à moitié écrite ne porte donc jamais le nom d'une vraie. Puis rotation : seules les [BackupNaming.KEEP]
- * dernières sont gardées, et seuls les fichiers au motif exact de l'app sont supprimés.
+ * dernières (chiffrées ou non) sont gardées, et seuls les fichiers au motif exact de l'app sont supprimés.
  */
 class AutoBackup(
     private val context: Context,
     private val settings: Settings,
     private val dao: HealthDao,
+    private val keys: BackupKeyStore,
 ) {
     private val exporter = DataExporter(dao)
     private val workManager get() = WorkManager.getInstance(context)
 
     /**
-     * Écrit l'archive de sauvegarde dans [output], sans le fermer. C'est le seul endroit où le contenu est
-     * produit : pour chiffrer les sauvegardes, envelopper [output] ici (et seulement ici) dans le flux chiffrant.
+     * Écrit l'archive de sauvegarde dans [output], sans le fermer, chiffrée avec [key] si elle est fournie. C'est le
+     * seul endroit où le contenu est produit : en clair, il ne passe que par la mémoire.
      */
-    internal suspend fun writeArchive(output: OutputStream, saved: AppSettings) {
-        exporter.export(output, saved)
+    internal suspend fun writeArchive(output: OutputStream, saved: AppSettings, key: BackupKey?) {
+        if (key == null) {
+            exporter.export(output, saved)
+            return
+        }
+        val encrypted = BackupCrypto.encryptingStream(output, key)
+        exporter.export(encrypted, saved)
+        encrypted.finish()
     }
 
     /**
@@ -87,7 +99,9 @@ class AutoBackup(
             )
             when (decision) {
                 BackupDecision.BACKUP -> {
-                    val name = write(folder, entries, saved)
+                    // Clé vérifiée avant de créer le moindre fichier ; sans elle, échec plutôt qu'une copie en clair.
+                    val key = saved.backup.encryption?.let { keys.unlock(it) ?: throw BackupKeyUnavailableException() }
+                    val name = key.useOrNull { write(folder, entries, saved, it) }
                     settings.saveBackupSuccess(folderUri, now(), name, saved.dataVersion)
                     rotate(folder, protect = name)
                     BackupOutcome.Done(name)
@@ -113,25 +127,26 @@ class AutoBackup(
     }
 
     /** Écrit une nouvelle sauvegarde complète et renvoie son nom. */
-    private suspend fun write(folder: BackupFolder, entries: List<FolderEntry>, saved: AppSettings): String {
+    private suspend fun write(folder: BackupFolder, entries: List<FolderEntry>, saved: AppSettings, key: BackupKey?): String {
         val existing = entries.mapTo(HashSet()) { it.name }
         var at = LocalDateTime.now()
-        while (BackupNaming.fileName(at) in existing || BackupNaming.partialName(BackupNaming.fileName(at)) in existing) {
+        // Un seul fichier par seconde, quelle que soit l'extension : la rotation les trie par date.
+        while (BackupNaming.namesAt(at).any { it in existing || BackupNaming.partialName(it) in existing }) {
             at = at.plusSeconds(1)
         }
-        val name = BackupNaming.fileName(at)
+        val name = BackupNaming.fileName(at, encrypted = key != null)
 
         // Écriture dans un .partial (type neutre : le fournisseur n'ajoute pas d'extension), renommé à la fin.
         var target = folder.create(BackupNaming.partialName(name), "application/octet-stream")
         var renameAtEnd = true
         if (!folder.supportsRename(target)) {
             folder.delete(target)
-            target = folder.create(name, ZIP_MIME)
+            target = folder.create(name, if (key != null) ENCRYPTED_MIME else ZIP_MIME)
             renameAtEnd = false
         }
         try {
             BufferedOutputStream(folder.openOutput(target), BUFFER_SIZE).use { output ->
-                writeArchive(output, saved)
+                writeArchive(output, saved, key)
                 output.flush()
             }
             if (renameAtEnd) target = folder.rename(target, name)
@@ -203,6 +218,7 @@ class AutoBackup(
         const val WORK_DAILY = "boucle-backup-daily"
         const val CHANGE_DELAY_SECONDS = 30L
         const val ZIP_MIME = "application/zip"
+        const val ENCRYPTED_MIME = "application/octet-stream"
         const val BUFFER_SIZE = 64 * 1024
         val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
         val batteryNotLow: Constraints = Constraints.Builder().setRequiresBatteryNotLow(true).build()
@@ -213,3 +229,11 @@ class AutoBackup(
         fun now(): String = LocalDateTime.now().format(TIME_FORMAT)
     }
 }
+
+/** Exécute [block] avec la clé (ou sans clé) et l'efface ensuite. */
+private inline fun <R> BackupKey?.useOrNull(block: (BackupKey?) -> R): R =
+    try {
+        block(this)
+    } finally {
+        this?.close()
+    }

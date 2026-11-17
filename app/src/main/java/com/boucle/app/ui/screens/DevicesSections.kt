@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -220,9 +222,14 @@ internal fun DevicesSettingsCard(
     importing: Boolean,
     onImport: () -> Unit,
     backup: BackupUiState,
+    onEnableBackup: () -> Unit,
     onChooseBackupFolder: () -> Unit,
     onBackupNow: () -> Unit,
     onDisableBackup: () -> Unit,
+    onEncrypt: () -> Unit,
+    onChangePassphrase: () -> Unit,
+    onReenterPassphrase: () -> Unit,
+    onDisableEncryption: () -> Unit,
     onClear: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
@@ -238,7 +245,21 @@ internal fun DevicesSettingsCard(
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
         add(SettingsRow("import") { ImportRow(importing, onImport) })
-        add(SettingsRow("backup") { AutoBackupRow(backup, onChooseBackupFolder, onBackupNow, onDisableBackup) })
+        add(
+            SettingsRow("backup") {
+                AutoBackupRow(
+                    state = backup,
+                    onEnable = onEnableBackup,
+                    onChooseFolder = onChooseBackupFolder,
+                    onBackupNow = onBackupNow,
+                    onDisable = onDisableBackup,
+                    onEncrypt = onEncrypt,
+                    onChangePassphrase = onChangePassphrase,
+                    onReenterPassphrase = onReenterPassphrase,
+                    onDisableEncryption = onDisableEncryption,
+                )
+            },
+        )
         add(SettingsRow("clear") { SettingsActionRow("Tout effacer", BoucleColors.OnSurface, onClear) })
         if (hasBand) add(SettingsRow("forget") { SettingsActionRow("Oublier ce bracelet", BoucleColors.Error, onForget) })
     }
@@ -359,15 +380,22 @@ private fun ImportRow(importing: Boolean, onImport: () -> Unit) {
 }
 
 /**
- * Sauvegarde automatique : désactivée, un bouton pour choisir le dossier ; activée, le dossier, la dernière
- * sauvegarde ou le dernier échec, « Sauvegarder », et de quoi changer de dossier ou désactiver.
+ * Sauvegarde automatique : désactivée, un bouton pour l'activer (le dialogue propose le chiffrement, puis le choix du
+ * dossier) ; activée, le dossier, le chiffrement, la dernière sauvegarde ou le dernier échec, « Sauvegarder », et de
+ * quoi changer de dossier ou de phrase de passe, ou désactiver.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AutoBackupRow(
     state: BackupUiState,
+    onEnable: () -> Unit,
     onChooseFolder: () -> Unit,
     onBackupNow: () -> Unit,
     onDisable: () -> Unit,
+    onEncrypt: () -> Unit,
+    onChangePassphrase: () -> Unit,
+    onReenterPassphrase: () -> Unit,
+    onDisableEncryption: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(
@@ -391,20 +419,29 @@ private fun AutoBackupRow(
                 SetupOutlinedButton(
                     if (state.running) "Sauvegarde…" else "Sauvegarder",
                     onBackupNow,
-                    enabled = !state.running && state.folderAccessible,
+                    enabled = !state.running && state.folderAccessible && state.keyAvailable && !state.savingKey,
                 )
             } else {
-                SetupOutlinedButton("Activer", onChooseFolder)
+                SetupOutlinedButton(if (state.savingKey) "Activation…" else "Activer", onEnable, enabled = !state.savingKey)
             }
         }
         if (state.enabled) {
+            val encryption = when {
+                state.savingKey -> "Chiffrement : enregistrement de la clé…"
+                state.encrypted -> "Chiffrées avec ta phrase de passe (fichiers .boucle)"
+                else -> "Non chiffrées : quiconque accède au dossier peut lire ces fichiers .zip"
+            }
+            Text(encryption, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
             val status = when {
                 state.lastSuccessAt != null -> "Dernière sauvegarde : ${formatSyncMoment(state.lastSuccessAt, timeOnlyToday = false)}"
                 else -> "Aucune sauvegarde dans ce dossier pour l'instant."
             }
-            Text(status, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            Text(status, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
             val problem = when {
                 !state.folderAccessible -> "Dossier inaccessible : choisis-le à nouveau."
+                !state.keyAvailable ->
+                    "Phrase de passe à ressaisir : la clé de chiffrement n'est pas disponible sur ce téléphone " +
+                        "(transfert depuis un autre appareil, par exemple). Aucune sauvegarde n'est écrite en attendant."
                 state.lastError != null -> {
                     val moment = state.lastErrorAt?.let { " (${formatSyncMoment(it, timeOnlyToday = false)})" }.orEmpty()
                     "Échec de la sauvegarde$moment : ${state.lastError}"
@@ -414,8 +451,17 @@ private fun AutoBackupRow(
             if (problem != null) {
                 Text(problem, style = BoucleType.caption, color = MetricPalette.Energy.accent, modifier = Modifier.padding(top = 2.dp))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                when {
+                    state.savingKey -> Unit
+                    state.encrypted && !state.keyAvailable -> DevicesTextButton("Ressaisir la phrase de passe", onReenterPassphrase)
+                    state.encrypted -> DevicesTextButton("Changer la phrase de passe", onChangePassphrase)
+                    else -> DevicesTextButton("Chiffrer", onEncrypt)
+                }
                 DevicesTextButton("Changer de dossier", onChooseFolder)
+                if (state.encrypted && !state.savingKey) {
+                    DevicesTextButton("Ne plus chiffrer", onDisableEncryption, color = BoucleColors.OnSurfaceVariant)
+                }
                 DevicesTextButton("Désactiver", onDisable, color = BoucleColors.OnSurfaceVariant)
             }
         }

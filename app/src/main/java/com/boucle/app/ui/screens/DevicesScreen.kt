@@ -102,9 +102,12 @@ fun DevicesScreen(
     onLoadDemo: () -> Unit,
     onExportData: () -> Unit,
     onImportData: () -> Unit,
-    onConfirmImport: () -> Unit,
+    onConfirmImport: (passphrase: CharArray?) -> Unit,
     onCancelImport: () -> Unit,
+    onEnableBackup: (passphrase: CharArray?) -> Unit,
     onChooseBackupFolder: () -> Unit,
+    onSetBackupPassphrase: (CharArray) -> Unit,
+    onDisableBackupEncryption: () -> Unit,
     onBackupNow: () -> Unit,
     onDisableBackup: () -> Unit,
     onClearData: () -> Unit,
@@ -113,6 +116,7 @@ fun DevicesScreen(
 ) {
     var confirmForget by rememberSaveable { mutableStateOf(false) }
     var confirmClear by rememberSaveable { mutableStateOf(false) }
+    var backupDialog by rememberSaveable { mutableStateOf<BackupDialog?>(null) }
     val topCard = when {
         !permissionsGranted -> TopCard.Permission
         !state.link.bluetoothOn -> TopCard.BluetoothOff
@@ -203,9 +207,14 @@ fun DevicesScreen(
                 importing = state.importing,
                 onImport = onImportData,
                 backup = state.backup,
+                onEnableBackup = { backupDialog = BackupDialog.Enable },
                 onChooseBackupFolder = onChooseBackupFolder,
                 onBackupNow = onBackupNow,
                 onDisableBackup = onDisableBackup,
+                onEncrypt = { backupDialog = BackupDialog.Encrypt },
+                onChangePassphrase = { backupDialog = BackupDialog.Change },
+                onReenterPassphrase = { backupDialog = BackupDialog.Reenter },
+                onDisableEncryption = { backupDialog = BackupDialog.Decrypt },
                 onClear = { confirmClear = true },
                 onForget = { confirmForget = true },
                 modifier = Modifier.staggeredEntrance(2),
@@ -231,7 +240,32 @@ fun DevicesScreen(
             onDismiss = { confirmForget = false },
         )
     }
-    if (state.importPending) {
+    backupDialog?.let { dialog ->
+        BackupEncryptionDialogs(
+            dialog = dialog,
+            onEnable = {
+                backupDialog = null
+                onEnableBackup(it)
+            },
+            onSetPassphrase = {
+                backupDialog = null
+                onSetBackupPassphrase(it)
+            },
+            onDisableEncryption = {
+                backupDialog = null
+                onDisableBackupEncryption()
+            },
+            onDismiss = { backupDialog = null },
+        )
+    }
+    if (state.importPending && state.importEncrypted) {
+        ImportPassphraseDialog(
+            checking = state.importChecking,
+            error = state.importPassphraseError,
+            onConfirm = { onConfirmImport(it) },
+            onDismiss = onCancelImport,
+        )
+    } else if (state.importPending) {
         DevicesConfirmDialog(
             title = "Importer cette sauvegarde ?",
             text = "Les données de la sauvegarde s'ajoutent à celles du téléphone. Un jour, une nuit ou une séance " +
@@ -241,7 +275,7 @@ fun DevicesScreen(
                 "déjà renseignés sur ce téléphone.",
             confirmLabel = "Importer",
             confirmColor = BoucleColors.OnSurface,
-            onConfirm = onConfirmImport,
+            onConfirm = { onConfirmImport(null) },
             onDismiss = onCancelImport,
         )
     }

@@ -151,7 +151,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     // Sauvegarde automatique : l'utilisateur choisit un dossier, dont l'accès est gardé (permission persistante).
     val backupFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
-    ) { uri -> uri?.let(viewModel::onBackupFolderPicked) }
+    ) { uri -> if (uri != null) viewModel.onBackupFolderPicked(uri) else viewModel.onBackupFolderPickCancelled() }
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
@@ -362,10 +362,18 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             },
                             onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
                             onExportData = { exportLauncher.launch(viewModel.exportFileName()) },
-                            onImportData = { importLauncher.launch(arrayOf("application/zip")) },
+                            // Archive .zip ou sauvegarde chiffrée .boucle, dont le type annoncé varie selon le
+                            // fournisseur : le contenu est reconnu à l'import.
+                            onImportData = { importLauncher.launch(arrayOf("*/*")) },
                             onConfirmImport = viewModel::confirmImport,
                             onCancelImport = viewModel::cancelImport,
+                            onEnableBackup = { passphrase ->
+                                viewModel.startEnableBackup(passphrase)
+                                backupFolderLauncher.launch(null)
+                            },
                             onChooseBackupFolder = { backupFolderLauncher.launch(null) },
+                            onSetBackupPassphrase = viewModel::setBackupPassphrase,
+                            onDisableBackupEncryption = viewModel::disableBackupEncryption,
                             onBackupNow = viewModel::backupNow,
                             onDisableBackup = viewModel::disableBackup,
                             onClearData = viewModel::clearData,

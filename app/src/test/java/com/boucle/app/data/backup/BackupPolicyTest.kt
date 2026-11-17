@@ -63,6 +63,53 @@ class BackupPolicyTest {
         assertTrue(doomed.none { it in foreign })
     }
 
+    private fun encName(day: Int, hour: Int = 18) = BackupNaming.fileName(LocalDateTime.of(2026, 11, day, hour, 4, 12), encrypted = true)
+
+    @Test
+    fun encryptedFileNameIsRecognized() {
+        val n = BackupNaming.fileName(LocalDateTime.of(2026, 1, 7, 9, 5, 3), encrypted = true)
+        assertEquals("boucle-sauvegarde-20260107-090503.boucle", n)
+        assertTrue(BackupNaming.isBackup(n))
+        assertTrue(BackupNaming.isEncryptedBackup(n))
+        assertFalse(BackupNaming.isEncryptedBackup(BackupNaming.fileName(LocalDateTime.of(2026, 1, 7, 9, 5, 3))))
+        assertEquals(LocalDateTime.of(2026, 1, 7, 9, 5, 3), BackupNaming.backupTime(n))
+        assertTrue(BackupNaming.isPartial(BackupNaming.partialName(n)))
+        assertFalse(BackupNaming.isBackup(BackupNaming.partialName(n)))
+        assertEquals(
+            listOf("boucle-sauvegarde-20260107-090503.zip", n),
+            BackupNaming.namesAt(LocalDateTime.of(2026, 1, 7, 9, 5, 3)),
+        )
+        listOf(
+            "boucle-sauvegarde-20260107-090503.BOUCLE",
+            "boucle-sauvegarde-20260107-090503.boucle.zip",
+            "boucle-sauvegarde-20260107-090503.boucle (1)",
+            "boucle-sauvegarde-20261332-090503.boucle",
+            "autre-20260107-090503.boucle",
+        ).forEach { assertFalse(it, BackupNaming.isBackup(it)) }
+    }
+
+    @Test
+    fun rotationCountsBothExtensionsTogether() {
+        // 4 anciennes en clair, puis 6 chiffrées : on garde les 7 plus récentes, quelle que soit l'extension.
+        val plain = (1..4).map { name(it) }
+        val encrypted = (5..10).map { encName(it) }
+        val foreign = listOf("notes.boucle", "boucle-sauvegarde-20261101-180412.boucle.bak", BackupNaming.partialName(encName(11)))
+        val doomed = backupsToDelete((plain + encrypted + foreign).shuffled(java.util.Random(2)), keep = 7)
+        assertEquals(listOf(name(1), name(2), name(3)), doomed)
+
+        // Ordre chronologique et non alphabétique : « .boucle » plus ancien qu'un « .zip » plus récent.
+        val mixed = listOf(encName(1), name(2), encName(3), name(4))
+        assertEquals(listOf(encName(1), name(2)), backupsToDelete(mixed, keep = 2))
+        // La sauvegarde chiffrée qui vient d'être écrite est protégée même si son nom paraît le plus ancien.
+        assertEquals(listOf(name(2)), backupsToDelete(listOf(encName(1), name(2), name(3)), keep = 2, protect = encName(1)))
+    }
+
+    @Test
+    fun stalePartialsIncludeEncryptedOnes() {
+        val p = BackupNaming.partialName(encName(3))
+        assertEquals(listOf(p), stalePartials(listOf(p, encName(3), "x.boucle.partial")))
+    }
+
     @Test
     fun rotationDeletesNothingUnderTheLimit() {
         assertEquals(emptyList<String>(), backupsToDelete(listOf(name(1), name(2), "notes.txt"), keep = 7))
