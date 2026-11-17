@@ -90,4 +90,48 @@ interface HealthDao {
             "FROM training_session WHERE date BETWEEN :from AND :to ORDER BY date, startTime",
     )
     fun trainingSessionsRange(from: String, to: String): Flow<List<TrainingSessionEntity>>
+
+    // Export de toutes les données (droit à la portabilité). Les séries volumineuses se lisent jour par jour.
+
+    @Query("SELECT * FROM daily_activity ORDER BY date")
+    suspend fun allDailyActivity(): List<DailyActivityEntity>
+
+    @Query("SELECT * FROM sleep ORDER BY date")
+    suspend fun allSleep(): List<SleepEntity>
+
+    @Query("SELECT * FROM nightly_recharge ORDER BY date")
+    suspend fun allNightlyRecharge(): List<NightlyRechargeEntity>
+
+    @Query("SELECT * FROM skin_temperature ORDER BY date")
+    suspend fun allSkinTemperature(): List<SkinTemperatureEntity>
+
+    @Query("SELECT * FROM external_measurement ORDER BY time")
+    suspend fun allExternalMeasurements(): List<ExternalMeasurementEntity>
+
+    @Query("SELECT * FROM training_session ORDER BY date, startTime")
+    suspend fun allTrainingSessions(): List<TrainingSessionEntity>
+
+    @Query("SELECT * FROM training_route")
+    suspend fun allTrainingRoutes(): List<TrainingRouteEntity>
+
+    @Query("SELECT * FROM training_exercise WHERE sessionPath = :path ORDER BY exerciseIndex")
+    suspend fun trainingExercisesOf(path: String): List<TrainingExerciseEntity>
+
+    @Query("SELECT DISTINCT date FROM activity_samples ORDER BY date")
+    suspend fun activitySampleDates(): List<String>
+
+    @Query("SELECT * FROM activity_samples WHERE date = :date ORDER BY startTime")
+    suspend fun activitySamplesOn(date: String): List<ActivitySamplesEntity>
+
+    @Query("SELECT DISTINCT date FROM hr_block ORDER BY date")
+    suspend fun hrBlockDates(): List<String>
+
+    @Query("SELECT * FROM hr_block WHERE date = :date ORDER BY startTime")
+    suspend fun hrBlocksOn(date: String): List<HrBlockEntity>
+
+    @Query("SELECT DISTINCT date FROM ppi_block ORDER BY date")
+    suspend fun ppiBlockDates(): List<String>
+
+    @Query("SELECT * FROM ppi_block WHERE date = :date ORDER BY startTime")
+    suspend fun ppiBlocksOn(date: String): List<PpiBlockEntity>
 }

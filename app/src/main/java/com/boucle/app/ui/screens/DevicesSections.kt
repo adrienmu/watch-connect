@@ -203,8 +203,8 @@ private fun lastReadLabel(state: HealthConnectUiState): String {
 private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
- * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, effacement des
- * données et oubli du bracelet (bracelet enregistré).
+ * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export et effacement
+ * des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
 internal fun DevicesSettingsCard(
@@ -213,6 +213,8 @@ internal fun DevicesSettingsCard(
     hasSyncedData: Boolean,
     onConfigure: () -> Unit,
     onLoadDemo: () -> Unit,
+    exporting: Boolean,
+    onExport: () -> Unit,
     onClear: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
@@ -226,6 +228,7 @@ internal fun DevicesSettingsCard(
             )
         }
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
+        add(SettingsRow("export") { ExportRow(exporting, onExport) })
         add(SettingsRow("clear") { SettingsActionRow("Tout effacer", BoucleColors.OnSurface, onClear) })
         if (hasBand) add(SettingsRow("forget") { SettingsActionRow("Oublier ce bracelet", BoucleColors.Error, onForget) })
     }
@@ -296,6 +299,29 @@ private fun DemoRow(warn: Boolean, onLoadDemo: () -> Unit) {
             }
         }
         SetupOutlinedButton("Charger la démo", onLoadDemo)
+    }
+}
+
+/** Export de toutes les données (droit à la portabilité) dans un fichier choisi par l'utilisateur. */
+@Composable
+private fun ExportRow(exporting: Boolean, onExport: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Exporter mes données", style = rowTitleStyle)
+            Text(
+                "Archive ZIP : toutes les mesures en JSON, les parcours en GPX",
+                style = BoucleType.small,
+                color = BoucleColors.OnSurfaceVariant,
+            )
+        }
+        SetupOutlinedButton(if (exporting) "Export…" else "Exporter", onExport, enabled = !exporting)
     }
 }
 

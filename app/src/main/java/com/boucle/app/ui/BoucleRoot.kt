@@ -139,6 +139,11 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
         onPauseOrDispose { }
     }
 
+    // Export des données : l'utilisateur choisit où enregistrer l'archive (stockage, Drive…).
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri -> uri?.let(viewModel::exportData) }
+
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
     val sessionDetail by viewModel.sessionDetail.collectAsStateWithLifecycle()
@@ -347,6 +352,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                                 runCatching { context.startActivity(viewModel.healthConnectInstallIntent()) }
                             },
                             onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
+                            onExportData = { exportLauncher.launch(viewModel.exportFileName()) },
                             onClearData = viewModel::clearData,
                             onNavigate = ::navigate,
                             modifier = screenModifier,

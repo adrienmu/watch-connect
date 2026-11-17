@@ -85,7 +85,7 @@ private enum class BandAction { Reconnect, Connecting, ReadingSetup, Configure, 
 
 /**
  * Onglet Appareils : le bracelet (état, batterie, synchronisation), Health Connect et les réglages
- * (configuration, démo, effacement, oubli du bracelet).
+ * (configuration, démo, export, effacement, oubli du bracelet).
  */
 @Composable
 fun DevicesScreen(
@@ -100,6 +100,7 @@ fun DevicesScreen(
     onSyncHealthConnect: () -> Unit,
     onInstallHealthConnect: () -> Unit,
     onLoadDemo: () -> Unit,
+    onExportData: () -> Unit,
     onClearData: () -> Unit,
     onNavigate: (Destination) -> Unit,
     modifier: Modifier = Modifier,
@@ -191,6 +192,8 @@ fun DevicesScreen(
                 hasSyncedData = state.lastSyncAt != null,
                 onConfigure = { onNavigate(Destination.Profile) },
                 onLoadDemo = onLoadDemo,
+                exporting = state.exporting,
+                onExport = onExportData,
                 onClear = { confirmClear = true },
                 onForget = { confirmForget = true },
                 modifier = Modifier.staggeredEntrance(2),
@@ -220,7 +223,8 @@ fun DevicesScreen(
         DevicesConfirmDialog(
             title = "Tout effacer ?",
             text = "Toutes les données enregistrées dans l'app sont supprimées de ce téléphone. Les jours déjà " +
-                "synchronisés ont été effacés du bracelet : ils seront perdus.",
+                "synchronisés ont été effacés du bracelet : ils seront perdus.\n\n" +
+                "Pour les garder, exporte-les d'abord (« Exporter mes données »).",
             confirmLabel = "Tout effacer",
             onConfirm = {
                 confirmClear = false

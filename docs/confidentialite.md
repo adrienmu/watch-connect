@@ -62,9 +62,10 @@ Les données de santé sont des données sensibles. Boucle ne les lit qu'avec vo
 
 - **Bluetooth :** Réglages Android > Applications > Boucle > Autorisations.
 - **Health Connect :** Réglages > Health Connect > Autorisations des applications > Boucle.
+- **Récupérer toutes vos données (droit à la portabilité) :** Boucle > Appareils > Exporter mes données. L'application crée une archive ZIP, enregistrée à l'endroit que vous choisissez, qui contient toutes les données qu'elle garde : un fichier JSON structuré (mesures, sommeil, séances, profil, mesures lues dans Health Connect) et un fichier GPX par tracé GPS, importable dans d'autres applications. Une fois exportée, l'archive n'est plus protégée par l'espace privé de l'application : conservez-la en lieu sûr.
 - **Supprimer toutes les données de Boucle :** Réglages Android > Applications > Boucle > Stockage > Effacer les données, ou désinstaller l'application.
 
-Boucle n'ayant aucun accès à vos données, elle ne peut ni les consulter ni les effacer à votre place. Pour toute question, écrivez à l'adresse de contact ci-dessus. Vous pouvez aussi saisir la CNIL (cnil.fr).
+Boucle n'ayant aucun accès à vos données, elle ne peut ni les consulter, ni les exporter, ni les effacer à votre place : ces opérations se font depuis l'application. Pour toute question, écrivez à l'adresse de contact ci-dessus. Vous pouvez aussi saisir la CNIL (cnil.fr).
 
 ## Mineurs
 

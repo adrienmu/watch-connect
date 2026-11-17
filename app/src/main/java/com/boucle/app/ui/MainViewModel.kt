@@ -9,6 +9,8 @@ import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
+import com.boucle.app.data.export.DataExporter
+import android.net.Uri
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.BodyBatteryInputs
 import com.boucle.app.domain.BodyBatteryModel
@@ -139,6 +141,8 @@ data class DeviceUiState(
     val log: List<String> = emptyList(),
     val message: String? = null,
     val healthConnect: HealthConnectUiState = HealthConnectUiState(),
+    /** Export des données en cours d'écriture. */
+    val exporting: Boolean = false,
     /** Profil enregistré (pour préremplir le formulaire de configuration). */
     val profile: UserProfile? = null,
     /** `null` tant que les réglages n'ont pas été lus. */
@@ -153,6 +157,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val database = app.database
     private val dao = database.healthDao()
     private val healthConnect = app.healthConnect
+    private val contentResolver = app.contentResolver
+    private val exporter = DataExporter(dao)
 
     private data class Local(
         val scanning: Boolean = false,
@@ -163,6 +169,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         val log: List<String> = emptyList(),
         val message: String? = null,
         val healthConnect: HealthConnectUiState = HealthConnectUiState(),
+        val exporting: Boolean = false,
     )
 
     private val local = MutableStateFlow(Local())
@@ -185,6 +192,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 syncing = local.syncing,
                 log = local.log,
                 message = local.message,
+                exporting = local.exporting,
                 healthConnect = local.healthConnect.copy(
                     lastSyncAt = saved.lastHealthConnectSyncAt,
                     replacesBand = saved.device == null,
@@ -503,6 +511,32 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             withContext(Dispatchers.IO) { database.clearAllTables() }
         }
     }
+
+    /** Écrit toutes les données dans le fichier [uri] choisi par l'utilisateur (archive ZIP : JSON et GPX). */
+    fun exportData(uri: Uri) {
+        if (local.value.exporting) return
+        local.update { it.copy(exporting = true, message = null) }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val saved = settings.flow.first()
+                    val output = contentResolver.openOutputStream(uri, "wt")
+                        ?: throw java.io.IOException("fichier inaccessible")
+                    output.use { exporter.export(it, saved) }
+                }
+                local.update { it.copy(message = "Données exportées") }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Export impossible", e)
+            } finally {
+                local.update { it.copy(exporting = false) }
+            }
+        }
+    }
+
+    /** Nom proposé pour le fichier d'export. */
+    fun exportFileName(): String = DataExporter.archiveName(LocalDate.now())
 
     fun dismissMessage() {
         local.update { it.copy(message = null) }
