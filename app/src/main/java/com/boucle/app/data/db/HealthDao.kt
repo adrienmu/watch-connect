@@ -91,6 +91,23 @@ interface HealthDao {
     )
     fun trainingSessionsRange(from: String, to: String): Flow<List<TrainingSessionEntity>>
 
+    /** Vrai si la base contient au moins une donnée : une sauvegarde automatique d'une base vide n'a pas de sens. */
+    @Query(
+        "SELECT " +
+            "EXISTS(SELECT 1 FROM daily_activity) OR " +
+            "EXISTS(SELECT 1 FROM activity_samples) OR " +
+            "EXISTS(SELECT 1 FROM hr_block) OR " +
+            "EXISTS(SELECT 1 FROM ppi_block) OR " +
+            "EXISTS(SELECT 1 FROM sleep) OR " +
+            "EXISTS(SELECT 1 FROM nightly_recharge) OR " +
+            "EXISTS(SELECT 1 FROM skin_temperature) OR " +
+            "EXISTS(SELECT 1 FROM training_session) OR " +
+            "EXISTS(SELECT 1 FROM training_exercise) OR " +
+            "EXISTS(SELECT 1 FROM external_measurement) OR " +
+            "EXISTS(SELECT 1 FROM training_route)",
+    )
+    suspend fun hasAnyData(): Boolean
+
     // Export de toutes les données (droit à la portabilité). Les séries volumineuses se lisent jour par jour.
 
     @Query("SELECT * FROM daily_activity ORDER BY date")

@@ -23,7 +23,7 @@ Dernière mise à jour : 17 novembre 2026
 | Bracelet Polar Loop (Bluetooth) | Pas, calories, distance, temps actif et sédentaire ; fréquence cardiaque ; intervalles pouls à pouls (variabilité) ; sommeil et ses phases ; température de la peau ; séances d'entraînement ; niveau de batterie, version du firmware, identifiant et nom du bracelet |
 | Health Connect (lecture seule, uniquement ce que vous autorisez) | Poids, masse grasse, masse maigre, masse osseuse, eau corporelle, saturation en oxygène, variabilité de la fréquence cardiaque, fréquence cardiaque, pas, sommeil, fréquence respiratoire, séances d'exercice, distance, calories actives, tracés GPS des séances (autorisés séance par séance) |
 | Profil que vous saisissez | Sexe, date de naissance, taille, poids, fréquence cardiaque maximale |
-| Réglages | Bracelet associé, dates des dernières synchronisations, passage de l'écran d'accueil |
+| Réglages | Bracelet associé, dates des dernières synchronisations, passage de l'écran d'accueil, dossier de sauvegarde automatique et résultat de la dernière sauvegarde |
 
 Les données d'activité de Health Connect ne sont lues que depuis l'application Withings, afin de ne pas compter deux fois les pas du téléphone.
 
@@ -37,7 +37,13 @@ L'utilisation par Boucle des informations reçues de Health Connect respecte la 
 
 Dans l'espace privé de l'application sur votre téléphone (base de données locale et préférences), isolé des autres applications par Android. Elles ne sont envoyées à aucun serveur.
 
-Les sauvegardes Android sont désactivées pour Boucle : vos données ne sont pas copiées dans un compte Google. Conséquence : si vous changez de téléphone ou désinstallez l'application, l'historique stocké dans Boucle est perdu. Pour le conserver, exportez vos données (voir plus bas) puis importez l'archive dans Boucle sur le nouveau téléphone.
+La sauvegarde Android dans le cloud est désactivée pour Boucle : vos données ne sont jamais copiées dans un compte Google ni sur Google Drive. Trois moyens, tous locaux, permettent de les conserver :
+
+- **Transfert d'appareil à appareil :** quand vous configurez un nouveau téléphone en le reliant directement à l'ancien (câble ou connexion sans fil directe, pendant la configuration d'Android), la base de données et les réglages de Boucle sont copiés d'un téléphone à l'autre. Aucun serveur n'intervient dans cette copie, ni Google ni Boucle.
+- **Sauvegarde automatique (facultative, désactivée par défaut) :** Boucle > Appareils > Sauvegarde automatique. Vous choisissez un dossier (stockage du téléphone, carte SD, clé USB…) et Boucle y écrit, après chaque synchronisation (avec une vérification quotidienne de secours) et seulement si vos données ont changé, une archive identique à l'export décrit plus bas, nommée `boucle-sauvegarde-AAAAMMJJ-HHMMSS.zip`. Les 7 dernières sont gardées ; Boucle ne supprime dans ce dossier que ses propres sauvegardes plus anciennes, jamais d'autres fichiers. Boucle n'envoie rien : si le dossier choisi est lui-même synchronisé par une autre application (stockage en ligne, par exemple), cette copie relève de cette application et de sa politique, pas de Boucle. Ces archives ne sont pas protégées par l'espace privé de l'application. Désactiver la sauvegarde automatique retire à Boucle l'accès au dossier ; les sauvegardes déjà écrites y restent, à vous de les supprimer si vous le souhaitez.
+- **Export manuel**, puis import de l'archive dans Boucle sur le nouveau téléphone (voir plus bas).
+
+Si vous désinstallez l'application ou changez de téléphone sans transfert ni sauvegarde, l'historique stocké dans Boucle est perdu : le bracelet est vidé à chaque synchronisation, le téléphone en garde la seule copie.
 
 ## Partage et services tiers
 
@@ -62,7 +68,7 @@ Les données de santé sont des données sensibles. Boucle ne les lit qu'avec vo
 
 - **Bluetooth :** Réglages Android > Applications > Boucle > Autorisations.
 - **Health Connect :** Réglages > Health Connect > Autorisations des applications > Boucle.
-- **Récupérer toutes vos données (droit à la portabilité) :** Boucle > Appareils > Exporter mes données. L'application crée une archive ZIP, enregistrée à l'endroit que vous choisissez, qui contient toutes les données qu'elle garde : un fichier JSON structuré (mesures, sommeil, séances, profil, mesures lues dans Health Connect) et un fichier GPX par tracé GPS, importable dans d'autres applications. Une fois exportée, l'archive n'est plus protégée par l'espace privé de l'application : conservez-la en lieu sûr. Boucle > Appareils > Importer une sauvegarde relit cette archive pour restaurer vos données ; l'import se fait entièrement sur le téléphone, sans aucun envoi.
+- **Récupérer toutes vos données (droit à la portabilité) :** Boucle > Appareils > Exporter mes données. L'application crée une archive ZIP, enregistrée à l'endroit que vous choisissez, qui contient toutes les données qu'elle garde : un fichier JSON structuré (mesures, sommeil, séances, profil, mesures lues dans Health Connect) et un fichier GPX par tracé GPS, importable dans d'autres applications. Une fois exportée, l'archive n'est plus protégée par l'espace privé de l'application : conservez-la en lieu sûr. Boucle > Appareils > Importer une sauvegarde relit cette archive, ou une archive de la sauvegarde automatique, pour restaurer vos données ; l'import se fait entièrement sur le téléphone, sans aucun envoi.
 - **Supprimer toutes les données de Boucle :** Réglages Android > Applications > Boucle > Stockage > Effacer les données, ou désinstaller l'application.
 
 Boucle n'ayant aucun accès à vos données, elle ne peut ni les consulter, ni les exporter, ni les effacer à votre place : ces opérations se font depuis l'application. Pour toute question, écrivez à l'adresse de contact ci-dessus. Vous pouvez aussi saisir la CNIL (cnil.fr).

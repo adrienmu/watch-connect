@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -40,7 +41,29 @@ data class AppSettings(
     val lastHealthConnectSyncedDate: String? = null,
     /** Vrai une fois l'écran de première ouverture passé (Bluetooth autorisé ou démo chargée). */
     val onboardingDone: Boolean = false,
+    val backup: BackupSettings = BackupSettings(),
+    /** Augmente à chaque modification des données (synchro, lecture Health Connect, import) : décide des sauvegardes. */
+    val dataVersion: Long = 0,
 )
+
+/** Sauvegarde automatique dans un dossier choisi par l'utilisateur (voir `data/backup`). */
+data class BackupSettings(
+    /** URI du dossier (arborescence SAF) ; `null` quand la sauvegarde automatique est désactivée. */
+    val folderUri: String? = null,
+    /** Nom du dossier tel que le sélecteur l'affichait, pour l'écran Appareils. */
+    val folderName: String? = null,
+    /** Date et heure de la dernière sauvegarde réussie dans ce dossier (dd/MM/yyyy HH:mm). */
+    val lastSuccessAt: String? = null,
+    /** Nom du fichier de la dernière sauvegarde réussie. */
+    val lastFile: String? = null,
+    /** Échec de la dernière tentative (effacé à la sauvegarde réussie suivante). */
+    val lastErrorAt: String? = null,
+    val lastError: String? = null,
+    /** [AppSettings.dataVersion] lu au début de la dernière sauvegarde réussie. */
+    val lastDataVersion: Long? = null,
+) {
+    val enabled: Boolean get() = folderUri != null
+}
 
 /** Réglages repris d'une sauvegarde par [Settings.restoreIfEmpty]. */
 data class RestoredSettings(val profile: Boolean = false, val device: Boolean = false, val sync: Boolean = false)
@@ -56,6 +79,16 @@ class Settings(private val context: Context) {
             lastHealthConnectSyncAt = prefs[LAST_HEALTH_CONNECT_SYNC_AT],
             lastHealthConnectSyncedDate = prefs[LAST_HEALTH_CONNECT_SYNCED_DATE],
             onboardingDone = prefs[ONBOARDING_DONE] ?: false,
+            dataVersion = prefs[DATA_VERSION] ?: 0,
+            backup = BackupSettings(
+                folderUri = prefs[BACKUP_FOLDER_URI],
+                folderName = prefs[BACKUP_FOLDER_NAME],
+                lastSuccessAt = prefs[BACKUP_LAST_SUCCESS_AT],
+                lastFile = prefs[BACKUP_LAST_FILE],
+                lastErrorAt = prefs[BACKUP_LAST_ERROR_AT],
+                lastError = prefs[BACKUP_LAST_ERROR],
+                lastDataVersion = prefs[BACKUP_LAST_DATA_VERSION],
+            ),
             profile = prefs[PROFILE_BIRTH_DATE]?.let { birth ->
                 runCatching {
                     UserProfile(
@@ -102,7 +135,60 @@ class Settings(private val context: Context) {
         context.dataStore.edit {
             it[LAST_SYNCED_DATE] = lastSyncedDate
             it[LAST_SYNC_AT] = lastSyncAt
+            it[DATA_VERSION] = (it[DATA_VERSION] ?: 0) + 1
         }
+    }
+
+    /** Signale une modification des données (lecture Health Connect, import…) : la prochaine sauvegarde la reprendra. */
+    suspend fun markDataChanged() {
+        context.dataStore.edit { it[DATA_VERSION] = (it[DATA_VERSION] ?: 0) + 1 }
+    }
+
+    /** Active la sauvegarde automatique dans [uri], ou change de dossier : l'historique des sauvegardes repart de zéro. */
+    suspend fun saveBackupFolder(uri: String, name: String?) {
+        context.dataStore.edit {
+            clearBackupResult(it)
+            it[BACKUP_FOLDER_URI] = uri
+            if (name != null) it[BACKUP_FOLDER_NAME] = name else it.remove(BACKUP_FOLDER_NAME)
+        }
+    }
+
+    /** Désactive la sauvegarde automatique (les fichiers déjà écrits restent dans le dossier). */
+    suspend fun clearBackupFolder() {
+        context.dataStore.edit {
+            clearBackupResult(it)
+            it.remove(BACKUP_FOLDER_URI)
+            it.remove(BACKUP_FOLDER_NAME)
+        }
+    }
+
+    /** Enregistre une sauvegarde réussie, si elle a bien été écrite dans le dossier encore choisi. */
+    suspend fun saveBackupSuccess(folderUri: String, at: String, file: String, dataVersion: Long) {
+        context.dataStore.edit {
+            if (it[BACKUP_FOLDER_URI] != folderUri) return@edit
+            it[BACKUP_LAST_SUCCESS_AT] = at
+            it[BACKUP_LAST_FILE] = file
+            it[BACKUP_LAST_DATA_VERSION] = dataVersion
+            it.remove(BACKUP_LAST_ERROR_AT)
+            it.remove(BACKUP_LAST_ERROR)
+        }
+    }
+
+    /** Enregistre l'échec d'une sauvegarde, si le dossier est encore celui choisi. */
+    suspend fun saveBackupError(folderUri: String, at: String, error: String) {
+        context.dataStore.edit {
+            if (it[BACKUP_FOLDER_URI] != folderUri) return@edit
+            it[BACKUP_LAST_ERROR_AT] = at
+            it[BACKUP_LAST_ERROR] = error
+        }
+    }
+
+    private fun clearBackupResult(prefs: androidx.datastore.preferences.core.MutablePreferences) {
+        prefs.remove(BACKUP_LAST_SUCCESS_AT)
+        prefs.remove(BACKUP_LAST_FILE)
+        prefs.remove(BACKUP_LAST_ERROR_AT)
+        prefs.remove(BACKUP_LAST_ERROR)
+        prefs.remove(BACKUP_LAST_DATA_VERSION)
     }
 
     suspend fun saveHealthConnectSync(at: String, syncedDate: String) {
@@ -169,5 +255,13 @@ class Settings(private val context: Context) {
         val PROFILE_WEIGHT = floatPreferencesKey("profile_weight_kg")
         val PROFILE_MAX_HR = intPreferencesKey("profile_max_hr")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+        val DATA_VERSION = longPreferencesKey("data_version")
+        val BACKUP_FOLDER_URI = stringPreferencesKey("backup_folder_uri")
+        val BACKUP_FOLDER_NAME = stringPreferencesKey("backup_folder_name")
+        val BACKUP_LAST_SUCCESS_AT = stringPreferencesKey("backup_last_success_at")
+        val BACKUP_LAST_FILE = stringPreferencesKey("backup_last_file")
+        val BACKUP_LAST_ERROR_AT = stringPreferencesKey("backup_last_error_at")
+        val BACKUP_LAST_ERROR = stringPreferencesKey("backup_last_error")
+        val BACKUP_LAST_DATA_VERSION = longPreferencesKey("backup_last_data_version")
     }
 }

@@ -34,7 +34,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.boucle.app.healthconnect.HealthConnectAvailability
+import com.boucle.app.ui.BackupUiState
 import com.boucle.app.ui.HealthConnectUiState
+import com.boucle.app.data.backup.BackupNaming
 import com.boucle.app.ui.components.ExpressiveSurface
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.RowChevron
@@ -203,8 +205,8 @@ private fun lastReadLabel(state: HealthConnectUiState): String {
 private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
- * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export, import et
- * effacement des données, oubli du bracelet (bracelet enregistré).
+ * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export, import,
+ * sauvegarde automatique et effacement des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
 internal fun DevicesSettingsCard(
@@ -217,6 +219,10 @@ internal fun DevicesSettingsCard(
     onExport: () -> Unit,
     importing: Boolean,
     onImport: () -> Unit,
+    backup: BackupUiState,
+    onChooseBackupFolder: () -> Unit,
+    onBackupNow: () -> Unit,
+    onDisableBackup: () -> Unit,
     onClear: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
@@ -232,6 +238,7 @@ internal fun DevicesSettingsCard(
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
         add(SettingsRow("import") { ImportRow(importing, onImport) })
+        add(SettingsRow("backup") { AutoBackupRow(backup, onChooseBackupFolder, onBackupNow, onDisableBackup) })
         add(SettingsRow("clear") { SettingsActionRow("Tout effacer", BoucleColors.OnSurface, onClear) })
         if (hasBand) add(SettingsRow("forget") { SettingsActionRow("Oublier ce bracelet", BoucleColors.Error, onForget) })
     }
@@ -348,6 +355,70 @@ private fun ImportRow(importing: Boolean, onImport: () -> Unit) {
             )
         }
         SetupOutlinedButton(if (importing) "Import…" else "Importer", onImport, enabled = !importing)
+    }
+}
+
+/**
+ * Sauvegarde automatique : désactivée, un bouton pour choisir le dossier ; activée, le dossier, la dernière
+ * sauvegarde ou le dernier échec, « Sauvegarder », et de quoi changer de dossier ou désactiver.
+ */
+@Composable
+private fun AutoBackupRow(
+    state: BackupUiState,
+    onChooseFolder: () -> Unit,
+    onBackupNow: () -> Unit,
+    onDisable: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Sauvegarde automatique", style = rowTitleStyle)
+                Text(
+                    if (state.enabled) {
+                        "Dans « ${state.folderName ?: "dossier choisi"} », les ${BackupNaming.KEEP} dernières gardées"
+                    } else {
+                        "Une copie après chaque synchro, dans le dossier de ton choix. Boucle n'envoie rien."
+                    },
+                    style = BoucleType.small,
+                    color = BoucleColors.OnSurfaceVariant,
+                )
+            }
+            if (state.enabled) {
+                SetupOutlinedButton(
+                    if (state.running) "Sauvegarde…" else "Sauvegarder",
+                    onBackupNow,
+                    enabled = !state.running && state.folderAccessible,
+                )
+            } else {
+                SetupOutlinedButton("Activer", onChooseFolder)
+            }
+        }
+        if (state.enabled) {
+            val status = when {
+                state.lastSuccessAt != null -> "Dernière sauvegarde : ${formatSyncMoment(state.lastSuccessAt, timeOnlyToday = false)}"
+                else -> "Aucune sauvegarde dans ce dossier pour l'instant."
+            }
+            Text(status, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            val problem = when {
+                !state.folderAccessible -> "Dossier inaccessible : choisis-le à nouveau."
+                state.lastError != null -> {
+                    val moment = state.lastErrorAt?.let { " (${formatSyncMoment(it, timeOnlyToday = false)})" }.orEmpty()
+                    "Échec de la sauvegarde$moment : ${state.lastError}"
+                }
+                else -> null
+            }
+            if (problem != null) {
+                Text(problem, style = BoucleType.caption, color = MetricPalette.Energy.accent, modifier = Modifier.padding(top = 2.dp))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                DevicesTextButton("Changer de dossier", onChooseFolder)
+                DevicesTextButton("Désactiver", onDisable, color = BoucleColors.OnSurfaceVariant)
+            }
+        }
     }
 }
 

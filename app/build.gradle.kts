@@ -81,6 +81,8 @@ dependencies {
     implementation(libs.protobuf.javalite)
     // Lecture des données d'autres apps (balance et montre Withings) via Health Connect.
     implementation(libs.health.connect)
+    // Sauvegarde automatique dans un dossier choisi par l'utilisateur.
+    implementation(libs.work.runtime.ktx)
 
     testImplementation(libs.junit)
 }

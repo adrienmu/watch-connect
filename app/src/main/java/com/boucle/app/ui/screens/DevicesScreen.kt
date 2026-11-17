@@ -85,7 +85,7 @@ private enum class BandAction { Reconnect, Connecting, ReadingSetup, Configure, 
 
 /**
  * Onglet Appareils : le bracelet (état, batterie, synchronisation), Health Connect et les réglages
- * (configuration, démo, export et import, effacement, oubli du bracelet).
+ * (configuration, démo, export, import et sauvegarde automatique, effacement, oubli du bracelet).
  */
 @Composable
 fun DevicesScreen(
@@ -104,6 +104,9 @@ fun DevicesScreen(
     onImportData: () -> Unit,
     onConfirmImport: () -> Unit,
     onCancelImport: () -> Unit,
+    onChooseBackupFolder: () -> Unit,
+    onBackupNow: () -> Unit,
+    onDisableBackup: () -> Unit,
     onClearData: () -> Unit,
     onNavigate: (Destination) -> Unit,
     modifier: Modifier = Modifier,
@@ -199,6 +202,10 @@ fun DevicesScreen(
                 onExport = onExportData,
                 importing = state.importing,
                 onImport = onImportData,
+                backup = state.backup,
+                onChooseBackupFolder = onChooseBackupFolder,
+                onBackupNow = onBackupNow,
+                onDisableBackup = onDisableBackup,
                 onClear = { confirmClear = true },
                 onForget = { confirmForget = true },
                 modifier = Modifier.staggeredEntrance(2),

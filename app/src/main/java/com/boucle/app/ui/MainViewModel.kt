@@ -9,6 +9,7 @@ import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
+import com.boucle.app.data.backup.BackupFolder
 import com.boucle.app.data.export.BackupFormatException
 import com.boucle.app.data.export.DataExporter
 import com.boucle.app.data.export.DataImporter
@@ -130,6 +131,21 @@ data class ProfileForm(
     val sleepGoalHours: String = "8",
 )
 
+/** Sauvegarde automatique dans un dossier choisi par l'utilisateur. */
+data class BackupUiState(
+    val enabled: Boolean = false,
+    val folderName: String? = null,
+    /** Faux quand la permission sur le dossier a été perdue (autre téléphone, accès retiré). */
+    val folderAccessible: Boolean = true,
+    val running: Boolean = false,
+    /** Dernière sauvegarde réussie (dd/MM/yyyy HH:mm) et son fichier. */
+    val lastSuccessAt: String? = null,
+    val lastFile: String? = null,
+    /** Échec de la dernière tentative, effacé à la sauvegarde réussie suivante. */
+    val lastErrorAt: String? = null,
+    val lastError: String? = null,
+)
+
 data class DeviceUiState(
     val link: LinkState = LinkState(),
     val savedDevice: SavedDevice? = null,
@@ -149,6 +165,7 @@ data class DeviceUiState(
     val importPending: Boolean = false,
     /** Import d'une sauvegarde en cours. */
     val importing: Boolean = false,
+    val backup: BackupUiState = BackupUiState(),
     /** Profil enregistré (pour préremplir le formulaire de configuration). */
     val profile: UserProfile? = null,
     /** `null` tant que les réglages n'ont pas été lus. */
@@ -166,6 +183,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val contentResolver = app.contentResolver
     private val exporter = DataExporter(dao)
     private val importer = DataImporter(database, settings)
+    private val autoBackup = app.autoBackup
 
     private data class Local(
         val scanning: Boolean = false,
@@ -179,6 +197,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         val exporting: Boolean = false,
         val pendingImport: Uri? = null,
         val importing: Boolean = false,
+        val backupFolderAccessible: Boolean = true,
     )
 
     private val local = MutableStateFlow(Local())
@@ -189,7 +208,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private var autoConnectDone = false
 
     val deviceState: StateFlow<DeviceUiState> =
-        combine(gateway.state, settings.flow, local) { link, saved, local ->
+        combine(gateway.state, settings.flow, local, autoBackup.running) { link, saved, local, backupRunning ->
             DeviceUiState(
                 link = link,
                 savedDevice = saved.device,
@@ -204,6 +223,16 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 exporting = local.exporting,
                 importPending = local.pendingImport != null,
                 importing = local.importing,
+                backup = BackupUiState(
+                    enabled = saved.backup.enabled,
+                    folderName = saved.backup.folderName,
+                    folderAccessible = local.backupFolderAccessible,
+                    running = backupRunning,
+                    lastSuccessAt = saved.backup.lastSuccessAt,
+                    lastFile = saved.backup.lastFile,
+                    lastErrorAt = saved.backup.lastErrorAt,
+                    lastError = saved.backup.lastError,
+                ),
                 healthConnect = local.healthConnect.copy(
                     lastSyncAt = saved.lastHealthConnectSyncAt,
                     replacesBand = saved.device == null,
@@ -230,6 +259,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
 
     init {
         refreshHealthConnect()
+        refreshBackupFolder()
+        // Rattrape la sauvegarde quotidienne si WorkManager l'a perdue (KEEP : sans effet si elle est déjà planifiée).
+        viewModelScope.launch { if (settings.flow.first().backup.enabled) autoBackup.schedulePeriodic() }
         viewModelScope.launch {
             gateway.state
                 .map {
@@ -303,7 +335,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 }
             }
             settings.forgetDevice()
-            local.update { Local(healthConnect = it.healthConnect) }
+            local.update { Local(healthConnect = it.healthConnect, backupFolderAccessible = it.backupFolderAccessible) }
         }
     }
 
@@ -358,7 +390,11 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                         local.update { it.copy(log = it.log + line) }
                     }
                 }
-                if (ok) settings.saveSync(today.toString(), LocalDateTime.now().format(SYNC_TIME_FORMAT))
+                if (ok) {
+                    // saveSync signale aussi le changement des données : la sauvegarde automatique suit.
+                    settings.saveSync(today.toString(), LocalDateTime.now().format(SYNC_TIME_FORMAT))
+                    requestBackupAfterChange()
+                }
             } finally {
                 local.update { it.copy(syncing = false) }
             }
@@ -415,6 +451,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 val count = healthConnect.sync(dao, from, replaceBand = saved.device == null)
                 settings.saveHealthConnectSync(LocalDateTime.now().format(SYNC_TIME_FORMAT), today.toString())
                 local.update { it.copy(healthConnect = it.healthConnect.copy(lastCount = count)) }
+                if (count > 0) onDataChanged()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -480,6 +517,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         viewModelScope.launch {
             try {
                 val ok = healthConnect.importRoute(dao, healthConnectId, route)
+                if (ok) onDataChanged()
                 routeAccess.value = if (ok) RouteAccess.IDLE else RouteAccess.DENIED
             } catch (e: CancellationException) {
                 throw e
@@ -568,6 +606,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         viewModelScope.launch {
             try {
                 val summary = importer.import(contentResolver, uri)
+                onDataChanged()
                 local.update { it.copy(message = summary.message()) }
             } catch (e: CancellationException) {
                 throw e
@@ -579,6 +618,71 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 local.update { it.copy(importing = false) }
             }
         }
+    }
+
+    /** Dossier choisi pour la sauvegarde automatique (nouveau ou changement) : on garde l'accès et on sauvegarde aussitôt. */
+    fun onBackupFolderPicked(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    contentResolver.takePersistableUriPermission(uri, BackupFolder.PERSISTABLE_FLAGS)
+                    val previous = settings.flow.first().backup.folderUri
+                    val name = BackupFolder.displayName(contentResolver, uri)
+                    settings.saveBackupFolder(uri.toString(), name)
+                    if (previous != null && previous != uri.toString()) releaseFolder(previous)
+                }
+                local.update { it.copy(backupFolderAccessible = true) }
+                autoBackup.schedulePeriodic()
+                autoBackup.requestNow()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Dossier de sauvegarde inutilisable", e)
+            }
+        }
+    }
+
+    /** Désactive la sauvegarde automatique ; les sauvegardes déjà écrites restent dans le dossier. */
+    fun disableBackup() {
+        viewModelScope.launch {
+            autoBackup.cancelAll()
+            val previous = settings.flow.first().backup.folderUri
+            settings.clearBackupFolder()
+            previous?.let { withContext(Dispatchers.IO) { releaseFolder(it) } }
+            local.update { it.copy(backupFolderAccessible = true) }
+        }
+    }
+
+    fun backupNow() {
+        viewModelScope.launch {
+            if (settings.flow.first().backup.enabled) autoBackup.requestNow()
+        }
+    }
+
+    /** Vérifie, au retour dans l'app, que l'accès au dossier de sauvegarde est toujours accordé. */
+    fun refreshBackupFolder() {
+        viewModelScope.launch {
+            val uri = settings.flow.first().backup.folderUri
+            val accessible = uri == null || withContext(Dispatchers.IO) {
+                runCatching { BackupFolder.hasPermission(contentResolver, Uri.parse(uri)) }.getOrDefault(false)
+            }
+            local.update { it.copy(backupFolderAccessible = accessible) }
+        }
+    }
+
+    private fun releaseFolder(uri: String) {
+        // Permission déjà perdue (ou jamais accordée sur ce téléphone) : rien à libérer.
+        runCatching { contentResolver.releasePersistableUriPermission(Uri.parse(uri), BackupFolder.PERSISTABLE_FLAGS) }
+    }
+
+    /** Les données ont changé hors synchro du bracelet (Health Connect, import, tracé) : à sauvegarder. */
+    private suspend fun onDataChanged() {
+        settings.markDataChanged()
+        requestBackupAfterChange()
+    }
+
+    private suspend fun requestBackupAfterChange() {
+        if (settings.flow.first().backup.enabled) autoBackup.requestAfterChange()
     }
 
     /** Nom proposé pour le fichier d'export. */

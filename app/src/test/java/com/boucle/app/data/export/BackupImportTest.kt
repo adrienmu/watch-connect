@@ -373,6 +373,8 @@ private class FakeDao : CollectingSink(), HealthDao {
     override suspend fun upsertExternalMeasurements(items: List<ExternalMeasurementEntity>) { measurements += items }
     override suspend fun upsertTrainingRoutes(items: List<TrainingRouteEntity>) { routes += items }
 
+    override suspend fun hasAnyData() = listOf(daily, samples, hr, ppi, sleep, recharge, skin, sessions, exercises, measurements, routes)
+        .any { it.isNotEmpty() }
     override suspend fun allDailyActivity() = daily.sortedBy { it.date }
     override suspend fun allSleep() = sleep.sortedBy { it.date }
     override suspend fun allNightlyRecharge() = recharge.sortedBy { it.date }

@@ -136,6 +136,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     // Au retour dans l'app (installation de Health Connect, autorisations changées dans les réglages).
     LifecycleResumeEffect(Unit) {
         viewModel.refreshHealthConnect()
+        viewModel.refreshBackupFolder()
         onPauseOrDispose { }
     }
 
@@ -147,6 +148,10 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(viewModel::onImportFilePicked) }
+    // Sauvegarde automatique : l'utilisateur choisit un dossier, dont l'accès est gardé (permission persistante).
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri -> uri?.let(viewModel::onBackupFolderPicked) }
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
@@ -360,6 +365,9 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             onImportData = { importLauncher.launch(arrayOf("application/zip")) },
                             onConfirmImport = viewModel::confirmImport,
                             onCancelImport = viewModel::cancelImport,
+                            onChooseBackupFolder = { backupFolderLauncher.launch(null) },
+                            onBackupNow = viewModel::backupNow,
+                            onDisableBackup = viewModel::disableBackup,
                             onClearData = viewModel::clearData,
                             onNavigate = ::navigate,
                             modifier = screenModifier,

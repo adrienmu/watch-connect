@@ -2,6 +2,7 @@ package com.boucle.app
 
 import android.app.Application
 import com.boucle.app.data.Settings
+import com.boucle.app.data.backup.AutoBackup
 import com.boucle.app.data.db.BoucleDatabase
 import com.boucle.app.healthconnect.HealthConnectGateway
 import com.boucle.app.polar.PolarGateway
@@ -13,4 +14,5 @@ class BoucleApp : Application() {
     val gateway by lazy { PolarGateway(this) }
     val syncEngine by lazy { SyncEngine(gateway, database.healthDao()) }
     val healthConnect by lazy { HealthConnectGateway(this) }
+    val autoBackup by lazy { AutoBackup(this, settings, database.healthDao()) }
 }
