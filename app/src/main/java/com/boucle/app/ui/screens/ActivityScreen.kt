@@ -77,6 +77,7 @@ private val headerDate = DateTimeFormatter.ofPattern("EEEE d MMM", Locale.FRENCH
 fun ActivityScreen(
     state: DayUiState,
     onNavigate: (Destination) -> Unit,
+    onOpenSession: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.verticalScroll(rememberScrollState())) {
@@ -112,7 +113,7 @@ fun ActivityScreen(
                 if (activity.hasActivityGoal()) ActivityGoalCard(activity, Modifier.staggeredEntrance(index++))
             }
             state.sessions.forEach { session ->
-                SessionCard(session, Modifier.staggeredEntrance(index++))
+                SessionCard(session, onClick = { onOpenSession(session.path) }, modifier = Modifier.staggeredEntrance(index++))
             }
             state.vo2Max?.let { vo2 ->
                 Vo2MaxRow(
@@ -292,7 +293,7 @@ private fun IntensityLegend(label: String, color: Color, modifier: Modifier = Mo
 
 /** Une séance du jour : sport, heure de début, durée, charge cardio et principaux chiffres. */
 @Composable
-private fun SessionCard(session: TrainingSessionEntity, modifier: Modifier = Modifier) {
+private fun SessionCard(session: TrainingSessionEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val start = session.startTime?.let { runCatching { LocalDateTime.parse(it).toLocalTime() }.getOrNull() }
     val timing = listOfNotNull(
         start?.let { "Début %02d:%02d".format(it.hour, it.minute) },
@@ -312,6 +313,8 @@ private fun SessionCard(session: TrainingSessionEntity, modifier: Modifier = Mod
         color = BoucleColors.Surface,
         radii = Radii.CardSmall,
         modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+        onClickLabel = "Voir le détail de la séance",
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -335,6 +338,7 @@ private fun SessionCard(session: TrainingSessionEntity, modifier: Modifier = Mod
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
+            RowChevron()
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             metrics.forEach { (label, value) ->

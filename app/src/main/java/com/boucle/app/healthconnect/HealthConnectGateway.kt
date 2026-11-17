@@ -11,6 +11,8 @@ import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.BodyWaterMassRecord
 import androidx.health.connect.client.records.BoneMassRecord
 import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseRoute
+import androidx.health.connect.client.records.ExerciseRouteResult
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
@@ -30,6 +32,7 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import com.boucle.app.data.db.ExternalMeasurementEntity
 import com.boucle.app.data.db.HealthDao
 import com.boucle.app.domain.MeasurementType
+import com.boucle.app.domain.RouteStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
@@ -72,7 +75,7 @@ class HealthConnectGateway(private val context: Context) {
     )
 
     /** Autorisations demandées, toutes en lecture (doivent correspondre au manifeste). */
-    val permissions: Set<String> = measurementPermissions + activityPermissions
+    val permissions: Set<String> = measurementPermissions + activityPermissions + ROUTES_PERMISSION
 
     private val client by lazy { HealthConnectClient.getOrCreate(context) }
     private val activityOrigin = setOf(DataOrigin(ACTIVITY_SOURCE))
@@ -149,6 +152,7 @@ class HealthConnectGateway(private val context: Context) {
                 name = record.title?.takeIf { it.isNotBlank() } ?: exerciseName(record.exerciseType),
                 distanceMeters = totals.first,
                 calories = totals.second,
+                route = route(record.exerciseRouteResult),
             )
         }
 
@@ -165,8 +169,38 @@ class HealthConnectGateway(private val context: Context) {
         dao.upsertNightlyRecharge(nights)
         dao.upsertDailyActivity(daily)
         dao.upsertTrainingSessions(training)
+        // Un tracé autorisé séance par séance redevient « à autoriser » à la relecture : on garde les points.
+        val routes = HealthConnectMapping.routes(exercises.filter { keep(it.start.atZone(it.zone ?: zone).toLocalDate().toString()) }, heart)
+            .filterNot { it.status == RouteStatus.CONSENT_REQUIRED.name && dao.trainingRouteNow(it.sessionPath)?.status == RouteStatus.AVAILABLE.name }
+        dao.upsertTrainingRoutes(routes)
         return measurements.size + sleeps.size + hrBlocks.size + activity.size + nights.size + daily.size + training.size
     }
+
+    /**
+     * Enregistre le tracé que l'utilisateur vient d'autoriser pour une séance, chaque point avec la FC mesurée au
+     * même moment.
+     * @return `false` si le tracé n'a pas assez de points.
+     */
+    suspend fun importRoute(dao: HealthDao, healthConnectId: String, route: ExerciseRoute): Boolean {
+        val locations = route.route.map { HcLocation(it.time, it.latitude, it.longitude, it.altitude?.inMeters) }
+        if (locations.isEmpty()) return false
+        val granted = grantedPermissions()
+        val start = locations.minOf { it.time }.minusSeconds(60)
+        val end = locations.maxOf { it.time }.plusSeconds(60)
+        val heart = if (HealthPermission.getReadPermission(HeartRateRecord::class) in granted) {
+            client.readRecords(
+                ReadRecordsRequest(HeartRateRecord::class, TimeRangeFilter.between(start, end), dataOriginFilter = activityOrigin),
+            ).records.flatMap { record -> record.samples.map { HcHeartRate(it.time, it.beatsPerMinute.toDouble()) } }
+        } else {
+            emptyList()
+        }
+        val entity = HealthConnectMapping.routeEntity(healthConnectId, locations, heart) ?: return false
+        dao.upsertTrainingRoutes(listOf(entity))
+        return true
+    }
+
+    /** Ouvre la gestion des données et des accès dans Health Connect. */
+    fun manageDataIntent(): Intent = HealthConnectClient.getHealthConnectManageDataIntent(context, PROVIDER_PACKAGE)
 
     /** Tous les enregistrements de type [T] depuis [since], page par page ; rien sans l'autorisation de lecture. */
     private suspend inline fun <reified T : Record> readAll(
@@ -255,6 +289,21 @@ class HealthConnectGateway(private val context: Context) {
     }
 
     companion object {
+        /**
+         * Lecture des tracés de toutes les séances (« toujours autoriser »). Sans elle, Health Connect demande
+         * l'accord séance par séance ([androidx.health.connect.client.contracts.ExerciseRouteRequestContract]).
+         */
+        const val ROUTES_PERMISSION = "android.permission.health.READ_EXERCISE_ROUTES"
+
+        /** Tracé Health Connect → points, accord à demander, ou rien. */
+        fun route(result: ExerciseRouteResult): HcRoute = when (result) {
+            is ExerciseRouteResult.Data -> HcRoute.Points(
+                result.exerciseRoute.route.map { HcLocation(it.time, it.latitude, it.longitude, it.altitude?.inMeters) },
+            )
+            is ExerciseRouteResult.ConsentRequired -> HcRoute.ConsentRequired
+            else -> HcRoute.None
+        }
+
         const val PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
         /** App Withings (Health Mate), seule source lue pour l'activité, la FC et le sommeil. */
         const val ACTIVITY_SOURCE = "com.withings.wiscale2"

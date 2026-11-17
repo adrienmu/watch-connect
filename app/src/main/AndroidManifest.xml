@@ -7,6 +7,7 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Utilisé par le SDK Polar pour télécharger les mises à jour de firmware. -->
+    <!-- Aussi pour les tuiles OpenStreetMap du fond de carte. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Health Connect, en lecture seule : balance (poids, composition) et montre (SpO2, VFC) Withings. -->
@@ -25,6 +26,8 @@
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.READ_DISTANCE" />
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+    <!-- Tracés GPS des séances (carte du détail d'activité) ; l'accord peut aussi être donné séance par séance. -->
+    <uses-permission android:name="android.permission.health.READ_EXERCISE_ROUTES" />
 
     <!-- Android 13 : Health Connect est une app séparée qu'il faut pouvoir trouver. -->
     <queries>

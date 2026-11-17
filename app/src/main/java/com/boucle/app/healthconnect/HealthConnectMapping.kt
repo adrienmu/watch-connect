@@ -5,7 +5,13 @@ import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.HrBlockEntity
 import com.boucle.app.data.db.NightlyRechargeEntity
 import com.boucle.app.data.db.SleepEntity
+import com.boucle.app.data.db.TrainingRouteEntity
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.domain.RouteAnalysis
+import com.boucle.app.domain.RouteCodec
+import com.boucle.app.domain.RoutePoint
+import com.boucle.app.domain.RouteSource
+import com.boucle.app.domain.RouteStatus
 import com.boucle.app.domain.Vo2MaxEstimation
 import java.time.Duration
 import java.time.Instant
@@ -32,6 +38,17 @@ data class HcSleepSession(val start: Instant, val end: Instant, val zone: ZoneId
 /** Mesure ponctuelle : VFC (RMSSD en ms) ou fréquence respiratoire (respirations/min). */
 data class HcValue(val time: Instant, val value: Double)
 
+/** Point d'un tracé Health Connect. */
+data class HcLocation(val time: Instant, val latitude: Double, val longitude: Double, val altitude: Double?)
+
+/** Tracé d'une séance tel que Health Connect le rend. */
+sealed interface HcRoute {
+    data class Points(val locations: List<HcLocation>) : HcRoute
+    /** Un tracé existe, mais l'accord de l'utilisateur est nécessaire pour le lire. */
+    data object ConsentRequired : HcRoute
+    data object None : HcRoute
+}
+
 data class HcExercise(
     val id: String,
     val start: Instant,
@@ -41,6 +58,7 @@ data class HcExercise(
     val name: String,
     val distanceMeters: Double?,
     val calories: Double?,
+    val route: HcRoute = HcRoute.None,
 )
 
 data class HcDayTotals(val date: LocalDate, val steps: Long?, val distanceMeters: Double?, val activeCalories: Double?)
@@ -223,13 +241,49 @@ object HealthConnectMapping {
             )
         }
 
+    /** Chemin d'une séance Health Connect dans la table des séances. */
+    fun sessionPath(healthConnectId: String) = "healthconnect:$healthConnectId"
+
+    /** Tracés des séances qui en ont un (lisible ou à autoriser). */
+    fun routes(exercises: List<HcExercise>, heart: List<HcHeartRate>): List<TrainingRouteEntity> =
+        exercises.mapNotNull { exercise ->
+            when (val route = exercise.route) {
+                is HcRoute.Points -> routeEntity(exercise.id, route.locations, heart)
+                HcRoute.ConsentRequired -> TrainingRouteEntity(
+                    sessionPath = sessionPath(exercise.id),
+                    status = RouteStatus.CONSENT_REQUIRED.name,
+                    source = RouteSource.HEALTH_CONNECT.name,
+                    healthConnectId = exercise.id,
+                    points = "",
+                )
+                HcRoute.None -> null
+            }
+        }
+
+    /** Tracé lisible : chaque point reçoit la FC mesurée au même moment (interpolée). `null` sans assez de points. */
+    fun routeEntity(healthConnectId: String, locations: List<HcLocation>, heart: List<HcHeartRate>): TrainingRouteEntity? {
+        if (locations.size < RouteAnalysis.MIN_POINTS) return null
+        val samples = heart.filter { it.bpm > 0 }.sortedBy { it.time }.map { it.time.toEpochMilli() to it.bpm.roundToInt() }
+        val points = locations.sortedBy { it.time }.map { location ->
+            val time = location.time.toEpochMilli()
+            RoutePoint(time, location.latitude, location.longitude, location.altitude, RouteAnalysis.heartRateAt(time, samples))
+        }
+        return TrainingRouteEntity(
+            sessionPath = sessionPath(healthConnectId),
+            status = RouteStatus.AVAILABLE.name,
+            source = RouteSource.HEALTH_CONNECT.name,
+            healthConnectId = healthConnectId,
+            points = RouteCodec.encode(points),
+        )
+    }
+
     /** Séances, avec FC moyenne et max tirées des mesures de FC pendant la séance ; les courses servent au VO2max. */
     fun trainingSessions(exercises: List<HcExercise>, heart: List<HcHeartRate>, defaultZone: ZoneId): List<TrainingSessionEntity> =
         exercises.filter { it.end > it.start }.map { exercise ->
             val start: LocalDateTime = exercise.start.atZone(exercise.zone ?: defaultZone).toLocalDateTime()
             val hr = heart.filter { it.time >= exercise.start && it.time <= exercise.end && it.bpm > 0 }.map { it.bpm }
             TrainingSessionEntity(
-                path = "healthconnect:${exercise.id}",
+                path = sessionPath(exercise.id),
                 date = start.toLocalDate().toString(),
                 startTime = start.toString(),
                 durationSec = Duration.between(exercise.start, exercise.end).seconds.toInt(),

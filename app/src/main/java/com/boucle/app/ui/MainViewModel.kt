@@ -20,6 +20,16 @@ import com.boucle.app.domain.RecoveryScoring
 import com.boucle.app.domain.SleepScore
 import com.boucle.app.domain.Vo2MaxEstimation
 import com.boucle.app.domain.scoreNight
+import com.boucle.app.domain.HrZoneTime
+import com.boucle.app.domain.RouteAnalysis
+import com.boucle.app.domain.RouteCodec
+import com.boucle.app.domain.RouteSource
+import com.boucle.app.domain.RouteStats
+import com.boucle.app.domain.RouteStatus
+import com.boucle.app.data.db.TrainingSessionEntity
+import androidx.health.connect.client.records.ExerciseRoute
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
 import com.boucle.app.healthconnect.HealthConnectAvailability
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
@@ -65,6 +75,26 @@ private data class DayScores(
     val sleep: SleepScore?,
     val recovery: RecoveryScore?,
     val battery: BodyBatteryDay?,
+)
+
+/** Demande d'accès à un tracé Health Connect en cours pour la séance affichée. */
+enum class RouteAccess { IDLE, LOADING, DENIED }
+
+/** Détail d'une séance : chiffres, tracé GPS analysé et zones cardiaques. */
+data class SessionDetailUiState(
+    val path: String? = null,
+    val session: TrainingSessionEntity? = null,
+    /** `null` : séance sans tracé (en intérieur). */
+    val routeStatus: RouteStatus? = null,
+    val routeSource: RouteSource? = null,
+    val stats: RouteStats? = null,
+    /** FC max qui sert aux zones, et si elle est estimée d'après l'âge. */
+    val maxHr: Int? = null,
+    val maxHrEstimated: Boolean = false,
+    val zones: List<HrZoneTime> = emptyList(),
+    val access: RouteAccess = RouteAccess.IDLE,
+    /** Vrai une fois la séance lue dans la base. */
+    val loaded: Boolean = false,
 )
 
 data class FoundDevice(val id: String, val name: String, val rssi: Int)
@@ -170,6 +200,14 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     val dayState: StateFlow<DayUiState> = selectedDate
         .flatMapLatest { dayFlow(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState(LocalDate.now()))
+
+    private val selectedSession = MutableStateFlow<String?>(null)
+    private val routeAccess = MutableStateFlow(RouteAccess.IDLE)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val sessionDetail: StateFlow<SessionDetailUiState> = selectedSession
+        .flatMapLatest { path -> if (path == null) flowOf(SessionDetailUiState()) else sessionDetailFlow(path) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionDetailUiState())
 
     init {
         refreshHealthConnect()
@@ -387,6 +425,79 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
     }
 
+    /** Choisit la séance affichée par l'écran de détail. */
+    fun openSession(path: String) {
+        if (selectedSession.value != path) routeAccess.value = RouteAccess.IDLE
+        selectedSession.value = path
+    }
+
+    /**
+     * « Autoriser l'itinéraire » : [launchConsent] ouvre la demande d'accès de Health Connect pour la séance. En démo, le
+     * tracé fictif arrive après une courte attente, sans Health Connect.
+     */
+    fun requestRoute(launchConsent: (healthConnectId: String) -> Unit) {
+        val path = selectedSession.value ?: return
+        viewModelScope.launch {
+            val route = dao.trainingRouteNow(path) ?: return@launch
+            val id = route.healthConnectId ?: return@launch
+            routeAccess.value = RouteAccess.LOADING
+            if (id.startsWith(DemoData.DEMO_ROUTE_PREFIX)) {
+                val session = dao.trainingSession(path).first() ?: return@launch
+                delay(DEMO_ROUTE_DELAY_MS)
+                dao.upsertTrainingRoutes(listOf(DemoData.route(session).copy(source = route.source, healthConnectId = id)))
+                routeAccess.value = RouteAccess.IDLE
+            } else {
+                launchConsent(id)
+            }
+        }
+    }
+
+    /** Réponse de Health Connect : le tracé autorisé, ou `null` si l'utilisateur a refusé. */
+    fun onRouteConsentResult(healthConnectId: String, route: ExerciseRoute?) {
+        if (route == null) {
+            routeAccess.value = RouteAccess.DENIED
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val ok = healthConnect.importRoute(dao, healthConnectId, route)
+                routeAccess.value = if (ok) RouteAccess.IDLE else RouteAccess.DENIED
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                routeAccess.value = RouteAccess.IDLE
+                report("Lecture du tracé impossible", e)
+            }
+        }
+    }
+
+    fun healthConnectManageIntent() = healthConnect.manageDataIntent()
+
+    private fun sessionDetailFlow(path: String): Flow<SessionDetailUiState> {
+        // L'analyse du tracé ne dépend que des points : elle n'est refaite que s'ils changent.
+        val analysis = dao.trainingRoute(path)
+            .distinctUntilChanged()
+            .map { route -> route to route?.takeIf { it.status == RouteStatus.AVAILABLE.name }?.let { RouteAnalysis.analyze(RouteCodec.decode(it.points)) } }
+            .flowOn(Dispatchers.Default)
+        val profile = settings.flow.map { it.profile }.distinctUntilChanged()
+        return combine(dao.trainingSession(path), analysis, profile, routeAccess) { session, (route, stats), profile, access ->
+            val date = session?.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
+            val maxHr = profile?.maxHr?.takeIf { it > 0 } ?: profile?.let { 220 - it.ageOn(date) }
+            SessionDetailUiState(
+                path = path,
+                session = session,
+                routeStatus = route?.let { r -> RouteStatus.entries.firstOrNull { it.name == r.status } },
+                routeSource = route?.let { r -> RouteSource.entries.firstOrNull { it.name == r.source } },
+                stats = stats,
+                maxHr = maxHr,
+                maxHrEstimated = profile?.maxHr == null,
+                zones = if (stats != null && stats.hasHeartRate && maxHr != null) RouteAnalysis.hrZones(stats.points, maxHr) else emptyList(),
+                access = access,
+                loaded = true,
+            )
+        }
+    }
+
     fun clearData() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { database.clearAllTables() }
@@ -584,6 +695,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         private const val SCAN_TIMEOUT_MS = 30_000L
         private const val FIRST_SYNC_DAYS = 14L
         private const val HEALTH_CONNECT_FIRST_SYNC_DAYS = 30L
+        /** Attente simulée de l'autorisation d'un tracé de démo, comme le temps de lecture dans Health Connect. */
+        private const val DEMO_ROUTE_DELAY_MS = 1_400L
         private val SYNC_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
         private val BIRTH_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/uuuu")
 

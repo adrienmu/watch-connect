@@ -13,4 +13,6 @@ enum class Destination(val isTab: Boolean) {
     Body(false),
     Pairing(false),
     Profile(false),
+    /** Détail d'une séance (carte du tracé GPS, allure, FC, altitude). */
+    ActivityDetail(false),
 }

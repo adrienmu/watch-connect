@@ -105,6 +105,46 @@
       "h": 844,
       "title": "Première ouverture",
       "is_interactive": true
+    },
+    "ActiviteGPS.dc.html": {
+      "x": 0,
+      "y": 3000,
+      "w": 390,
+      "h": 844,
+      "title": "Détail d'activité avec carte GPS",
+      "is_interactive": true
+    },
+    "ActiviteGPSPleinEcran.dc.html": {
+      "x": 470,
+      "y": 3000,
+      "w": 390,
+      "h": 844,
+      "title": "Carte plein écran",
+      "is_interactive": true
+    },
+    "ActiviteSansGPS.dc.html": {
+      "x": 940,
+      "y": 3000,
+      "w": 390,
+      "h": 844,
+      "title": "Sans tracé GPS / autorisation Health Connect",
+      "is_interactive": true
+    },
+    "ActiviteGPSFrequence.dc.html": {
+      "x": 1410,
+      "y": 3000,
+      "w": 390,
+      "h": 1720,
+      "title": "Détail d'activité — onglet Fréq. card.",
+      "is_interactive": true
+    },
+    "ActiviteGPSAltitude.dc.html": {
+      "x": 1880,
+      "y": 3000,
+      "w": 390,
+      "h": 1720,
+      "title": "Détail d'activité — onglet Altitude",
+      "is_interactive": true
     }
   },
   "order": [
@@ -119,7 +159,12 @@
     "Appareils.dc.html",
     "Association.dc.html",
     "Profil.dc.html",
-    "Bienvenue.dc.html"
+    "Bienvenue.dc.html",
+    "ActiviteGPS.dc.html",
+    "ActiviteGPSPleinEcran.dc.html",
+    "ActiviteSansGPS.dc.html",
+    "ActiviteGPSFrequence.dc.html",
+    "ActiviteGPSAltitude.dc.html"
   ],
   "notes": {
     "t1": {
@@ -143,6 +188,37 @@
       "w": 360,
       "fill": "green",
       "size": "m"
+    },
+    "t3": {
+      "x": 0,
+      "y": 2700,
+      "text": "Détail d'activité : tracé GPS",
+      "kind": "title1",
+      "maxW": 2270
+    },
+    "gps_motion": {
+      "x": 0,
+      "y": 3964,
+      "w": 400,
+      "size": "s",
+      "fill": "blue",
+      "text": "Motion (M3 Expressive)\n\n• Arrivée : le tracé se dessine (1,4 s, emphasized decelerate), puis départ/arrivée « pop » avec ressort spatial rapide.\n• Tap sur la carte : container transform carte → plein écran (550 ms, cubic-bezier(0.38, 1.21, 0.22, 1)). Coins 28 → 0.\n• Plein écran : bottom sheet qui monte (ressort), barre d'outils flottante.\n• « Rejouer » : un point parcourt le tracé, barre de progression linéaire synchronisée.\n• Groupe de boutons connectés : la sélection morphe en pilule, le tracé change de couleur (allure / FC / altitude)."
+    },
+    "gps_data": {
+      "x": 470,
+      "y": 3964,
+      "w": 400,
+      "size": "s",
+      "fill": "orange",
+      "text": "Données\n\n• Health Connect : ExerciseSessionRecord.exerciseRoute (points lat/long/altitude horodatés).\n• Permission dédiée READ_EXERCISE_ROUTES : consentement par séance ou « toujours ».\n• Bracelet : GPS intégré ou GPS connecté du téléphone. Sans points → écran « Sans tracé GPS ».\n• Couleur du tracé : allure, FC ou altitude interpolées par point.\n• Fond de carte : tuiles (OSM / Maps SDK) ; fond stylisé dans la maquette."
+    },
+    "gps_states": {
+      "x": 940,
+      "y": 3964,
+      "w": 400,
+      "size": "s",
+      "fill": "green",
+      "text": "États couverts\n\n• Activité avec GPS → carte dans le détail.\n• Activité en intérieur → pas de carte.\n• Tracé présent mais non autorisé → carte floutée + demande d'accès."
     }
   },
   "designSystems": []
