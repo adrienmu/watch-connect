@@ -12,7 +12,7 @@ sur le canevas. L'app doit rester fidèle à ces écrans.
 | Aujourd'hui | `Main.dc.html` | `TodayScreen` |
 | Sommeil | `Sommeil.dc.html` | `SleepScreen` |
 | Récupération | `Recuperation.dc.html` | `RecoveryScreen` |
-| Body Battery | `Energie.dc.html` | `EnergyScreen` |
+| Énergie | `Energie.dc.html` | `EnergyScreen` |
 | Fréquence cardiaque | `Coeur.dc.html` | `HeartScreen` |
 | Forme | `Activite.dc.html` | `ActivityScreen` |
 | VO2max | `Vo2max.dc.html` | `Vo2MaxScreen` |
