@@ -117,6 +117,13 @@ interface HealthDao {
     @Query("SELECT * FROM training_exercise WHERE sessionPath = :path ORDER BY exerciseIndex")
     suspend fun trainingExercisesOf(path: String): List<TrainingExerciseEntity>
 
+    /** Exercices dont la séance n'est pas (ou plus) dans la base : exportés à part pour ne rien perdre. */
+    @Query(
+        "SELECT * FROM training_exercise WHERE sessionPath NOT IN (SELECT path FROM training_session) " +
+            "ORDER BY sessionPath, exerciseIndex",
+    )
+    suspend fun unlinkedTrainingExercises(): List<TrainingExerciseEntity>
+
     @Query("SELECT DISTINCT date FROM activity_samples ORDER BY date")
     suspend fun activitySampleDates(): List<String>
 

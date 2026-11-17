@@ -203,8 +203,8 @@ private fun lastReadLabel(state: HealthConnectUiState): String {
 private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
- * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export et effacement
- * des données, oubli du bracelet (bracelet enregistré).
+ * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export, import et
+ * effacement des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
 internal fun DevicesSettingsCard(
@@ -215,6 +215,8 @@ internal fun DevicesSettingsCard(
     onLoadDemo: () -> Unit,
     exporting: Boolean,
     onExport: () -> Unit,
+    importing: Boolean,
+    onImport: () -> Unit,
     onClear: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
@@ -229,6 +231,7 @@ internal fun DevicesSettingsCard(
         }
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
+        add(SettingsRow("import") { ImportRow(importing, onImport) })
         add(SettingsRow("clear") { SettingsActionRow("Tout effacer", BoucleColors.OnSurface, onClear) })
         if (hasBand) add(SettingsRow("forget") { SettingsActionRow("Oublier ce bracelet", BoucleColors.Error, onForget) })
     }
@@ -322,6 +325,29 @@ private fun ExportRow(exporting: Boolean, onExport: () -> Unit) {
             )
         }
         SetupOutlinedButton(if (exporting) "Export…" else "Exporter", onExport, enabled = !exporting)
+    }
+}
+
+/** Import d'une archive créée par l'export, pour retrouver ses données (nouveau téléphone, réinstallation). */
+@Composable
+private fun ImportRow(importing: Boolean, onImport: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Importer une sauvegarde", style = rowTitleStyle)
+            Text(
+                "Archive ZIP créée par « Exporter mes données », ajoutée sans doublon",
+                style = BoucleType.small,
+                color = BoucleColors.OnSurfaceVariant,
+            )
+        }
+        SetupOutlinedButton(if (importing) "Import…" else "Importer", onImport, enabled = !importing)
     }
 }
 

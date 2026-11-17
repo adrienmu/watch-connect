@@ -85,7 +85,7 @@ private enum class BandAction { Reconnect, Connecting, ReadingSetup, Configure, 
 
 /**
  * Onglet Appareils : le bracelet (état, batterie, synchronisation), Health Connect et les réglages
- * (configuration, démo, export, effacement, oubli du bracelet).
+ * (configuration, démo, export et import, effacement, oubli du bracelet).
  */
 @Composable
 fun DevicesScreen(
@@ -101,6 +101,9 @@ fun DevicesScreen(
     onInstallHealthConnect: () -> Unit,
     onLoadDemo: () -> Unit,
     onExportData: () -> Unit,
+    onImportData: () -> Unit,
+    onConfirmImport: () -> Unit,
+    onCancelImport: () -> Unit,
     onClearData: () -> Unit,
     onNavigate: (Destination) -> Unit,
     modifier: Modifier = Modifier,
@@ -194,6 +197,8 @@ fun DevicesScreen(
                 onLoadDemo = onLoadDemo,
                 exporting = state.exporting,
                 onExport = onExportData,
+                importing = state.importing,
+                onImport = onImportData,
                 onClear = { confirmClear = true },
                 onForget = { confirmForget = true },
                 modifier = Modifier.staggeredEntrance(2),
@@ -217,6 +222,20 @@ fun DevicesScreen(
                 onForgetDevice()
             },
             onDismiss = { confirmForget = false },
+        )
+    }
+    if (state.importPending) {
+        DevicesConfirmDialog(
+            title = "Importer cette sauvegarde ?",
+            text = "Les données de la sauvegarde s'ajoutent à celles du téléphone. Un jour, une nuit ou une séance " +
+                "déjà présents ici sont remplacés par leur version de la sauvegarde ; le reste n'est pas touché, " +
+                "et réimporter le même fichier ne crée pas de doublon.\n\n" +
+                "Le profil, le bracelet et les dates de synchronisation ne sont repris que s'ils ne sont pas " +
+                "déjà renseignés sur ce téléphone.",
+            confirmLabel = "Importer",
+            confirmColor = BoucleColors.OnSurface,
+            onConfirm = onConfirmImport,
+            onDismiss = onCancelImport,
         )
     }
     if (confirmClear) {
@@ -504,12 +523,13 @@ private fun DevicesConfirmDialog(
     confirmLabel: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    confirmColor: Color = BoucleColors.Error,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, style = BoucleType.sectionTitle) },
         text = { Text(text, style = BoucleType.body) },
-        confirmButton = { DevicesTextButton(confirmLabel, onConfirm, color = BoucleColors.Error) },
+        confirmButton = { DevicesTextButton(confirmLabel, onConfirm, color = confirmColor) },
         dismissButton = { DevicesTextButton("Annuler", onDismiss) },
         containerColor = BoucleColors.Surface,
         titleContentColor = BoucleColors.OnSurface,

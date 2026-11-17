@@ -143,6 +143,10 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip"),
     ) { uri -> uri?.let(viewModel::exportData) }
+    // Import d'une sauvegarde : l'utilisateur choisit une archive créée par l'export ; l'import attend sa confirmation.
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(viewModel::onImportFilePicked) }
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
@@ -353,6 +357,9 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             },
                             onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
                             onExportData = { exportLauncher.launch(viewModel.exportFileName()) },
+                            onImportData = { importLauncher.launch(arrayOf("application/zip")) },
+                            onConfirmImport = viewModel::confirmImport,
+                            onCancelImport = viewModel::cancelImport,
                             onClearData = viewModel::clearData,
                             onNavigate = ::navigate,
                             modifier = screenModifier,

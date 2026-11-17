@@ -9,7 +9,9 @@ import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
+import com.boucle.app.data.export.BackupFormatException
 import com.boucle.app.data.export.DataExporter
+import com.boucle.app.data.export.DataImporter
 import android.net.Uri
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.BodyBatteryInputs
@@ -143,6 +145,10 @@ data class DeviceUiState(
     val healthConnect: HealthConnectUiState = HealthConnectUiState(),
     /** Export des données en cours d'écriture. */
     val exporting: Boolean = false,
+    /** Sauvegarde choisie, en attente de confirmation avant l'import. */
+    val importPending: Boolean = false,
+    /** Import d'une sauvegarde en cours. */
+    val importing: Boolean = false,
     /** Profil enregistré (pour préremplir le formulaire de configuration). */
     val profile: UserProfile? = null,
     /** `null` tant que les réglages n'ont pas été lus. */
@@ -159,6 +165,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val healthConnect = app.healthConnect
     private val contentResolver = app.contentResolver
     private val exporter = DataExporter(dao)
+    private val importer = DataImporter(database, settings)
 
     private data class Local(
         val scanning: Boolean = false,
@@ -170,6 +177,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         val message: String? = null,
         val healthConnect: HealthConnectUiState = HealthConnectUiState(),
         val exporting: Boolean = false,
+        val pendingImport: Uri? = null,
+        val importing: Boolean = false,
     )
 
     private val local = MutableStateFlow(Local())
@@ -193,6 +202,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 log = local.log,
                 message = local.message,
                 exporting = local.exporting,
+                importPending = local.pendingImport != null,
+                importing = local.importing,
                 healthConnect = local.healthConnect.copy(
                     lastSyncAt = saved.lastHealthConnectSyncAt,
                     replacesBand = saved.device == null,
@@ -531,6 +542,41 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 report("Export impossible", e)
             } finally {
                 local.update { it.copy(exporting = false) }
+            }
+        }
+    }
+
+    /** Sauvegarde choisie dans le sélecteur de fichiers : l'import attend la confirmation de l'utilisateur. */
+    fun onImportFilePicked(uri: Uri) {
+        if (local.value.importing) return
+        local.update { it.copy(pendingImport = uri, message = null) }
+    }
+
+    fun cancelImport() {
+        local.update { it.copy(pendingImport = null) }
+    }
+
+    /** Importe la sauvegarde choisie : fusion avec les données du téléphone, sans doublon. */
+    fun confirmImport() {
+        val uri = local.value.pendingImport ?: return
+        if (local.value.importing) return
+        if (local.value.syncing) {
+            local.update { it.copy(pendingImport = null, message = "Attends la fin de la synchronisation pour importer une sauvegarde") }
+            return
+        }
+        local.update { it.copy(pendingImport = null, importing = true, message = null) }
+        viewModelScope.launch {
+            try {
+                val summary = importer.import(contentResolver, uri)
+                local.update { it.copy(message = summary.message()) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BackupFormatException) {
+                local.update { it.copy(message = e.message) }
+            } catch (e: Exception) {
+                report("Import impossible", e)
+            } finally {
+                local.update { it.copy(importing = false) }
             }
         }
     }

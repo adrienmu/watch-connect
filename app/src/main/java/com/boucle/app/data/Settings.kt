@@ -42,6 +42,9 @@ data class AppSettings(
     val onboardingDone: Boolean = false,
 )
 
+/** Réglages repris d'une sauvegarde par [Settings.restoreIfEmpty]. */
+data class RestoredSettings(val profile: Boolean = false, val device: Boolean = false, val sync: Boolean = false)
+
 class Settings(private val context: Context) {
 
     val flow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -107,6 +110,50 @@ class Settings(private val context: Context) {
             it[LAST_HEALTH_CONNECT_SYNC_AT] = at
             it[LAST_HEALTH_CONNECT_SYNCED_DATE] = syncedDate
         }
+    }
+
+    /**
+     * Restauration d'une sauvegarde : chaque réglage n'est repris que s'il est vide sur ce téléphone. Un bracelet
+     * déjà associé, un profil déjà saisi ou une synchronisation déjà faite ne sont jamais écrasés. Les deux dates
+     * d'une même synchronisation (jour et heure) sont reprises ensemble, pour rester cohérentes.
+     */
+    suspend fun restoreIfEmpty(
+        profile: UserProfile?,
+        device: SavedDevice?,
+        lastSyncedDate: String?,
+        lastSyncAt: String?,
+        lastHealthConnectSyncedDate: String?,
+        lastHealthConnectSyncAt: String?,
+    ): RestoredSettings {
+        var restored = RestoredSettings()
+        context.dataStore.edit {
+            if (profile != null && it[PROFILE_BIRTH_DATE] == null) {
+                it[PROFILE_FEMALE] = profile.female
+                it[PROFILE_BIRTH_DATE] = profile.birthDate.toString()
+                it[PROFILE_HEIGHT] = profile.heightCm
+                it[PROFILE_WEIGHT] = profile.weightKg
+                if (profile.maxHr != null) it[PROFILE_MAX_HR] = profile.maxHr else it.remove(PROFILE_MAX_HR)
+                restored = restored.copy(profile = true)
+            }
+            if (device != null && it[DEVICE_ID] == null) {
+                it[DEVICE_ID] = device.id
+                it[DEVICE_NAME] = device.name
+                restored = restored.copy(device = true)
+            }
+            if (lastSyncedDate != null && it[LAST_SYNCED_DATE] == null && it[LAST_SYNC_AT] == null) {
+                it[LAST_SYNCED_DATE] = lastSyncedDate
+                lastSyncAt?.let { at -> it[LAST_SYNC_AT] = at }
+                restored = restored.copy(sync = true)
+            }
+            if (lastHealthConnectSyncedDate != null &&
+                it[LAST_HEALTH_CONNECT_SYNCED_DATE] == null && it[LAST_HEALTH_CONNECT_SYNC_AT] == null
+            ) {
+                it[LAST_HEALTH_CONNECT_SYNCED_DATE] = lastHealthConnectSyncedDate
+                lastHealthConnectSyncAt?.let { at -> it[LAST_HEALTH_CONNECT_SYNC_AT] = at }
+                restored = restored.copy(sync = true)
+            }
+        }
+        return restored
     }
 
     private companion object {

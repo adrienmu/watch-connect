@@ -37,7 +37,7 @@ L'utilisation par Boucle des informations reçues de Health Connect respecte la 
 
 Dans l'espace privé de l'application sur votre téléphone (base de données locale et préférences), isolé des autres applications par Android. Elles ne sont envoyées à aucun serveur.
 
-Les sauvegardes Android sont désactivées pour Boucle : vos données ne sont pas copiées dans un compte Google. Conséquence : si vous changez de téléphone ou désinstallez l'application, l'historique stocké dans Boucle est perdu.
+Les sauvegardes Android sont désactivées pour Boucle : vos données ne sont pas copiées dans un compte Google. Conséquence : si vous changez de téléphone ou désinstallez l'application, l'historique stocké dans Boucle est perdu. Pour le conserver, exportez vos données (voir plus bas) puis importez l'archive dans Boucle sur le nouveau téléphone.
 
 ## Partage et services tiers
 
@@ -62,7 +62,7 @@ Les données de santé sont des données sensibles. Boucle ne les lit qu'avec vo
 
 - **Bluetooth :** Réglages Android > Applications > Boucle > Autorisations.
 - **Health Connect :** Réglages > Health Connect > Autorisations des applications > Boucle.
-- **Récupérer toutes vos données (droit à la portabilité) :** Boucle > Appareils > Exporter mes données. L'application crée une archive ZIP, enregistrée à l'endroit que vous choisissez, qui contient toutes les données qu'elle garde : un fichier JSON structuré (mesures, sommeil, séances, profil, mesures lues dans Health Connect) et un fichier GPX par tracé GPS, importable dans d'autres applications. Une fois exportée, l'archive n'est plus protégée par l'espace privé de l'application : conservez-la en lieu sûr.
+- **Récupérer toutes vos données (droit à la portabilité) :** Boucle > Appareils > Exporter mes données. L'application crée une archive ZIP, enregistrée à l'endroit que vous choisissez, qui contient toutes les données qu'elle garde : un fichier JSON structuré (mesures, sommeil, séances, profil, mesures lues dans Health Connect) et un fichier GPX par tracé GPS, importable dans d'autres applications. Une fois exportée, l'archive n'est plus protégée par l'espace privé de l'application : conservez-la en lieu sûr. Boucle > Appareils > Importer une sauvegarde relit cette archive pour restaurer vos données ; l'import se fait entièrement sur le téléphone, sans aucun envoi.
 - **Supprimer toutes les données de Boucle :** Réglages Android > Applications > Boucle > Stockage > Effacer les données, ou désinstaller l'application.
 
 Boucle n'ayant aucun accès à vos données, elle ne peut ni les consulter, ni les exporter, ni les effacer à votre place : ces opérations se font depuis l'application. Pour toute question, écrivez à l'adresse de contact ci-dessus. Vous pouvez aussi saisir la CNIL (cnil.fr).
