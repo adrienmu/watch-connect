@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +36,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.boucle.app.healthconnect.HealthConnectAvailability
+import com.boucle.app.ui.BackupUiState
 import com.boucle.app.ui.HealthConnectUiState
+import com.boucle.app.data.backup.BackupNaming
 import com.boucle.app.ui.components.ExpressiveSurface
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.RowChevron
@@ -203,8 +207,8 @@ private fun lastReadLabel(state: HealthConnectUiState): String {
 private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
- * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export et effacement
- * des données, oubli du bracelet (bracelet enregistré).
+ * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export, import,
+ * sauvegarde automatique et effacement des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
 internal fun DevicesSettingsCard(
@@ -215,6 +219,17 @@ internal fun DevicesSettingsCard(
     onLoadDemo: () -> Unit,
     exporting: Boolean,
     onExport: () -> Unit,
+    importing: Boolean,
+    onImport: () -> Unit,
+    backup: BackupUiState,
+    onEnableBackup: () -> Unit,
+    onChooseBackupFolder: () -> Unit,
+    onBackupNow: () -> Unit,
+    onDisableBackup: () -> Unit,
+    onEncrypt: () -> Unit,
+    onChangePassphrase: () -> Unit,
+    onReenterPassphrase: () -> Unit,
+    onDisableEncryption: () -> Unit,
     onClear: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
@@ -229,6 +244,22 @@ internal fun DevicesSettingsCard(
         }
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
+        add(SettingsRow("import") { ImportRow(importing, onImport) })
+        add(
+            SettingsRow("backup") {
+                AutoBackupRow(
+                    state = backup,
+                    onEnable = onEnableBackup,
+                    onChooseFolder = onChooseBackupFolder,
+                    onBackupNow = onBackupNow,
+                    onDisable = onDisableBackup,
+                    onEncrypt = onEncrypt,
+                    onChangePassphrase = onChangePassphrase,
+                    onReenterPassphrase = onReenterPassphrase,
+                    onDisableEncryption = onDisableEncryption,
+                )
+            },
+        )
         add(SettingsRow("clear") { SettingsActionRow("Tout effacer", BoucleColors.OnSurface, onClear) })
         if (hasBand) add(SettingsRow("forget") { SettingsActionRow("Oublier ce bracelet", BoucleColors.Error, onForget) })
     }
@@ -322,6 +353,121 @@ private fun ExportRow(exporting: Boolean, onExport: () -> Unit) {
             )
         }
         SetupOutlinedButton(if (exporting) "Export…" else "Exporter", onExport, enabled = !exporting)
+    }
+}
+
+/** Import d'une archive créée par l'export, pour retrouver ses données (nouveau téléphone, réinstallation). */
+@Composable
+private fun ImportRow(importing: Boolean, onImport: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Importer une sauvegarde", style = rowTitleStyle)
+            Text(
+                "Archive créée par « Exporter mes données » : ajoute seulement ce qui manque",
+                style = BoucleType.small,
+                color = BoucleColors.OnSurfaceVariant,
+            )
+        }
+        SetupOutlinedButton(if (importing) "Import…" else "Importer", onImport, enabled = !importing)
+    }
+}
+
+/**
+ * Sauvegarde automatique : désactivée, un bouton pour l'activer (le dialogue propose le chiffrement, puis le choix du
+ * dossier) ; activée, le dossier, le chiffrement, la dernière sauvegarde ou le dernier échec, « Sauvegarder », et de
+ * quoi changer de dossier ou de phrase de passe, ou désactiver.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AutoBackupRow(
+    state: BackupUiState,
+    onEnable: () -> Unit,
+    onChooseFolder: () -> Unit,
+    onBackupNow: () -> Unit,
+    onDisable: () -> Unit,
+    onEncrypt: () -> Unit,
+    onChangePassphrase: () -> Unit,
+    onReenterPassphrase: () -> Unit,
+    onDisableEncryption: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Sauvegarde automatique", style = rowTitleStyle)
+                Text(
+                    if (state.enabled) {
+                        "Dans « ${state.folderName ?: "dossier choisi"} », les ${BackupNaming.KEEP} dernières gardées"
+                    } else {
+                        "Une copie après chaque synchro, dans le dossier de ton choix. Boucle n'envoie rien."
+                    },
+                    style = BoucleType.small,
+                    color = BoucleColors.OnSurfaceVariant,
+                )
+            }
+            if (state.enabled) {
+                SetupOutlinedButton(
+                    if (state.running) "Sauvegarde…" else "Sauvegarder",
+                    onBackupNow,
+                    enabled = !state.running && state.folderAccessible && state.keyAvailable && !state.savingKey && !state.demoMode,
+                )
+            } else {
+                SetupOutlinedButton(if (state.savingKey) "Activation…" else "Activer", onEnable, enabled = !state.savingKey)
+            }
+        }
+        if (state.enabled) {
+            val encryption = when {
+                state.savingKey -> "Chiffrement : enregistrement de la clé…"
+                state.encrypted -> "Chiffrées avec ta phrase de passe (fichiers .boucle)"
+                else -> "Non chiffrées : quiconque accède au dossier peut lire ces fichiers .zip"
+            }
+            Text(encryption, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            val status = when {
+                state.lastSuccessAt != null -> "Dernière sauvegarde : ${formatSyncMoment(state.lastSuccessAt, timeOnlyToday = false)}"
+                else -> "Aucune sauvegarde dans ce dossier pour l'instant."
+            }
+            Text(status, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+            val problem = when {
+                state.demoMode ->
+                    "En pause pendant la démo : les données fictives ne sont pas sauvegardées et tes sauvegardes " +
+                        "restent intactes. « Tout effacer » pour la reprendre."
+                !state.folderAccessible -> "Dossier inaccessible : choisis-le à nouveau."
+                !state.keyAvailable ->
+                    "Phrase de passe à ressaisir : la clé de chiffrement n'est pas disponible sur ce téléphone " +
+                        "(transfert depuis un autre appareil, par exemple). Aucune sauvegarde n'est écrite en attendant."
+                state.lastError != null -> {
+                    val moment = state.lastErrorAt?.let { " (${formatSyncMoment(it, timeOnlyToday = false)})" }.orEmpty()
+                    "Échec de la sauvegarde$moment : ${state.lastError}"
+                }
+                else -> null
+            }
+            if (problem != null) {
+                Text(problem, style = BoucleType.caption, color = MetricPalette.Energy.accent, modifier = Modifier.padding(top = 2.dp))
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                when {
+                    state.savingKey -> Unit
+                    state.encrypted && !state.keyAvailable -> DevicesTextButton("Ressaisir la phrase de passe", onReenterPassphrase)
+                    state.encrypted -> DevicesTextButton("Changer la phrase de passe", onChangePassphrase)
+                    else -> DevicesTextButton("Chiffrer", onEncrypt)
+                }
+                DevicesTextButton("Changer de dossier", onChooseFolder)
+                if (state.encrypted && !state.savingKey) {
+                    DevicesTextButton("Ne plus chiffrer", onDisableEncryption, color = BoucleColors.OnSurfaceVariant)
+                }
+                DevicesTextButton("Désactiver", onDisable, color = BoucleColors.OnSurfaceVariant)
+            }
+        }
     }
 }
 

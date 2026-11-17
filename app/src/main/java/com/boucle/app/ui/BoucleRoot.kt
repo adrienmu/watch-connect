@@ -1,6 +1,7 @@
 package com.boucle.app.ui
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.PredictiveBackHandler
@@ -136,6 +137,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     // Au retour dans l'app (installation de Health Connect, autorisations changées dans les réglages).
     LifecycleResumeEffect(Unit) {
         viewModel.refreshHealthConnect()
+        viewModel.refreshBackupFolder()
         onPauseOrDispose { }
     }
 
@@ -143,9 +145,28 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip"),
     ) { uri -> uri?.let(viewModel::exportData) }
+    // Import d'une sauvegarde : l'utilisateur choisit une archive créée par l'export ; l'import attend sa confirmation.
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(viewModel::onImportFilePicked) }
+    // Sauvegarde automatique : l'utilisateur choisit un dossier, dont l'accès est gardé (permission persistante).
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri -> if (uri != null) viewModel.onBackupFolderPicked(uri) else viewModel.onBackupFolderPickCancelled() }
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
+
+    // Le sélecteur de dossier s'ouvre une fois l'activation (et sa clé) enregistrée par le ViewModel.
+    LaunchedEffect(deviceState.backupFolderPickRequested) {
+        if (!deviceState.backupFolderPickRequested) return@LaunchedEffect
+        viewModel.onBackupFolderPickLaunched()
+        try {
+            backupFolderLauncher.launch(null)
+        } catch (e: ActivityNotFoundException) {
+            viewModel.onBackupFolderPickCancelled()
+        }
+    }
     val sessionDetail by viewModel.sessionDetail.collectAsStateWithLifecycle()
 
     // Séance affichée par le détail d'activité (gardée à la rotation et à la recréation de l'activité).
@@ -353,6 +374,17 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             },
                             onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
                             onExportData = { exportLauncher.launch(viewModel.exportFileName()) },
+                            // Archive .zip ou sauvegarde chiffrée .boucle, dont le type annoncé varie selon le
+                            // fournisseur : le contenu est reconnu à l'import.
+                            onImportData = { importLauncher.launch(arrayOf("*/*")) },
+                            onConfirmImport = viewModel::confirmImport,
+                            onCancelImport = viewModel::cancelImport,
+                            onEnableBackup = viewModel::startEnableBackup,
+                            onChooseBackupFolder = viewModel::chooseBackupFolder,
+                            onSetBackupPassphrase = viewModel::setBackupPassphrase,
+                            onDisableBackupEncryption = viewModel::disableBackupEncryption,
+                            onBackupNow = viewModel::backupNow,
+                            onDisableBackup = viewModel::disableBackup,
                             onClearData = viewModel::clearData,
                             onNavigate = ::navigate,
                             modifier = screenModifier,

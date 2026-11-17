@@ -48,7 +48,7 @@ class ExportFormatTest {
 
     @Test
     fun `séries de nombres`() {
-        assertEquals("[12,0,7.5,null]", json { DataExporter.numberSeries(it, "12,0,7.5,x") })
+        assertEquals("[12,0,7.5,\"x\"]", json { DataExporter.numberSeries(it, "12,0,7.5,x") })
         assertEquals("[]", json { DataExporter.numberSeries(it, "") })
     }
 

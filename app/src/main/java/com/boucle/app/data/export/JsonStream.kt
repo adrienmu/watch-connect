@@ -43,9 +43,24 @@ internal class JsonStream(private val out: Writer) {
         return this
     }
 
+    /**
+     * Nombre recopié tel qu'il est stocké (« 1.0 » reste « 1.0 »), pour que l'import retrouve exactement le même
+     * texte. Ce qui n'est pas un nombre JSON valide (NaN, valeur vide…) est écrit comme une chaîne, sans perte.
+     */
+    fun rawNumber(text: String?): JsonStream {
+        separate()
+        when {
+            text == null -> out.write("null")
+            JsonPullReader.isJsonNumber(text) -> out.write(text)
+            else -> writeString(text)
+        }
+        return this
+    }
+
     fun field(name: String, value: String?): JsonStream = name(name).value(value)
     fun field(name: String, value: Boolean?): JsonStream = name(name).value(value)
     fun field(name: String, value: Number?): JsonStream = name(name).value(value)
+    fun rawNumberField(name: String, text: String?): JsonStream = name(name).rawNumber(text)
 
     fun flush() = out.flush()
 

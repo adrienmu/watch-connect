@@ -2,6 +2,7 @@ package com.boucle.app.data.export
 
 import com.boucle.app.data.AppSettings
 import com.boucle.app.data.db.HealthDao
+import com.boucle.app.data.db.TrainingExerciseEntity
 import com.boucle.app.data.db.TrainingRouteEntity
 import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.RouteCodec
@@ -19,10 +20,17 @@ import java.util.zip.ZipOutputStream
  * Export de toutes les données gardées par l'app (droit à la portabilité, article 20 du RGPD) : une archive ZIP
  * avec un fichier JSON structuré qui reprend chaque table, et un fichier GPX par tracé GPS, directement
  * importable dans les applications de sport et de cartographie.
+ *
+ * Le JSON contient toutes les colonnes de toutes les tables : [DataImporter] reconstruit la base sans perte à
+ * partir de lui seul (les GPX ne sont qu'une copie lisible des tracés). Toute évolution du format qui casse
+ * cette relecture doit augmenter [FORMAT_VERSION].
  */
 class DataExporter(private val dao: HealthDao) {
 
-    /** Écrit l'archive dans [output], sans le fermer. */
+    /**
+     * Écrit l'archive dans [output], sans le fermer (le flux peut être un fichier choisi par l'utilisateur, un
+     * fichier privé de l'app ou un flux chiffré).
+     */
     suspend fun export(output: OutputStream, settings: AppSettings, exportedAt: Instant = Instant.now()) {
         val zip = ZipOutputStream(output)
         val writer = BufferedWriter(OutputStreamWriter(zip, Charsets.UTF_8))
@@ -39,7 +47,7 @@ class DataExporter(private val dao: HealthDao) {
         zip.putNextEntry(ZipEntry(JSON_FILE))
         val json = JsonStream(writer)
         json.beginObject()
-        json.field("format", FORMAT_NAME).field("formatVersion", FORMAT_VERSION).field("exportedAt", exportedAt.toString())
+        json.field("formatVersion", FORMAT_VERSION).field("format", FORMAT_NAME).field("exportedAt", exportedAt.toString())
         writeSettings(json, settings)
         writeDailyActivity(json)
         writeActivitySamples(json)
@@ -50,6 +58,7 @@ class DataExporter(private val dao: HealthDao) {
         writeSkinTemperature(json)
         writeTrainingSessions(json, sessions, routes, gpxFiles)
         writeExternalMeasurements(json)
+        writeUnlinked(json, routes, sessions)
         json.endObject()
         json.flush()
         zip.closeEntry()
@@ -135,7 +144,7 @@ class DataExporter(private val dao: HealthDao) {
                     json.beginObject()
                         .field("time", f.getOrNull(0))
                         .field("class", f.getOrNull(1)?.ifEmpty { null })
-                        .field("factor", f.getOrNull(2)?.let(::parseNumber))
+                        .rawNumberField("factor", f.getOrNull(2))
                         .endObject()
                 }
                 json.endArray()
@@ -183,12 +192,12 @@ class DataExporter(private val dao: HealthDao) {
                 .field("goalMinutes", it.goalMinutes)
             json.name("phases").beginArray()
             pairs(it.phases).forEach { (offset, state) ->
-                json.beginObject().field("offsetSec", parseNumber(offset)).field("state", state).endObject()
+                json.beginObject().rawNumberField("offsetSec", offset).field("state", state).endObject()
             }
             json.endArray()
             json.name("cycles").beginArray()
             pairs(it.cycles).forEach { (offset, depth) ->
-                json.beginObject().field("offsetSec", parseNumber(offset)).field("depth", parseNumber(depth)).endObject()
+                json.beginObject().rawNumberField("offsetSec", offset).rawNumberField("depth", depth).endObject()
             }
             json.endArray()
             json.field("userRating", it.userRating)
@@ -235,7 +244,7 @@ class DataExporter(private val dao: HealthDao) {
                 .field("measurementType", it.measurementType)
             json.name("samples").beginArray()
             pairs(it.samples).forEach { (delta, celsius) ->
-                json.beginObject().field("offsetMs", parseNumber(delta)).field("celsius", parseNumber(celsius)).endObject()
+                json.beginObject().rawNumberField("offsetMs", delta).rawNumberField("celsius", celsius).endObject()
             }
             json.endArray()
             json.endObject()
@@ -266,33 +275,58 @@ class DataExporter(private val dao: HealthDao) {
                 .field("muscleLoad", s.muscleLoad)
             json.name("hrZoneSec")
             numberSeries(json, s.hrZoneSec)
+            json.field("exerciseCount", s.exerciseCount)
             json.field("summaryProtoBase64", s.summaryProto?.let(::base64))
             json.name("exercises").beginArray()
-            dao.trainingExercisesOf(s.path).forEach { e ->
-                json.beginObject()
-                    .field("index", e.exerciseIndex)
-                    .field("summaryProtoBase64", e.baseProto?.let(::base64))
-                    .field("samplesProtoBase64", e.samplesProto?.let(::base64))
-                    .endObject()
-            }
+            dao.trainingExercisesOf(s.path).forEach { writeExercise(json, it) }
             json.endArray()
             json.name("route")
             val route = routes[s.path]
-            if (route == null) {
-                json.value(null as String?)
-            } else {
-                json.beginObject()
-                    .field("status", route.status)
-                    .field("source", route.source)
-                    .field("healthConnectId", route.healthConnectId)
-                    .field("gpxFile", gpxFiles[s.path])
-                json.name("points").beginArray()
-                RouteCodec.decode(route.points).forEach { writePoint(json, it) }
-                json.endArray()
-                json.endObject()
-            }
+            if (route == null) json.value(null as String?) else writeRoute(json, route, gpxFiles[s.path])
             json.endObject()
         }
+        json.endArray()
+    }
+
+    private fun writeExercise(json: JsonStream, e: TrainingExerciseEntity, withSession: Boolean = false) {
+        json.beginObject()
+        if (withSession) json.field("sessionId", e.sessionPath)
+        json.field("index", e.exerciseIndex)
+            .field("summaryProtoBase64", e.baseProto?.let(::base64))
+            .field("samplesProtoBase64", e.samplesProto?.let(::base64))
+            .endObject()
+    }
+
+    private fun writeRoute(json: JsonStream, route: TrainingRouteEntity, gpxFile: String?, withSession: Boolean = false) {
+        json.beginObject()
+        if (withSession) json.field("sessionId", route.sessionPath)
+        json.field("status", route.status)
+            .field("source", route.source)
+            .field("healthConnectId", route.healthConnectId)
+        if (gpxFile != null) json.field("gpxFile", gpxFile)
+        json.name("points").beginArray()
+        RouteCodec.decode(route.points).forEach { writePoint(json, it) }
+        json.endArray()
+        json.endObject()
+    }
+
+    /**
+     * Tracés et exercices sans séance correspondante (par exemple une séance Health Connect trop courte pour être
+     * gardée, dont le tracé reste à autoriser) : rares, mais exportés pour ne rien perdre.
+     */
+    private suspend fun writeUnlinked(
+        json: JsonStream,
+        routes: Map<String, TrainingRouteEntity>,
+        sessions: List<TrainingSessionEntity>,
+    ) {
+        val paths = sessions.mapTo(HashSet()) { it.path }
+        json.name("unlinkedRoutes").beginArray()
+        routes.values.filter { it.sessionPath !in paths }.sortedBy { it.sessionPath }.forEach {
+            writeRoute(json, it, null, withSession = true)
+        }
+        json.endArray()
+        json.name("unlinkedExercises").beginArray()
+        dao.unlinkedTrainingExercises().forEach { writeExercise(json, it, withSession = true) }
         json.endArray()
     }
 
@@ -349,10 +383,13 @@ class DataExporter(private val dao: HealthDao) {
             }
         }
 
-        /** « 12,0,7.5 » → nombres ; une valeur illisible devient `null` pour garder les positions. */
+        /**
+         * « 12,0,7.5 » → [12,0,7.5], chaque nombre recopié tel quel ; une valeur qui n'est pas un nombre reste une
+         * chaîne, à sa place. [joinSeries] fait l'inverse.
+         */
         fun numberSeries(json: JsonStream, csv: String) {
             json.beginArray()
-            splitNonEmpty(csv, ',').forEach { json.value(parseNumber(it)) }
+            splitNonEmpty(csv, ',').forEach { json.rawNumber(it) }
             json.endArray()
         }
 
@@ -361,12 +398,7 @@ class DataExporter(private val dao: HealthDao) {
             it.substringBefore(':') to it.substringAfter(':', "")
         }
 
-        fun parseNumber(s: String): Number? {
-            val t = s.trim()
-            return t.toLongOrNull() ?: t.toDoubleOrNull()?.takeIf { it.isFinite() }
-        }
-
-        private fun splitNonEmpty(s: String, separator: Char): List<String> =
+        internal fun splitNonEmpty(s: String, separator: Char): List<String> =
             if (s.isBlank()) emptyList() else s.split(separator)
 
         val README = """
@@ -377,6 +409,7 @@ class DataExporter(private val dao: HealthDao) {
             moment de l'export.
 
             - $JSON_FILE : toutes les données, au format JSON (UTF-8). Chaque section reprend une catégorie :
+                formatVersion, format, exportedAt  version du format ($FORMAT_VERSION), nom du format, date de l'export
                 profile, device, sync              profil, bracelet associé, dates des synchronisations
                 dailyActivity                      résumé d'activité par jour
                 activitySamples                    pas à la minute (steps), MET (met) et classes d'activité
@@ -390,6 +423,7 @@ class DataExporter(private val dao: HealthDao) {
                                                    (les champs *ProtoBase64 sont les messages bruts du
                                                    bracelet, au format protobuf Polar, encodés en base64)
                 externalMeasurements               mesures lues dans Health Connect (poids, SpO2…)
+                unlinkedRoutes, unlinkedExercises  tracés et exercices sans séance correspondante (rares)
               Les unités sont dans le nom des champs (Sec = secondes, Ms = millisecondes, Meters = mètres,
               C ou celsius = degrés Celsius). Les dates sont au format ISO 8601 ; les heures sans fuseau
               sont en heure locale du téléphone, celles qui finissent par Z en temps universel (UTC).
@@ -397,6 +431,14 @@ class DataExporter(private val dao: HealthDao) {
             - parcours/*.gpx : un fichier GPX 1.1 par séance avec un tracé GPS, importable dans la plupart
               des applications de sport et de cartographie. La fréquence cardiaque de chaque point suit
               l'extension Garmin TrackPointExtension.
+
+            Restaurer : dans Boucle, Appareils > Importer une sauvegarde, puis choisir cette archive (sans la
+            décompresser). Seules les données absentes du téléphone sont ajoutées : un jour, une nuit ou une
+            séance déjà présents sont conservés tels quels, jamais remplacés par ceux de l'archive ; réimporter
+            la même archive ne change rien. Seul $JSON_FILE est relu : les fichiers GPX ne servent pas à l'import.
+            Une sauvegarde automatique chiffrée (boucle-sauvegarde-….boucle) contient cette même archive,
+            chiffrée par une phrase de passe ; Boucle l'importe de la même façon, après avoir demandé la phrase
+            de passe. Son format est public (docs/format-sauvegarde.md dans le dépôt de Boucle).
 
             Attention : ces fichiers contiennent des données de santé. Une fois exportés, ils ne sont plus
             protégés par l'espace privé de l'application ; à vous de les conserver en lieu sûr.

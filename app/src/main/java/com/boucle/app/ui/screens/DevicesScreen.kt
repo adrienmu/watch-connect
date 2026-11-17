@@ -85,7 +85,7 @@ private enum class BandAction { Reconnect, Connecting, ReadingSetup, Configure, 
 
 /**
  * Onglet Appareils : le bracelet (état, batterie, synchronisation), Health Connect et les réglages
- * (configuration, démo, export, effacement, oubli du bracelet).
+ * (configuration, démo, export, import et sauvegarde automatique, effacement, oubli du bracelet).
  */
 @Composable
 fun DevicesScreen(
@@ -101,12 +101,22 @@ fun DevicesScreen(
     onInstallHealthConnect: () -> Unit,
     onLoadDemo: () -> Unit,
     onExportData: () -> Unit,
+    onImportData: () -> Unit,
+    onConfirmImport: (passphrase: CharArray?) -> Unit,
+    onCancelImport: () -> Unit,
+    onEnableBackup: (passphrase: CharArray?) -> Unit,
+    onChooseBackupFolder: () -> Unit,
+    onSetBackupPassphrase: (CharArray) -> Unit,
+    onDisableBackupEncryption: () -> Unit,
+    onBackupNow: () -> Unit,
+    onDisableBackup: () -> Unit,
     onClearData: () -> Unit,
     onNavigate: (Destination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var confirmForget by rememberSaveable { mutableStateOf(false) }
     var confirmClear by rememberSaveable { mutableStateOf(false) }
+    var backupDialog by rememberSaveable { mutableStateOf<BackupDialog?>(null) }
     val topCard = when {
         !permissionsGranted -> TopCard.Permission
         !state.link.bluetoothOn -> TopCard.BluetoothOff
@@ -194,6 +204,17 @@ fun DevicesScreen(
                 onLoadDemo = onLoadDemo,
                 exporting = state.exporting,
                 onExport = onExportData,
+                importing = state.importing,
+                onImport = onImportData,
+                backup = state.backup,
+                onEnableBackup = { backupDialog = BackupDialog.Enable },
+                onChooseBackupFolder = onChooseBackupFolder,
+                onBackupNow = onBackupNow,
+                onDisableBackup = onDisableBackup,
+                onEncrypt = { backupDialog = BackupDialog.Encrypt },
+                onChangePassphrase = { backupDialog = BackupDialog.Change },
+                onReenterPassphrase = { backupDialog = BackupDialog.Reenter },
+                onDisableEncryption = { backupDialog = BackupDialog.Decrypt },
                 onClear = { confirmClear = true },
                 onForget = { confirmForget = true },
                 modifier = Modifier.staggeredEntrance(2),
@@ -217,6 +238,45 @@ fun DevicesScreen(
                 onForgetDevice()
             },
             onDismiss = { confirmForget = false },
+        )
+    }
+    backupDialog?.let { dialog ->
+        BackupEncryptionDialogs(
+            dialog = dialog,
+            onEnable = {
+                backupDialog = null
+                onEnableBackup(it)
+            },
+            onSetPassphrase = {
+                backupDialog = null
+                onSetBackupPassphrase(it)
+            },
+            onDisableEncryption = {
+                backupDialog = null
+                onDisableBackupEncryption()
+            },
+            onDismiss = { backupDialog = null },
+        )
+    }
+    if (state.importPending && state.importEncrypted) {
+        ImportPassphraseDialog(
+            checking = state.importChecking,
+            error = state.importPassphraseError,
+            onConfirm = { onConfirmImport(it) },
+            onDismiss = onCancelImport,
+        )
+    } else if (state.importPending) {
+        DevicesConfirmDialog(
+            title = "Importer cette sauvegarde ?",
+            text = "Seules les données absentes de ce téléphone sont ajoutées. Un jour, une nuit ou une séance " +
+                "déjà présents ici sont conservés tels quels, jamais remplacés par la sauvegarde (ils peuvent " +
+                "être plus récents) ; réimporter le même fichier ne change donc rien.\n\n" +
+                "Le profil, le bracelet et les dates de synchronisation ne sont repris que s'ils ne sont pas " +
+                "déjà renseignés sur ce téléphone.",
+            confirmLabel = "Importer",
+            confirmColor = BoucleColors.OnSurface,
+            onConfirm = { onConfirmImport(null) },
+            onDismiss = onCancelImport,
         )
     }
     if (confirmClear) {
@@ -504,12 +564,13 @@ private fun DevicesConfirmDialog(
     confirmLabel: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    confirmColor: Color = BoucleColors.Error,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, style = BoucleType.sectionTitle) },
         text = { Text(text, style = BoucleType.body) },
-        confirmButton = { DevicesTextButton(confirmLabel, onConfirm, color = BoucleColors.Error) },
+        confirmButton = { DevicesTextButton(confirmLabel, onConfirm, color = confirmColor) },
         dismissButton = { DevicesTextButton("Annuler", onDismiss) },
         containerColor = BoucleColors.Surface,
         titleContentColor = BoucleColors.OnSurface,

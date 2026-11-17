@@ -1,6 +1,8 @@
 package com.boucle.app.data.db
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +20,47 @@ interface HealthDao {
     @Upsert suspend fun upsertTrainingExercises(items: List<TrainingExerciseEntity>)
     @Upsert suspend fun upsertExternalMeasurements(items: List<ExternalMeasurementEntity>)
     @Upsert suspend fun upsertTrainingRoutes(items: List<TrainingRouteEntity>)
+
+    // Import d'une sauvegarde : seules les lignes dont la clé est absente sont ajoutées, une ligne déjà présente
+    // (plus récente, synchronisée depuis la sauvegarde) n'est jamais remplacée. Le résultat donne, pour chaque
+    // ligne, son rowid, ou -1 si elle a été ignorée parce qu'elle existait déjà.
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDailyActivityIfAbsent(items: List<DailyActivityEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertActivitySamplesIfAbsent(items: List<ActivitySamplesEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertHrBlocksIfAbsent(items: List<HrBlockEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertPpiBlocksIfAbsent(items: List<PpiBlockEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSleepIfAbsent(items: List<SleepEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNightlyRechargeIfAbsent(items: List<NightlyRechargeEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSkinTemperatureIfAbsent(items: List<SkinTemperatureEntity>): List<Long>
+
+    /** Une séance à la fois : ses exercices et son tracé ne sont importés que si elle vient d'être ajoutée. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrainingSessionIfAbsent(item: TrainingSessionEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrainingExercisesIfAbsent(items: List<TrainingExerciseEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrainingRoutesIfAbsent(items: List<TrainingRouteEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertExternalMeasurementsIfAbsent(items: List<ExternalMeasurementEntity>): List<Long>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM training_session WHERE path = :path)")
+    suspend fun hasTrainingSession(path: String): Boolean
 
     @Query("SELECT * FROM training_route WHERE sessionPath = :path")
     fun trainingRoute(path: String): Flow<TrainingRouteEntity?>
@@ -91,6 +134,23 @@ interface HealthDao {
     )
     fun trainingSessionsRange(from: String, to: String): Flow<List<TrainingSessionEntity>>
 
+    /** Vrai si la base contient au moins une donnée : une sauvegarde automatique d'une base vide n'a pas de sens. */
+    @Query(
+        "SELECT " +
+            "EXISTS(SELECT 1 FROM daily_activity) OR " +
+            "EXISTS(SELECT 1 FROM activity_samples) OR " +
+            "EXISTS(SELECT 1 FROM hr_block) OR " +
+            "EXISTS(SELECT 1 FROM ppi_block) OR " +
+            "EXISTS(SELECT 1 FROM sleep) OR " +
+            "EXISTS(SELECT 1 FROM nightly_recharge) OR " +
+            "EXISTS(SELECT 1 FROM skin_temperature) OR " +
+            "EXISTS(SELECT 1 FROM training_session) OR " +
+            "EXISTS(SELECT 1 FROM training_exercise) OR " +
+            "EXISTS(SELECT 1 FROM external_measurement) OR " +
+            "EXISTS(SELECT 1 FROM training_route)",
+    )
+    suspend fun hasAnyData(): Boolean
+
     // Export de toutes les données (droit à la portabilité). Les séries volumineuses se lisent jour par jour.
 
     @Query("SELECT * FROM daily_activity ORDER BY date")
@@ -116,6 +176,13 @@ interface HealthDao {
 
     @Query("SELECT * FROM training_exercise WHERE sessionPath = :path ORDER BY exerciseIndex")
     suspend fun trainingExercisesOf(path: String): List<TrainingExerciseEntity>
+
+    /** Exercices dont la séance n'est pas (ou plus) dans la base : exportés à part pour ne rien perdre. */
+    @Query(
+        "SELECT * FROM training_exercise WHERE sessionPath NOT IN (SELECT path FROM training_session) " +
+            "ORDER BY sessionPath, exerciseIndex",
+    )
+    suspend fun unlinkedTrainingExercises(): List<TrainingExerciseEntity>
 
     @Query("SELECT DISTINCT date FROM activity_samples ORDER BY date")
     suspend fun activitySampleDates(): List<String>
