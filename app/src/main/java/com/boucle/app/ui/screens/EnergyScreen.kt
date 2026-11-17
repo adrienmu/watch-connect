@@ -70,7 +70,7 @@ fun EnergyScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
-        DetailHeader("Body Battery", onBack)
+        DetailHeader("Énergie", onBack)
         Column(
             Modifier
                 .weight(1f)
@@ -87,7 +87,7 @@ fun EnergyScreen(
             EnergyDayCard(battery, state, Modifier.staggeredEntrance(1))
             EnergyTiles(battery, Modifier.staggeredEntrance(2))
             Text(
-                "Modèle maison : le sommeil recharge, l'activité et le stress consomment, le calme recharge un peu. Ce n'est pas l'algorithme de Garmin.",
+                "Modèle maison : le sommeil recharge, l'activité et le stress consomment, le calme recharge un peu.",
                 style = BoucleType.small,
                 color = BoucleColors.OnSurfaceVariant,
                 modifier = Modifier
@@ -221,7 +221,7 @@ private fun EnergyEmpty(modifier: Modifier = Modifier) {
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("Pas encore de Body Battery", style = BoucleType.rowTitle)
+        Text("Pas encore de niveau d'énergie", style = BoucleType.rowTitle)
         Text(
             "Le niveau d'énergie se calcule à partir de ton sommeil, de ton activité et de ta fréquence cardiaque. Porte le bracelet et synchronise-le pour le voir apparaître.",
             style = BoucleType.small,

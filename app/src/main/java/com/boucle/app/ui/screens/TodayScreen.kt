@@ -339,7 +339,7 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
         }
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             MetricTile(
-                label = "Body Battery",
+                label = "Énergie",
                 icon = BoucleIcons.Bolt,
                 colors = MetricPalette.Energy,
                 radii = Radii.GridBottomStart,
