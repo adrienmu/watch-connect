@@ -7,12 +7,11 @@ permalink: /confidentialite/
 
 Dernière mise à jour : 17 novembre 2026
 
-**Éditeur :** [À COMPLÉTER : nom ou pseudo de l'éditeur]
-**Contact :** [À COMPLÉTER : adresse e-mail dédiée à l'application]
+**Contact :** adrien.mussio@eurl-baam.fr
 
 ## En bref
 
-- Vos données restent **sur votre téléphone**. Boucle n'a pas de serveur et ne les reçoit jamais.
+- Vos données restent **sur votre téléphone**. Boucle ne fait passer aucune donnée par un serveur : tout est local.
 - Pas de compte, pas de publicité, pas d'analyse d'audience, pas de pistage.
 - Boucle ne vend ni ne partage vos données avec qui que ce soit.
 - Dans Health Connect, Boucle ne fait que **lire** : elle n'écrit ni ne modifie rien.
@@ -44,7 +43,7 @@ Boucle ne transmet vos données à personne. Elle s'appuie sur :
 
 - **La bibliothèque Polar BLE SDK**, intégrée à l'application, qui dialogue avec votre bracelet en Bluetooth.
 - **Health Connect**, composant d'Android fourni par Google. Les données qu'il contient restent soumises à ses propres règles.
-- **L'application Withings**, qui écrit vos mesures dans Health Connect. Elle a sa propre politique de confidentialité.
+- **Les applications des fabricants** (Withings aujourd'hui) qui écrivent vos mesures dans Health Connect. Chacune a sa propre politique de confidentialité : le trajet de vos données entre le fabricant et Health Connect relève d'elle, pas de Boucle.
 
 La permission « Internet » est déclarée parce que la bibliothèque Polar l'exige (mises à jour du firmware du bracelet). Boucle elle-même ne déclenche aucune requête réseau qui enverrait vos données.
 
@@ -58,7 +57,7 @@ Les données de santé sont des données sensibles. Boucle ne les lit qu'avec vo
 - **Health Connect :** Réglages > Health Connect > Autorisations des applications > Boucle.
 - **Supprimer toutes les données de Boucle :** Réglages Android > Applications > Boucle > Stockage > Effacer les données, ou désinstaller l'application.
 
-L'éditeur n'ayant aucun accès à vos données, il ne peut ni les consulter ni les effacer à votre place. Pour toute question, écrivez à l'adresse de contact ci-dessus. Vous pouvez aussi saisir la CNIL (cnil.fr).
+Boucle n'ayant aucun accès à vos données, elle ne peut ni les consulter ni les effacer à votre place. Pour toute question, écrivez à l'adresse de contact ci-dessus. Vous pouvez aussi saisir la CNIL (cnil.fr).
 
 ## Mineurs
 
