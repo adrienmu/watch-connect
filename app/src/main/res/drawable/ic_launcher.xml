@@ -1,15 +1,25 @@
+<!-- Icône « Cœur en boucle » : même dessin que store/play/icon-512.png (512 px ramenés à 108 dp). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#0F2A2E"
+        android:fillColor="#0B5D4B"
         android:pathData="M0,0h108v108h-108z" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#5EEAD4"
-        android:strokeWidth="9"
+        android:strokeColor="#A9F0D6"
+        android:strokeWidth="9.7"
         android:strokeLineCap="round"
-        android:pathData="M54,30a24,24 0,1 1,-20.8 12" />
+        android:pathData="M76.62,35.02A29.53,29.53 0,1 1,52.45 24.51" />
+    <group
+        android:translateX="54"
+        android:translateY="53.58"
+        android:scaleX="0.4852"
+        android:scaleY="0.4852">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M0,38C-12,28 -40,10 -40,-12A21,21 0,0 1,0 -18A21,21 0,0 1,40 -12C40,10 12,28 0,38Z" />
+    </group>
 </vector>
