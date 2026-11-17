@@ -24,6 +24,9 @@ enum class Vo2Method { RUNNING, RESTING_HR }
 
 enum class HrMaxSource { PROFILE, OBSERVED, AGE_FORMULA }
 
+/** Niveau de la VO2max par rapport aux personnes du même âge et du même sexe (voir [Vo2MaxEstimation.category]). */
+enum class Vo2MaxCategory { POOR, FAIR, GOOD, EXCELLENT }
+
 data class Vo2MaxEstimate(
     val value: Int,
     val method: Vo2Method,
@@ -34,6 +37,8 @@ data class Vo2MaxEstimate(
     val hrMax: Int,
     val hrMaxSource: HrMaxSource,
     val restingHr: Int,
+    /** Niveau de [value] pour l'âge et le sexe du profil. */
+    val category: Vo2MaxCategory,
 )
 
 object Vo2MaxEstimation {
@@ -55,6 +60,34 @@ object Vo2MaxEstimation {
 
     private const val MIN_VO2MAX = 15.0
     private const val MAX_VO2MAX = 90.0
+
+    /**
+     * Seuils (ml/kg/min) de « Moyen », « Bon » et « Excellent » par tranche d'âge (moins de 30, 30–39,
+     * 40–49, 50–59, 60 ans et plus). Repères indicatifs, arrondis, tirés des normes en percentiles du
+     * Cooper Institute reprises par l'ACSM (Guidelines for Exercise Testing and Prescription) : « Moyen »
+     * à partir du 20ᵉ percentile, « Bon » du 50ᵉ, « Excellent » du 80ᵉ.
+     */
+    private val MALE_THRESHOLDS = listOf(
+        intArrayOf(40, 45, 52),
+        intArrayOf(38, 43, 50),
+        intArrayOf(36, 41, 47),
+        intArrayOf(33, 37, 43),
+        intArrayOf(29, 33, 39),
+    )
+    private val FEMALE_THRESHOLDS = listOf(
+        intArrayOf(33, 38, 44),
+        intArrayOf(31, 36, 42),
+        intArrayOf(29, 34, 39),
+        intArrayOf(26, 30, 35),
+        intArrayOf(23, 27, 31),
+    )
+
+    /** Niveau d'une VO2max pour l'âge et le sexe, d'après les repères de [MALE_THRESHOLDS] et [FEMALE_THRESHOLDS]. */
+    fun category(value: Int, age: Int, female: Boolean): Vo2MaxCategory {
+        val band = ((age - 20) / 10).coerceIn(0, MALE_THRESHOLDS.lastIndex)
+        val thresholds = (if (female) FEMALE_THRESHOLDS else MALE_THRESHOLDS)[band]
+        return Vo2MaxCategory.entries[thresholds.count { value >= it }]
+    }
 
     /** FC max d'après l'âge, formule de Tanaka (2001) : 208 − 0,7 × âge. */
     fun ageMaxHr(age: Int): Double = 208.0 - 0.7 * age
@@ -113,8 +146,9 @@ object Vo2MaxEstimation {
         val running = if (runs.isEmpty()) null else median(runs).coerceIn(MIN_VO2MAX, MAX_VO2MAX)
         val resting = restingEstimate(hrMax.toDouble(), restingHr, female).coerceIn(MIN_VO2MAX, MAX_VO2MAX)
 
+        val value = (running ?: resting).roundToInt()
         return Vo2MaxEstimate(
-            value = (running ?: resting).roundToInt(),
+            value = value,
             method = if (running != null) Vo2Method.RUNNING else Vo2Method.RESTING_HR,
             runCount = runs.size,
             runningEstimate = running?.roundToInt(),
@@ -122,6 +156,7 @@ object Vo2MaxEstimation {
             hrMax = hrMax,
             hrMaxSource = source,
             restingHr = max(1.0, restingHr).roundToInt(),
+            category = category(value, age, female),
         )
     }
 }
