@@ -3,10 +3,15 @@ package com.boucle.app.ui
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,6 +38,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +56,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.boucle.app.healthconnect.HealthConnectAvailability
 import com.boucle.app.polar.Connection
+import com.boucle.app.ui.components.LocalScreenAnimationScope
+import com.boucle.app.ui.components.LocalSharedTransitionScope
+import com.boucle.app.ui.components.rememberHaptics
 import com.boucle.app.ui.navigation.Destination
 import com.boucle.app.ui.screens.ActivityScreen
 import com.boucle.app.ui.screens.BodyScreen
@@ -68,6 +77,7 @@ import com.boucle.app.ui.theme.BoucleIcons
 import com.boucle.app.ui.theme.BoucleType
 import com.polar.sdk.api.model.PolarFirstTimeUseConfig
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
 
 private val bluetoothPermissions = arrayOf(
     Manifest.permission.BLUETOOTH_SCAN,
@@ -92,6 +102,7 @@ private val stackSaver = listSaver<List<Destination>, String>(
 
 private val birthDateFormat = DateTimeFormatter.ofPattern("dd/MM/uuuu")
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)) {
     val context = LocalContext.current
@@ -103,11 +114,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     }
 
     fun back() {
-        stack = when {
-            stack.size > 1 -> stack.dropLast(1)
-            stack.first() != Destination.Today -> listOf(Destination.Today)
-            else -> stack
-        }
+        stack = backTarget(stack)
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -171,7 +178,46 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
         return
     }
 
-    BackHandler(enabled = stack.size > 1 || stack.first() != Destination.Today) { back() }
+    // Le geste retour prédictif fait avancer la transition de retour au rythme du doigt :
+    // l'écran précédent apparaît pendant le geste, et tout revient en place si on l'annule.
+    val transitionState = remember { SeekableTransitionState(stack) }
+    LaunchedEffect(stack) {
+        if (transitionState.currentState != stack || transitionState.targetState != stack) transitionState.animateTo(stack)
+    }
+    val haptics = rememberHaptics()
+    PredictiveBackHandler(enabled = backTarget(stack) != stack) { progress ->
+        val previous = backTarget(stack)
+        try {
+            progress.collect { event -> transitionState.seekTo(event.progress, targetState = previous) }
+            haptics.gestureEnd()
+            stack = previous
+        } catch (e: CancellationException) {
+            transitionState.animateTo(stack)
+        }
+    }
+    val transition = rememberTransition(transitionState, label = "screens")
+
+    // Fin d'une synchronisation ou d'une lecture Health Connect : vibration de réussite ou d'échec.
+    var wasSyncing by remember { mutableStateOf(false) }
+    val syncingNow = deviceState.syncing || deviceState.healthConnect.syncing
+    LaunchedEffect(syncingNow) {
+        if (wasSyncing && !syncingNow) {
+            if (deviceState.message == null) haptics.success() else haptics.failure()
+        }
+        wasSyncing = syncingNow
+    }
+    // Bracelet associé, profil envoyé : vibration de réussite.
+    var hadDevice by remember { mutableStateOf(deviceState.savedDevice != null) }
+    LaunchedEffect(deviceState.savedDevice) {
+        val hasDevice = deviceState.savedDevice != null
+        if (hasDevice && !hadDevice) haptics.success()
+        hadDevice = hasDevice
+    }
+    var wasSaving by remember { mutableStateOf(false) }
+    LaunchedEffect(deviceState.savingProfile) {
+        if (wasSaving && !deviceState.savingProfile && deviceState.setupDone == true) haptics.success()
+        wasSaving = deviceState.savingProfile
+    }
 
     val current = stack.last()
     val syncReady = deviceState.link.connection == Connection.CONNECTED && deviceState.setupDone == true
@@ -194,7 +240,13 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                 enter = slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { it } + fadeIn(),
                 exit = slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it } + fadeOut(),
             ) {
-                BoucleNavigationBar(current = stack.first(), onSelect = ::navigate)
+                BoucleNavigationBar(
+                    current = stack.first(),
+                    onSelect = { destination ->
+                        if (destination != stack.first() || stack.size > 1) haptics.select()
+                        navigate(destination)
+                    },
+                )
             }
         },
     ) { padding ->
@@ -202,85 +254,101 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
         val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
         val scaleSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
         val fastEffects = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
-        AnimatedContent(
-            targetState = stack,
-            modifier = Modifier.fillMaxSize(),
-            transitionSpec = {
-                val from = initialState
-                val to = targetState
-                when {
-                    // Avancer vers un écran de détail : il glisse depuis la droite.
-                    to.size > from.size -> (slideInHorizontally(spatial) { it / 3 } + fadeIn(effects))
-                        .togetherWith(slideOutHorizontally(spatial) { -it / 6 } + fadeOut(effects))
-                    // Revenir : l'inverse.
-                    to.size < from.size -> (slideInHorizontally(spatial) { -it / 6 } + fadeIn(effects))
-                        .togetherWith(slideOutHorizontally(spatial) { it / 3 } + fadeOut(effects))
-                    // Changer d'onglet : fondu enchaîné avec un léger zoom.
-                    else -> (fadeIn(effects) + scaleIn(scaleSpec, initialScale = 0.94f))
-                        .togetherWith(fadeOut(fastEffects))
+        SharedTransitionLayout(Modifier.fillMaxSize()) {
+            val sharedScope = this
+            transition.AnimatedContent(
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = {
+                    val from = initialState
+                    val to = targetState
+                    when {
+                        // Avancer vers un écran de détail : il glisse depuis la droite.
+                        to.size > from.size -> (slideInHorizontally(spatial) { it / 3 } + fadeIn(effects))
+                            .togetherWith(slideOutHorizontally(spatial) { -it / 6 } + fadeOut(effects))
+                        // Revenir (aussi pendant le geste retour) : l'inverse, l'écran quitté recule un peu.
+                        to.size < from.size -> (slideInHorizontally(spatial) { -it / 6 } + fadeIn(effects))
+                            .togetherWith(
+                                slideOutHorizontally(spatial) { it / 3 } + fadeOut(effects) +
+                                    scaleOut(scaleSpec, targetScale = 0.92f),
+                            )
+                        // Changer d'onglet : fondu enchaîné avec un léger zoom.
+                        else -> (fadeIn(effects) + scaleIn(scaleSpec, initialScale = 0.94f))
+                            .togetherWith(fadeOut(fastEffects))
+                    }
+                },
+                contentKey = { it.joinToString { d -> d.name } },
+            ) { target ->
+                CompositionLocalProvider(
+                    LocalSharedTransitionScope provides sharedScope,
+                    LocalScreenAnimationScope provides this,
+                ) {
+                    val screenModifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())
+                    when (target.last()) {
+                        Destination.Today -> TodayScreen(
+                            state = dayState,
+                            lastSyncAt = deviceState.lastSyncAt ?: deviceState.healthConnect.lastSyncAt,
+                            refreshing = deviceState.syncing || deviceState.healthConnect.syncing,
+                            onSelectDate = viewModel::selectDate,
+                            onRefresh = refresh,
+                            onSyncClick = refresh,
+                            onNavigate = ::navigate,
+                            modifier = screenModifier,
+                        )
+                        Destination.Sleep -> SleepScreen(dayState, screenModifier)
+                        Destination.Activity -> ActivityScreen(dayState, ::navigate, screenModifier)
+                        Destination.Devices -> DevicesScreen(
+                            state = deviceState,
+                            permissionsGranted = permissionsGranted,
+                            onRequestPermissions = { permissionLauncher.launch(bluetoothPermissions) },
+                            onReconnect = viewModel::reconnect,
+                            onForgetDevice = viewModel::forgetDevice,
+                            onRecheckSetup = viewModel::recheckSetup,
+                            onSync = viewModel::sync,
+                            onRequestHealthConnect = { healthConnectLauncher.launch(viewModel.healthConnectPermissions) },
+                            onSyncHealthConnect = viewModel::syncHealthConnect,
+                            onInstallHealthConnect = {
+                                runCatching { context.startActivity(viewModel.healthConnectInstallIntent()) }
+                            },
+                            onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
+                            onClearData = viewModel::clearData,
+                            onNavigate = ::navigate,
+                            modifier = screenModifier,
+                        )
+                        Destination.Recovery -> RecoveryScreen(dayState, ::back, screenModifier)
+                        Destination.Energy -> EnergyScreen(dayState, ::back, screenModifier)
+                        Destination.Heart -> HeartScreen(dayState, ::back, screenModifier)
+                        Destination.Vo2Max -> Vo2MaxScreen(dayState, ::back, ::navigate, screenModifier)
+                        Destination.Body -> BodyScreen(dayState, deviceState.healthConnect, ::back, ::navigate, screenModifier)
+                        Destination.Pairing -> PairingScreen(
+                            state = deviceState,
+                            onStartScan = viewModel::startScan,
+                            onStopScan = viewModel::stopScan,
+                            onSelectDevice = viewModel::selectDevice,
+                            onBack = ::back,
+                            modifier = screenModifier,
+                        )
+                        Destination.Profile -> ProfileScreen(
+                            initial = deviceState.profile.toForm(),
+                            saving = deviceState.savingProfile,
+                            canSubmit = deviceState.link.connection == Connection.CONNECTED,
+                            onSubmit = viewModel::submitProfile,
+                            onBack = ::back,
+                            modifier = screenModifier,
+                        )
+                    }
                 }
-            },
-            contentKey = { it.joinToString { d -> d.name } },
-            label = "screens",
-        ) { target ->
-            val screenModifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())
-            when (target.last()) {
-                Destination.Today -> TodayScreen(
-                    state = dayState,
-                    lastSyncAt = deviceState.lastSyncAt ?: deviceState.healthConnect.lastSyncAt,
-                    refreshing = deviceState.syncing || deviceState.healthConnect.syncing,
-                    onSelectDate = viewModel::selectDate,
-                    onRefresh = refresh,
-                    onSyncClick = refresh,
-                    onNavigate = ::navigate,
-                    modifier = screenModifier,
-                )
-                Destination.Sleep -> SleepScreen(dayState, screenModifier)
-                Destination.Activity -> ActivityScreen(dayState, ::navigate, screenModifier)
-                Destination.Devices -> DevicesScreen(
-                    state = deviceState,
-                    permissionsGranted = permissionsGranted,
-                    onRequestPermissions = { permissionLauncher.launch(bluetoothPermissions) },
-                    onReconnect = viewModel::reconnect,
-                    onForgetDevice = viewModel::forgetDevice,
-                    onRecheckSetup = viewModel::recheckSetup,
-                    onSync = viewModel::sync,
-                    onRequestHealthConnect = { healthConnectLauncher.launch(viewModel.healthConnectPermissions) },
-                    onSyncHealthConnect = viewModel::syncHealthConnect,
-                    onInstallHealthConnect = {
-                        runCatching { context.startActivity(viewModel.healthConnectInstallIntent()) }
-                    },
-                    onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
-                    onClearData = viewModel::clearData,
-                    onNavigate = ::navigate,
-                    modifier = screenModifier,
-                )
-                Destination.Recovery -> RecoveryScreen(dayState, ::back, screenModifier)
-                Destination.Energy -> EnergyScreen(dayState, ::back, screenModifier)
-                Destination.Heart -> HeartScreen(dayState, ::back, screenModifier)
-                Destination.Vo2Max -> Vo2MaxScreen(dayState, ::back, ::navigate, screenModifier)
-                Destination.Body -> BodyScreen(dayState, deviceState.healthConnect, ::back, ::navigate, screenModifier)
-                Destination.Pairing -> PairingScreen(
-                    state = deviceState,
-                    onStartScan = viewModel::startScan,
-                    onStopScan = viewModel::stopScan,
-                    onSelectDevice = viewModel::selectDevice,
-                    onBack = ::back,
-                    modifier = screenModifier,
-                )
-                Destination.Profile -> ProfileScreen(
-                    initial = deviceState.profile.toForm(),
-                    saving = deviceState.savingProfile,
-                    canSubmit = deviceState.link.connection == Connection.CONNECTED,
-                    onSubmit = viewModel::submitProfile,
-                    onBack = ::back,
-                    modifier = screenModifier,
-                )
             }
         }
     }
+}
+
+/** Écran où mène le retour : l'écran précédent, sinon l'onglet Aujourd'hui ; [stack] lui-même s'il n'y a pas de retour. */
+private fun backTarget(stack: List<Destination>): List<Destination> = when {
+    stack.size > 1 -> stack.dropLast(1)
+    stack.first() != Destination.Today -> listOf(Destination.Today)
+    else -> stack
 }
 
 /** Préremplit le formulaire avec le profil déjà enregistré. */

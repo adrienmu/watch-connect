@@ -45,6 +45,8 @@ import com.boucle.app.ui.components.ExpressiveSurface
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.StatTile
 import com.boucle.app.ui.components.animatedValue
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.navigation.Destination
 import com.boucle.app.ui.screens.ActivityFormat.NBSP
@@ -82,7 +84,7 @@ fun Vo2MaxScreen(
                     onAction = { onNavigate(Destination.Profile) },
                 )
             } else {
-                Vo2MaxHero(vo2, Modifier.staggeredEntrance(0))
+                Vo2MaxHero(vo2, Modifier.sharedContainer(SharedKeys.VO2MAX, Radii.Hero))
                 MethodsCard(vo2, Modifier.staggeredEntrance(1))
                 HeartRateTiles(vo2, Modifier.staggeredEntrance(2))
                 AccuracyNote(Modifier.staggeredEntrance(3))

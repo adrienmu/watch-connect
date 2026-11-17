@@ -39,6 +39,8 @@ import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.SegmentedBar
 import com.boucle.app.ui.components.StatTile
 import com.boucle.app.ui.components.animatedValue
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.theme.BoucleColors
 import com.boucle.app.ui.theme.BoucleType
@@ -101,7 +103,7 @@ fun RecoveryScreen(
                 RecoveryEmpty(Modifier.staggeredEntrance(0))
                 return@Column
             }
-            RecoveryHero(score, Modifier.staggeredEntrance(0))
+            RecoveryHero(score, Modifier.sharedContainer(SharedKeys.RECOVERY, Radii.Hero))
             RecoveryComponents(score, state, Modifier.staggeredEntrance(1))
             RecoveryTiles(score, state, Modifier.staggeredEntrance(2))
             Text(

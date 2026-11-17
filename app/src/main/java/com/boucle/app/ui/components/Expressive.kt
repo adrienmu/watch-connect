@@ -105,13 +105,17 @@ fun ExpressiveSurface(
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spatial, label = "pressScale")
     val corner by animateFloatAsState(if (pressed) 0.6f else 1f, spatial, label = "pressCorner")
     val shape = radii.shape(corner)
+    val haptics = rememberHaptics()
     val clickModifier = if (onClick != null) {
         Modifier.clickable(
             interactionSource = interaction,
             indication = androidx.compose.material3.ripple(),
             role = Role.Button,
             onClickLabel = onClickLabel,
-            onClick = onClick,
+            onClick = {
+                haptics.tap()
+                onClick()
+            },
         )
     } else {
         Modifier

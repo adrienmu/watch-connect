@@ -54,6 +54,8 @@ import com.boucle.app.ui.components.ScreenHeader
 import com.boucle.app.ui.components.SegmentedBar
 import com.boucle.app.ui.components.StatTile
 import com.boucle.app.ui.components.cookieShape
+import com.boucle.app.ui.components.SharedKeys
+import com.boucle.app.ui.components.sharedContainer
 import com.boucle.app.ui.components.staggeredEntrance
 import com.boucle.app.ui.theme.BoucleColors
 import com.boucle.app.ui.theme.BoucleIcons
@@ -106,7 +108,7 @@ fun SleepScreen(
                 if (sleep == null) {
                     NoNightCard(Modifier.staggeredEntrance(1))
                 } else {
-                    ScoreHero(sleep, day.sleepScore, Modifier.staggeredEntrance(1))
+                    ScoreHero(sleep, day.sleepScore, Modifier.sharedContainer(SharedKeys.SLEEP, Radii.Hero, entranceIndex = 1))
                     StagesCard(sleep, Modifier.staggeredEntrance(2))
                     day.sleepScore?.let { ScoreBreakdown(it, Modifier.staggeredEntrance(3)) }
                     NightTiles(sleep, Modifier.staggeredEntrance(4))
