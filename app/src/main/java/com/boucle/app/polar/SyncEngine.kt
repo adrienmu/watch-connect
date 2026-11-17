@@ -108,6 +108,7 @@ class SyncEngine(
                     val session = api.getTrainingSession(deviceId, reference)
                     dao.upsertTrainingSessions(listOf(session.toEntity()))
                     dao.upsertTrainingExercises(session.toExerciseEntities())
+                    session.toRouteEntity()?.let { dao.upsertTrainingRoutes(listOf(it)) }
                 }
                 references.size
             }

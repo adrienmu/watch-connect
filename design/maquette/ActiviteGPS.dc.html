@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Détail d'activité avec carte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4355B9}a:hover{color:#2A3A9E}
+button{font-family:inherit}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes runA{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes runB{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes waveA{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes waveB{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes halo{from{transform:scale(1);opacity:.55}to{transform:scale(2.6);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: {{rootH}}px; overflow: hidden; background: #FBF8FF; color: #1B1B21; font-family: 'Roboto Flex', Roboto, system-ui, sans-serif;">
+<div ref="{{scrollRef}}" style="position: absolute; inset: 0; overflow-y: {{scrollOverflow}}; overflow-x: hidden;">
+<div style="position: relative; padding-bottom: 32px;">
+
+<header style="position: sticky; top: 0; z-index: 3; height: 64px; box-sizing: border-box; padding: 0 4px; display: flex; align-items: center; gap: 4px; background: #FBF8FF;">
+<button aria-label="Retour" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #1B1B21; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+<span style="flex-grow: 1; font-size: 16px; font-weight: 500;">Activité</span>
+<button aria-label="Partager" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #46464F; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M16 7l-4-4-4 4M12 3v12"></path></svg></button>
+<button aria-label="Plus d'options" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #46464F; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg></button>
+</header>
+
+<div style="height: 152px; box-sizing: border-box; padding: 8px 16px 0; display: flex; flex-direction: column; gap: 16px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) both;">
+<div style="display: flex; align-items: center; gap: 16px; height: 64px;">
+<div style="position: relative; width: 56px; height: 56px; flex-shrink: 0;">
+<svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true" style="position: absolute; left: 0; top: 0; animation: spin 18s linear infinite;"><path d="M56 28L55 30L53 32L50 34L49 36L49 38L50 40L50 43L49 46L47 47L44 47L41 47L39 47L38 49L37 51L35 54L33 55L30 55L28 53L26 51L24 50L22 50L19 51L17 52L14 52L13 50L12 47L12 44L11 42L9 41L6 41L4 39L2 38L2 35L3 32L5 30L6 28L5 26L3 24L2 21L2 18L4 17L6 15L9 15L11 14L12 12L12 9L13 6L14 4L17 4L19 5L22 6L24 6L26 5L28 3L30 1L33 1L35 2L37 5L38 7L39 9L41 9L44 9L47 9L49 10L50 13L50 16L49 18L49 20L50 22L53 24L55 26Z" fill="#DEE0FF"></path></svg>
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00105C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; left: 14px; top: 14px;"><circle cx="15" cy="4" r="2"></circle><path d="M8 21l3-6 3 2v5M6 11l3-3h4l2 4 3 1M11 15l1-6"></path></svg>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+<h1 style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 750; letter-spacing: -0.4px; font-variation-settings: 'wdth' 110;">Course du matin</h1>
+<span style="font-size: 14px; line-height: 20px; color: #46464F;">Mar. 17 nov. · 07:12 – 07:58</span>
+</div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<span style="height: 32px; box-sizing: border-box; padding: 0 12px 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #C7C5D0; border-radius: 8px; font-size: 14px; font-weight: 500; color: #46464F;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4355B9" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="7" y="6" width="10" height="12" rx="3"></rect><path d="M9 6V3h6v3M9 18v3h6v-3"></path></svg>Bracelet</span>
+<span style="height: 32px; box-sizing: border-box; padding: 0 12px 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #C7C5D0; border-radius: 8px; font-size: 14px; font-weight: 500; color: #46464F;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4355B9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 12a8 8 0 0 1-14 5.3L4 15M20 4v5h-5M4 20v-5h5"></path></svg>Health Connect</span>
+<span style="height: 32px; box-sizing: border-box; padding: 0 12px 0 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; background: #E0E0F9; font-size: 14px; font-weight: 500; color: #191A2C;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>GPS</span>
+</div>
+</div>
+
+<div aria-hidden="true" style="height: 232px; margin: 0 16px;"></div>
+
+<div style="position: absolute; z-index: {{ov.z}}; top: {{ov.top}}px; left: {{ov.left}}px; width: {{ov.w}}px; height: {{ov.h}}px; border-radius: {{ov.r}}px; overflow: hidden; background: #ECEEE6; box-shadow: {{ov.shadow}}; transition: top 550ms cubic-bezier(0.38,1.21,0.22,1), left 550ms cubic-bezier(0.38,1.21,0.22,1), width 550ms cubic-bezier(0.38,1.21,0.22,1), height 550ms cubic-bezier(0.38,1.21,0.22,1), border-radius 450ms cubic-bezier(0.2,0,0,1); animation: fadeIn 400ms ease-out both;">
+<div style="position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; transform: {{ov.world}}; transition: transform 550ms cubic-bezier(0.38,1.21,0.22,1);">
+<svg width="390" height="844" viewBox="0 0 390 844" style="position: absolute; left: 0; top: 0; font-family: 'Roboto Flex', Roboto, sans-serif;" role="img" aria-label="Carte du parcours : 8,42 km, départ au sud-ouest, arrivée au nord-est">
+<defs>
+<linearGradient id="routeGrad" x1="52" y1="0" x2="338" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" style="stop-color: {{grad.c1}}; transition: stop-color 450ms ease;"></stop>
+<stop offset="0.5" style="stop-color: {{grad.c2}}; transition: stop-color 450ms ease;"></stop>
+<stop offset="1" style="stop-color: {{grad.c3}}; transition: stop-color 450ms ease;"></stop>
+</linearGradient>
+</defs>
+<rect width="390" height="844" fill="#ECEEE6"></rect>
+<path d="M0 0H390V96C330 110 260 84 190 98S60 112 0 92Z" fill="#CBE2C2"></path>
+<path d="M120 150C150 128 230 120 286 150S300 262 250 270S150 280 128 240S100 168 120 150Z" fill="#D5EAD0"></path>
+<path d="M150 170C180 200 220 200 250 230M140 230C170 210 200 240 260 250" fill="none" stroke="#F4F7EE" stroke-width="2" stroke-dasharray="4 4"></path>
+<path d="M-10 392C80 362 150 356 220 344S330 304 400 290" fill="none" stroke="#BCD5EE" stroke-width="20"></path>
+<g fill="#E0E3DA">
+<rect x="10" y="412" width="44" height="40" rx="4"></rect><rect x="124" y="404" width="40" height="30" rx="4"></rect><rect x="200" y="398" width="48" height="26" rx="4"></rect><rect x="290" y="392" width="54" height="34" rx="4"></rect>
+<rect x="12" y="500" width="40" height="52" rx="4"></rect><rect x="128" y="488" width="38" height="24" rx="4"></rect><rect x="206" y="560" width="44" height="50" rx="4"></rect><rect x="280" y="470" width="60" height="44" rx="4"></rect>
+<rect x="20" y="660" width="70" height="64" rx="4"></rect><rect x="210" y="672" width="40" height="52" rx="4"></rect><rect x="290" y="680" width="70" height="40" rx="4"></rect><rect x="120" y="580" width="40" height="30" rx="4"></rect>
+</g>
+<g fill="none" stroke="#D6D9D0" stroke-width="10" stroke-linecap="round">
+<path d="M0 206L390 176"></path><path d="M64 0L112 844"></path><path d="M306 0L262 844"></path><path d="M0 470L390 438"></path><path d="M0 620L390 652"></path><path d="M176 350L196 844"></path><path d="M0 770L390 750"></path>
+</g>
+<g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round">
+<path d="M0 206L390 176"></path><path d="M64 0L112 844"></path><path d="M306 0L262 844"></path><path d="M0 470L390 438"></path><path d="M0 620L390 652"></path><path d="M176 350L196 844"></path><path d="M0 770L390 750"></path>
+</g>
+<text x="128" y="56" font-size="10" font-weight="600" fill="#3F5A38">Bois de la Garenne</text>
+<text x="196" y="258" font-size="9" font-weight="600" fill="#3F5A38">Parc des Sports</text>
+<text x="34" y="384" font-size="9" font-style="italic" fill="#3D6390">Rivière</text>
+<text x="210" y="455" font-size="8" fill="#6A6D63" transform="rotate(-4.7 210 455)">Rue des Écoles</text>
+<path d="M52 312 C 70 290, 78 262, 98 248 S 140 236, 156 214 S 170 168, 198 156 S 246 160, 262 186 S 280 236, 306 230 S 338 196, 330 168 S 318 136, 338 128" pathLength="1" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1" style="animation: draw 1400ms cubic-bezier(0.05,0.7,0.1,1) 200ms both;"></path>
+<path d="M52 312 C 70 290, 78 262, 98 248 S 140 236, 156 214 S 170 168, 198 156 S 246 160, 262 186 S 280 236, 306 230 S 338 196, 330 168 S 318 136, 338 128" pathLength="1" fill="none" stroke="url(#routeGrad)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1" style="animation: draw 1400ms cubic-bezier(0.05,0.7,0.1,1) 200ms both;"></path>
+<sc-if value="{{open}}" hint-placeholder-val="{{false}}">
+<g style="animation: fadeIn 300ms ease-out 350ms both;">
+<sc-for list="{{kms}}" as="k" hint-placeholder-count="8">
+<circle cx="{{k.x}}" cy="{{k.y}}" r="8" fill="#FFFFFF" stroke="#1B1B21" stroke-width="1.5"></circle>
+<text x="{{k.x}}" y="{{k.ty}}" font-size="9" font-weight="700" text-anchor="middle" fill="#1B1B21">{{k.n}}</text>
+</sc-for>
+</g>
+</sc-if>
+<g style="transform-box: fill-box; transform-origin: center; animation: pop 500ms cubic-bezier(0.34,1.8,0.5,1) 1300ms both;">
+<circle cx="52" cy="312" r="10" fill="#FFFFFF"></circle>
+<circle cx="52" cy="312" r="6.5" fill="#2E7D4F"></circle>
+</g>
+<g style="transform-box: fill-box; transform-origin: center; animation: pop 500ms cubic-bezier(0.34,1.8,0.5,1) 1500ms both;">
+<circle cx="338" cy="128" r="12" fill="#FFFFFF"></circle>
+<circle cx="338" cy="128" r="9.5" fill="#1B1B21"></circle>
+<path d="M334.5 133V123.5h6l-1.2 2.4 1.2 2.4h-6" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"></path>
+</g>
+</svg>
+<sc-if value="{{showRunner}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; left: 0; top: 0; width: 0; height: 0; offset-path: path('M52 312 C 70 290, 78 262, 98 248 S 140 236, 156 214 S 170 168, 198 156 S 246 160, 262 186 S 280 236, 306 230 S 338 196, 330 168 S 318 136, 338 128'); offset-rotate: 0deg; animation: {{runAnim}};">
+<div style="position: absolute; left: -10px; top: -10px; width: 20px; height: 20px; border-radius: 10px; background: #4355B9; animation: halo 1200ms ease-out infinite;"></div>
+<div style="position: absolute; left: -10px; top: -10px; width: 20px; height: 20px; box-sizing: border-box; border-radius: 10px; background: #4355B9; border: 3px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,.3);"></div>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{closed}}" hint-placeholder-val="{{true}}">
+<button onClick="{{openMap}}" aria-label="Ouvrir la carte en plein écran" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; background: transparent; cursor: pointer;"></button>
+<button onClick="{{openMap}}" aria-label="Agrandir la carte" style="position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; border: 0; border-radius: 20px; background: rgba(251,248,255,.94); color: #1B1B21; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.18); animation: scaleIn 400ms cubic-bezier(0.34,1.6,0.5,1) 1600ms both;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"></path></svg></button>
+<span style="position: absolute; left: 12px; bottom: 12px; height: 28px; box-sizing: border-box; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border-radius: 14px; background: rgba(251,248,255,.94); font-size: 12px; font-weight: 600; color: #1B1B21; pointer-events: none; animation: fadeUp 400ms cubic-bezier(0.05,0.7,0.1,1) 1700ms both;"><span style="width: 8px; height: 8px; border-radius: 4px; background: #2E7D4F;"></span>8,42 km · 1 412 points GPS</span>
+</sc-if>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{false}}">
+<button onClick="{{closeMap}}" aria-label="Fermer la carte" style="position: absolute; top: 16px; left: 16px; width: 48px; height: 48px; border: 0; border-radius: 24px; background: #FBF8FF; color: #1B1B21; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); animation: scaleIn 420ms cubic-bezier(0.34,1.6,0.5,1) 300ms both;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+<button aria-label="Type de carte" style="position: absolute; top: 16px; right: 16px; width: 48px; height: 48px; border: 0; border-radius: 16px; background: #FBF8FF; color: #1B1B21; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); animation: scaleIn 420ms cubic-bezier(0.34,1.6,0.5,1) 380ms both;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"></path></svg></button>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 280px; display: flex; justify-content: center; animation: scaleIn 450ms cubic-bezier(0.34,1.6,0.5,1) 450ms both;">
+<div style="display: flex; align-items: center; gap: 4px; padding: 8px; border-radius: 32px; background: #DEE0FF; box-shadow: 0 4px 12px rgba(0,0,0,.18);">
+<button onClick="{{replay}}" style="height: 48px; padding: 0 20px 0 16px; border: 0; border-radius: 24px; background: #4355B9; color: #FFFFFF; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; cursor: pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>Rejouer</button>
+<button aria-label="Recentrer" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #00105C; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2.5" fill="currentColor"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg></button>
+<button aria-label="Partager le tracé" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #00105C; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M16 7l-4-4-4 4M12 3v12"></path></svg></button>
+</div>
+</div>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 264px; box-sizing: border-box; padding: 8px 20px 20px; border-radius: 28px 28px 0 0; background: #F4F2FA; box-shadow: 0 -2px 10px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 14px; animation: sheetUp 600ms cubic-bezier(0.38,1.21,0.22,1) 200ms both;">
+<div style="align-self: center; width: 32px; height: 4px; border-radius: 2px; background: #767680; opacity: .5;"></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between;">
+<span style="font-size: 22px; font-weight: 700;">Course du matin</span>
+<span style="font-size: 14px; color: #46464F;">07:12 – 07:58</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<svg width="350" height="16" viewBox="0 0 350 16" role="img" aria-label="Progression de la relecture du parcours">
+<path d="M3 8H347" stroke="#DEE0FF" stroke-width="6" stroke-linecap="round" fill="none"></path>
+<path d="M3 8H347" pathLength="1" stroke="#4355B9" stroke-width="6" stroke-linecap="round" fill="none" stroke-dasharray="1" style="animation: {{waveAnim}};"></path>
+</svg>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #46464F;"><span>0 km</span><span>4 km</span><span>8,42 km</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+<div style="padding: 12px; border-radius: 20px; background: #FBF8FF; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: #46464F;">Allure moy.</span><span style="font-size: 20px; font-weight: 700;">5'30"</span><span style="font-size: 12px; color: #46464F;">/km</span></div>
+<div style="padding: 12px; border-radius: 20px; background: #FBF8FF; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: #46464F;">FC moy.</span><span style="font-size: 20px; font-weight: 700;">152</span><span style="font-size: 12px; color: #46464F;">bpm</span></div>
+<div style="padding: 12px; border-radius: 20px; background: #FBF8FF; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 12px; color: #46464F;">Dénivelé</span><span style="font-size: 20px; font-weight: 700;">+64</span><span style="font-size: 12px; color: #46464F;">m</span></div>
+</div>
+</div>
+</sc-if>
+</div>
+
+<div style="padding: 16px 16px 0; display: flex; flex-direction: column; gap: 12px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 500ms both;">
+<div role="group" aria-label="Colorer le tracé selon" style="display: flex; gap: 2px;">
+<sc-for list="{{metrics}}" as="m" hint-placeholder-count="3">
+<button onClick="{{m.pick}}" aria-pressed="{{m.pressed}}" style="flex: 1 1 0; height: 40px; border: 0; padding: 0 8px; border-radius: {{m.radius}}; background: {{m.bg}}; color: {{m.fg}}; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: border-radius 400ms cubic-bezier(0.34,1.5,0.5,1), background-color 200ms ease, color 200ms ease;">
+<sc-if value="{{m.selected}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="animation: scaleIn 300ms cubic-bezier(0.34,1.8,0.5,1) both;"><path d="M5 12l5 5 9-10"></path></svg></sc-if>
+{{m.label}}
+</button>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #46464F;">
+<span style="min-width: 64px;">{{grad.min}}</span>
+<div style="flex-grow: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, {{grad.c1}}, {{grad.c2}}, {{grad.c3}});"></div>
+<span style="min-width: 64px; text-align: right;">{{grad.max}}</span>
+</div>
+</div>
+
+<div style="padding: 24px 16px 0; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: baseline; gap: 6px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 600ms both;">
+<span style="font-size: 64px; line-height: 64px; font-weight: 800; letter-spacing: -2px; font-variation-settings: 'wdth' 120;">8,42</span>
+<span style="font-size: 22px; font-weight: 600; color: #46464F;">km</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+<div style="padding: 16px; border-radius: 28px 28px 28px 8px; background: #DEE0FF; color: #00105C; display: flex; flex-direction: column; gap: 8px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 650ms both;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2M9 2h6"></path></svg>
+<span style="font-size: 13px;">Durée</span><span style="font-size: 26px; font-weight: 750;">46:18</span>
+</div>
+<div style="padding: 16px; border-radius: 28px 28px 8px 28px; background: #E8E7EF; display: flex; flex-direction: column; gap: 8px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 700ms both;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4355B9" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 18a8 8 0 1 1 14 0M12 14l4-5"></path></svg>
+<span style="font-size: 13px; color: #46464F;">Allure moyenne</span><span style="font-size: 26px; font-weight: 750;">5'30" <span style="font-size: 14px; font-weight: 500; color: #46464F;">/km</span></span>
+</div>
+<div style="padding: 16px; border-radius: 28px 8px 28px 28px; background: #FFDCBE; color: #2C1600; display: flex; flex-direction: column; gap: 8px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 750ms both;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"></path></svg>
+<span style="font-size: 13px;">Fréquence cardiaque</span><span style="font-size: 26px; font-weight: 750;">152 <span style="font-size: 14px; font-weight: 500;">bpm · max 171</span></span>
+</div>
+<div style="padding: 16px; border-radius: 8px 28px 28px 28px; background: #E0E0F9; color: #191A2C; display: flex; flex-direction: column; gap: 8px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 800ms both;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 19l6-10 4 6 2-3 6 7z"></path></svg>
+<span style="font-size: 13px;">Dénivelé positif</span><span style="font-size: 26px; font-weight: 750;">+64 <span style="font-size: 14px; font-weight: 500;">m</span></span>
+</div>
+</div>
+</div>
+
+<sc-if value="{{isPace}}" hint-placeholder-val="{{true}}">
+<div style="animation: fadeUp 450ms cubic-bezier(0.05,0.7,0.1,1) both;">
+<div style="margin: 24px 16px 0; padding: 20px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 18px; font-weight: 700;">Allure et altitude</span><span style="font-size: 12px; color: #46464F;">par distance</span></div>
+<svg width="318" height="120" viewBox="0 0 326 120" role="img" aria-label="Graphique : l'altitude monte jusqu'au 4e km, l'allure accélère en fin de parcours">
+<path d="M0 96 C 30 92, 50 86, 80 90 S 130 70, 160 62 S 210 74, 240 82 S 290 70, 326 58 L326 120 L0 120Z" fill="#DCE8D6"></path>
+<path d="M0 70 C 30 66, 50 62, 80 56 S 120 64, 150 60 S 190 44, 220 50 S 260 36, 290 40 S 310 52, 326 50" fill="none" stroke="#4355B9" stroke-width="3" stroke-linecap="round" pathLength="1" stroke-dasharray="1" style="animation: draw 1200ms cubic-bezier(0.05,0.7,0.1,1) 900ms both;"></path>
+</svg>
+<div style="display: flex; gap: 16px; font-size: 12px; color: #46464F;">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 3px; border-radius: 2px; background: #4355B9;"></span>Allure</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 10px; border-radius: 3px; background: #DCE8D6;"></span>Altitude</span>
+</div>
+</div>
+
+<div style="margin: 16px 16px 0; padding: 20px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 10px;">
+<span style="font-size: 18px; font-weight: 700;">Par kilomètre</span>
+<sc-for list="{{splits}}" as="s" hint-placeholder-count="9">
+<div style="display: flex; align-items: center; gap: 12px; height: 28px;">
+<span style="width: 36px; font-size: 14px; font-weight: 600;">{{s.km}}</span>
+<div style="flex-grow: 1; height: 12px; border-radius: 6px; background: #E8E7EF; overflow: hidden;">
+<div style="width: {{s.w}}%; height: 12px; border-radius: 6px; background: {{s.color}};"></div>
+</div>
+<span style="width: 48px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums;">{{s.pace}}</span>
+</div>
+</sc-for>
+<span style="font-size: 12px; color: #46464F;">Km le plus rapide : 7e km en 5'18"</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isHr}}" hint-placeholder-val="{{false}}">
+<div style="animation: fadeUp 450ms cubic-bezier(0.05,0.7,0.1,1) both;">
+<div style="margin: 24px 16px 0; padding: 20px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 18px; font-weight: 700;">Fréquence cardiaque</span><span style="font-size: 12px; color: #46464F;">par distance</span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+<div style="padding: 10px 12px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">Moyenne</span><span style="font-size: 20px; font-weight: 750;">152</span></div>
+<div style="padding: 10px 12px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">Max</span><span style="font-size: 20px; font-weight: 750;">171</span></div>
+<div style="padding: 10px 12px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">Min</span><span style="font-size: 20px; font-weight: 750;">118</span></div>
+</div>
+<svg width="318" height="120" viewBox="0 0 326 120" role="img" aria-label="Graphique : la fréquence cardiaque monte de 118 à environ 150 bpm au 2e km, puis atteint 171 bpm en fin de parcours">
+<path d="M0 50H326" stroke="#C7C5D0" stroke-width="1.5" stroke-dasharray="4 4" fill="none"></path>
+<text x="322" y="44" font-size="10" text-anchor="end" fill="#46464F">moy. 152</text>
+<path d="M0 104 C 20 90, 34 66, 60 60 S 100 56, 130 52 S 170 58, 200 48 S 250 40, 280 30 S 310 18, 326 22 L326 120 L0 120Z" fill="#FFDCBE" opacity=".7"></path>
+<path d="M0 104 C 20 90, 34 66, 60 60 S 100 56, 130 52 S 170 58, 200 48 S 250 40, 280 30 S 310 18, 326 22" fill="none" stroke="#B3261E" stroke-width="3" stroke-linecap="round" pathLength="1" stroke-dasharray="1" style="animation: draw 1200ms cubic-bezier(0.05,0.7,0.1,1) 150ms both;"></path>
+</svg>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #46464F;"><span>0 km</span><span>4 km</span><span>8,42 km</span></div>
+</div>
+
+<div style="margin: 16px 16px 0; padding: 20px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 10px;">
+<span style="font-size: 18px; font-weight: 700;">Zones cardiaques</span>
+<sc-for list="{{zones}}" as="z" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 40px;">
+<span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 10px; background: {{z.color}}; color: {{z.fg}}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">{{z.n}}</span>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #46464F;"><span>{{z.name}}</span><span>{{z.range}}</span></div>
+<div style="height: 8px; border-radius: 4px; background: #E8E7EF; overflow: hidden;"><div style="width: {{z.w}}%; height: 8px; border-radius: 4px; background: {{z.color}};"></div></div>
+</div>
+<span style="width: 44px; text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;">{{z.time}}</span>
+</div>
+</sc-for>
+<span style="font-size: 12px; color: #46464F;">Zones calculées sur une FC max de 191 bpm.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isAlt}}" hint-placeholder-val="{{false}}">
+<div style="animation: fadeUp 450ms cubic-bezier(0.05,0.7,0.1,1) both;">
+<div style="margin: 24px 16px 0; padding: 20px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 18px; font-weight: 700;">Profil d'altitude</span><span style="font-size: 12px; color: #46464F;">par distance</span></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;">
+<div style="padding: 10px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">D+</span><span style="font-size: 18px; font-weight: 750;">64 m</span></div>
+<div style="padding: 10px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">D−</span><span style="font-size: 18px; font-weight: 750;">58 m</span></div>
+<div style="padding: 10px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">Min</span><span style="font-size: 18px; font-weight: 750;">48 m</span></div>
+<div style="padding: 10px; border-radius: 16px; background: #FBF8FF; display: flex; flex-direction: column;"><span style="font-size: 12px; color: #46464F;">Max</span><span style="font-size: 18px; font-weight: 750;">112 m</span></div>
+</div>
+<svg width="318" height="120" viewBox="0 0 326 120" role="img" aria-label="Profil d'altitude : de 48 m au départ jusqu'à 112 m vers le 4e km, puis descente et légère remontée">
+<path d="M0 100 C 30 96, 50 84, 80 70 S 130 34, 160 20 S 200 40, 230 66 S 270 92, 290 80 S 315 66, 326 70 L326 120 L0 120Z" fill="#A8D5A2"></path>
+<path d="M0 100 C 30 96, 50 84, 80 70 S 130 34, 160 20 S 200 40, 230 66 S 270 92, 290 80 S 315 66, 326 70" fill="none" stroke="#1E5A2C" stroke-width="3" stroke-linecap="round" pathLength="1" stroke-dasharray="1" style="animation: draw 1200ms cubic-bezier(0.05,0.7,0.1,1) 150ms both;"></path>
+<circle cx="160" cy="20" r="5" fill="#1E5A2C" stroke="#FFFFFF" stroke-width="2"></circle>
+<text x="168" y="16" font-size="10" font-weight="700" fill="#1E5A2C">112 m</text>
+</svg>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #46464F;"><span>0 km</span><span>4 km</span><span>8,42 km</span></div>
+</div>
+
+<div style="margin: 16px 16px 0; padding: 20px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 10px;">
+<span style="font-size: 18px; font-weight: 700;">Dénivelé par kilomètre</span>
+<sc-for list="{{elev}}" as="e" hint-placeholder-count="9">
+<div style="display: flex; align-items: center; gap: 12px; height: 28px;">
+<span style="width: 36px; font-size: 14px; font-weight: 600;">{{e.km}}</span>
+<div style="flex-grow: 1; display: flex; align-items: center;">
+<div style="flex: 1 1 0; display: flex; justify-content: flex-end;"><div style="width: {{e.down}}%; height: 12px; border-radius: 6px 0 0 6px; background: #8A93B8;"></div></div>
+<div style="width: 2px; height: 20px; background: #C7C5D0;"></div>
+<div style="flex: 1 1 0; display: flex;"><div style="width: {{e.up}}%; height: 12px; border-radius: 0 6px 6px 0; background: #2E6B3A;"></div></div>
+</div>
+<span style="width: 48px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums;">{{e.label}}</span>
+</div>
+</sc-for>
+<div style="display: flex; gap: 16px; font-size: 12px; color: #46464F;">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 10px; border-radius: 3px; background: #2E6B3A;"></span>Montée</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 10px; border-radius: 3px; background: #8A93B8;"></span>Descente</span>
+</div>
+</div>
+</div>
+</sc-if>
+
+<div style="margin: 16px 16px 0; padding: 16px 20px; border-radius: 20px; border: 1px solid #C7C5D0; display: flex; gap: 12px; align-items: center;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46464F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 12a8 8 0 0 1-14 5.3L4 15M20 4v5h-5M4 20v-5h5"></path></svg>
+<span style="font-size: 13px; line-height: 18px; color: #46464F;">Enregistré par le bracelet, synchronisé via Health Connect. Le tracé n'est visible que par vous.</span>
+</div>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"startExpanded":{"editor":"boolean","default":false},"metric":{"editor":"enum","options":["allure","fc","alt"],"default":"allure"},"height":{"editor":"int","default":844,"min":844,"max":2400},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: !!props.startExpanded, closing: false, top: 0, metric: props.metric || 'allure', replay: props.startExpanded ? 1 : 0 };
+  }
+  renderVals() {
+    const s = this.state;
+    const open = s.open;
+    const ov = open
+      ? { top: s.top, left: 0, w: 390, h: 844, r: 0, z: 10, shadow: 'none', world: 'translate(-29px, 39px) scale(1.15)' }
+      : { top: 216, left: 16, w: 358, h: 232, r: 28, z: (s.closing ? 10 : 2), shadow: '0 1px 2px rgba(0,0,0,.08)', world: 'translate(-6px, -93px) scale(0.95)' };
+    const grads = {
+      allure: { c1: '#F0A050', c2: '#9A6BC9', c3: '#2A3A9E', min: 'Lent 5\'41"', max: 'Rapide 5\'18"' },
+      fc: { c1: '#FFC48A', c2: '#F08A4B', c3: '#B3261E', min: '128 bpm', max: '171 bpm' },
+      alt: { c1: '#A8D5A2', c2: '#5E9F63', c3: '#1E5A2C', min: '48 m', max: '112 m' }
+    };
+    const defs = [
+      { id: 'allure', label: 'Allure', ends: ['20px 8px 8px 20px'] },
+      { id: 'fc', label: 'Fréq. card.', ends: ['8px'] },
+      { id: 'alt', label: 'Altitude', ends: ['8px 20px 20px 8px'] }
+    ];
+    const metrics = defs.map((d) => {
+      const sel = s.metric === d.id;
+      return {
+        label: d.label, selected: sel, pressed: sel ? 'true' : 'false',
+        radius: sel ? '20px' : d.ends[0],
+        bg: sel ? '#4355B9' : '#E8E7EF', fg: sel ? '#FFFFFF' : '#46464F',
+        pick: () => this.setState({ metric: d.id })
+      };
+    });
+    const paces = [[341, '5\'41"'], [336, '5\'36"'], [329, '5\'29"'], [334, '5\'34"'], [322, '5\'22"'], [327, '5\'27"'], [318, '5\'18"'], [331, '5\'31"'], [333, '5\'33"']];
+    const splits = paces.map((p, i) => ({
+      km: i < 8 ? String(i + 1) : '0,42',
+      pace: p[1],
+      w: Math.round(40 + (345 - p[0]) / 27 * 60),
+      color: p[0] === 318 ? '#8B5000' : '#4355B9'
+    }));
+    const pts = [[83, 263], [132, 233], [169, 189], [210, 152], [258, 180], [289, 229], [332, 202], [324, 145]];
+    const kms = pts.map((p, i) => ({ x: p[0], y: p[1], ty: p[1] + 3, n: String(i + 1) }));
+    const zoneDefs = [
+      ['1', 'Récupération', '< 115', 42, '#FFE8D4', '#2C1600'],
+      ['2', 'Endurance', '115–134', 370, '#FFC48A', '#2C1600'],
+      ['3', 'Tempo', '134–153', 1164, '#F08A4B', '#2C1600'],
+      ['4', 'Seuil', '153–172', 1130, '#C4502A', '#FFFFFF'],
+      ['5', 'Maximum', '> 172', 72, '#8C1D18', '#FFFFFF']
+    ];
+    const fmt = (sec) => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    const zones = zoneDefs.map((z) => ({ n: z[0], name: z[1], range: z[2] + ' bpm', time: fmt(z[3]), w: Math.max(3, Math.round(z[3] / 1164 * 100)), color: z[4], fg: z[5] }));
+    const gains = [4, 12, 18, 9, -16, -22, 8, 13, -20];
+    const elev = gains.map((g, i) => ({
+      km: i < 8 ? String(i + 1) : '0,42',
+      up: g > 0 ? Math.round(g / 22 * 100) : 0,
+      down: g < 0 ? Math.round(-g / 22 * 100) : 0,
+      label: (g > 0 ? '+' : '−') + Math.abs(g) + ' m'
+    }));
+    const odd = s.replay % 2 === 1;
+    return {
+      rootH: Number(this.props.height) || 844,
+      open, closed: !open, ov, kms, metrics, splits, zones, elev,
+      isPace: s.metric === 'allure', isHr: s.metric === 'fc', isAlt: s.metric === 'alt',
+      grad: grads[s.metric],
+      scrollOverflow: open ? 'hidden' : 'auto',
+      scrollRef: (el) => { this.scroller = el; },
+      showRunner: open && s.replay > 0,
+      runAnim: (odd ? 'runA' : 'runB') + ' 6s cubic-bezier(0.4,0,0.2,1) 700ms both',
+      waveAnim: s.replay > 0 ? (odd ? 'waveA' : 'waveB') + ' 6s cubic-bezier(0.4,0,0.2,1) 700ms both' : 'none',
+      openMap: () => {
+        const top = this.scroller ? this.scroller.scrollTop : 0;
+        clearTimeout(this.t);
+        this.setState({ open: true, closing: false, top: top });
+      },
+      closeMap: () => {
+        this.setState({ open: false, closing: true });
+        clearTimeout(this.t);
+        this.t = setTimeout(() => this.setState({ closing: false }), 560);
+      },
+      replay: () => this.setState({ replay: s.replay + 1 })
+    };
+  }
+  componentWillUnmount() { clearTimeout(this.t); }
+}
+</script>
+</body>
+</html>

@@ -17,6 +17,20 @@ interface HealthDao {
     @Upsert suspend fun upsertTrainingSessions(items: List<TrainingSessionEntity>)
     @Upsert suspend fun upsertTrainingExercises(items: List<TrainingExerciseEntity>)
     @Upsert suspend fun upsertExternalMeasurements(items: List<ExternalMeasurementEntity>)
+    @Upsert suspend fun upsertTrainingRoutes(items: List<TrainingRouteEntity>)
+
+    @Query("SELECT * FROM training_route WHERE sessionPath = :path")
+    fun trainingRoute(path: String): Flow<TrainingRouteEntity?>
+
+    @Query("SELECT * FROM training_route WHERE sessionPath = :path")
+    suspend fun trainingRouteNow(path: String): TrainingRouteEntity?
+
+    @Query(
+        "SELECT path, date, startTime, durationSec, sportId, name, calories, distanceMeters, " +
+            "averageHr, maxHr, cardioLoad, muscleLoad, hrZoneSec, exerciseCount, NULL AS summaryProto " +
+            "FROM training_session WHERE path = :path",
+    )
+    fun trainingSession(path: String): Flow<TrainingSessionEntity?>
 
     @Query("SELECT * FROM external_measurement WHERE date BETWEEN :from AND :to ORDER BY time")
     fun externalMeasurementsRange(from: String, to: String): Flow<List<ExternalMeasurementEntity>>

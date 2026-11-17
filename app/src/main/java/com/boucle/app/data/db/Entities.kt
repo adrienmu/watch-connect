@@ -152,3 +152,21 @@ data class ExternalMeasurementEntity(
     /** Paquet de l'app qui a écrit la mesure (ex. com.withings.wiscale2). */
     val source: String,
 )
+
+/**
+ * Tracé GPS d'une séance de [TrainingSessionEntity]. Une ligne existe dès qu'on sait qu'un tracé existe, même
+ * s'il n'est pas encore lisible ([status]) : l'écran de détail peut alors proposer de l'autoriser.
+ */
+@Entity(tableName = "training_route")
+data class TrainingRouteEntity(
+    /** Chemin de la séance ([TrainingSessionEntity.path]). */
+    @PrimaryKey val sessionPath: String,
+    /** [com.boucle.app.domain.RouteStatus] : AVAILABLE, CONSENT_REQUIRED. */
+    val status: String,
+    /** Origine des points : BAND (GPS du bracelet ou du téléphone connecté) ou HEALTH_CONNECT. */
+    val source: String,
+    /** Identifiant de la séance dans Health Connect, pour demander l'accès au tracé. */
+    val healthConnectId: String?,
+    /** Points encodés par [com.boucle.app.domain.RouteCodec] ; vide tant que le tracé n'est pas autorisé. */
+    val points: String,
+)

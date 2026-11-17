@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tracé GPS à autoriser</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4355B9}a:hover{color:#2A3A9E}
+button{font-family:inherit}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+@keyframes spinPulse{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(.82)}100%{transform:rotate(360deg) scale(1)}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #FBF8FF; color: #1B1B21; font-family: 'Roboto Flex', Roboto, system-ui, sans-serif;">
+
+<header style="height: 64px; box-sizing: border-box; padding: 0 4px; display: flex; align-items: center; gap: 4px;">
+<button aria-label="Retour" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #1B1B21; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+<span style="flex-grow: 1; font-size: 16px; font-weight: 500;">Activité</span>
+</header>
+
+<div style="padding: 8px 16px 0; display: flex; flex-direction: column; gap: 4px;">
+<h1 style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 750; letter-spacing: -0.4px; font-variation-settings: 'wdth' 110;">Course du matin</h1>
+<span style="font-size: 14px; color: #46464F;">Mar. 17 nov. · 07:12 – 07:58 · Bracelet</span>
+</div>
+
+<div style="position: relative; margin: 20px 16px 0; height: 264px; border-radius: 28px; overflow: hidden; background: #ECEEE6;">
+<svg width="358" height="264" viewBox="0 0 358 264" aria-hidden="true" style="position: absolute; left: 0; top: 0; filter: blur({{blur}}px); transition: filter 600ms cubic-bezier(0.2,0,0,1);">
+<rect width="358" height="264" fill="#ECEEE6"></rect>
+<path d="M100 40C140 20 220 18 270 50S280 170 230 180S120 190 100 150S80 60 100 40Z" fill="#D5EAD0"></path>
+<path d="M-10 250C80 220 160 214 240 204S330 180 370 170" fill="none" stroke="#BCD5EE" stroke-width="18"></path>
+<g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"><path d="M0 110L358 80"></path><path d="M60 0L90 264"></path><path d="M290 0L260 264"></path></g>
+<sc-if value="{{granted}}" hint-placeholder-val="{{false}}">
+<path d="M40 214 C 58 192, 66 164, 86 150 S 128 138, 144 116 S 158 70, 186 58 S 234 62, 250 88 S 268 138, 294 132 S 326 98, 318 70 S 306 38, 326 30" pathLength="1" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-dasharray="1" style="animation: draw 1300ms cubic-bezier(0.05,0.7,0.1,1) 300ms both;"></path>
+<path d="M40 214 C 58 192, 66 164, 86 150 S 128 138, 144 116 S 158 70, 186 58 S 234 62, 250 88 S 268 138, 294 132 S 326 98, 318 70 S 306 38, 326 30" pathLength="1" fill="none" stroke="#4355B9" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="1" style="animation: draw 1300ms cubic-bezier(0.05,0.7,0.1,1) 300ms both;"></path>
+</sc-if>
+</svg>
+
+<sc-if value="{{idle}}" hint-placeholder-val="{{true}}">
+<div style="position: absolute; inset: 0; background: rgba(251,248,255,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; animation: fadeUp 450ms cubic-bezier(0.05,0.7,0.1,1) both;">
+<div style="width: 56px; height: 56px; border-radius: 18px; background: #DEE0FF; color: #00105C; display: flex; align-items: center; justify-content: center;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg></div>
+<span style="font-size: 18px; font-weight: 700; line-height: 24px;">Un tracé GPS est disponible</span>
+<span style="font-size: 14px; line-height: 20px; color: #46464F; max-width: 280px;">Health Connect demande votre accord pour partager l'itinéraire de cette séance.</span>
+<button onClick="{{grant}}" style="height: 48px; padding: 0 24px; border: 0; border-radius: 24px; background: #4355B9; color: #FFFFFF; font-size: 15px; font-weight: 600; cursor: pointer; transition: border-radius 300ms cubic-bezier(0.34,1.5,0.5,1);">Autoriser l'itinéraire</button>
+</div>
+</sc-if>
+
+<sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(251,248,255,.4);">
+<div role="progressbar" aria-label="Import du tracé" style="width: 64px; height: 64px; border-radius: 20px; background: #DEE0FF; display: flex; align-items: center; justify-content: center; animation: scaleIn 300ms cubic-bezier(0.34,1.6,0.5,1) both;">
+<svg width="44" height="44" viewBox="0 0 56 56" aria-hidden="true" style="animation: spinPulse 1100ms cubic-bezier(0.4,0,0.2,1) infinite;"><path d="M56 28L55 30L53 32L50 34L49 36L49 38L50 40L50 43L49 46L47 47L44 47L41 47L39 47L38 49L37 51L35 54L33 55L30 55L28 53L26 51L24 50L22 50L19 51L17 52L14 52L13 50L12 47L12 44L11 42L9 41L6 41L4 39L2 38L2 35L3 32L5 30L6 28L5 26L3 24L2 21L2 18L4 17L6 15L9 15L11 14L12 12L12 9L13 6L14 4L17 4L19 5L22 6L24 6L26 5L28 3L30 1L33 1L35 2L37 5L38 7L39 9L41 9L44 9L47 9L49 10L50 13L50 16L49 18L49 20L50 22L53 24L55 26Z" fill="#4355B9"></path></svg>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{granted}}" hint-placeholder-val="{{false}}">
+<a href="ActiviteGPS.dc.html" style="position: absolute; right: 12px; bottom: 12px; height: 40px; padding: 0 16px; border-radius: 20px; background: #FBF8FF; color: #1B1B21; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,.18); animation: scaleIn 400ms cubic-bezier(0.34,1.6,0.5,1) 1400ms both;">Voir le détail<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</sc-if>
+</div>
+
+<div style="margin: 12px 16px 0; display: flex; gap: 8px; align-items: center; font-size: 12px; color: #46464F;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+<span>Vous pouvez retirer l'accès dans les réglages de Health Connect.</span>
+</div>
+
+<div style="padding: 24px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+<div style="padding: 16px; border-radius: 28px 28px 28px 8px; background: #DEE0FF; color: #00105C; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px;">Distance</span><span style="font-size: 26px; font-weight: 750;">8,42 <span style="font-size: 14px; font-weight: 500;">km</span></span></div>
+<div style="padding: 16px; border-radius: 28px 28px 8px 28px; background: #E8E7EF; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #46464F;">Durée</span><span style="font-size: 26px; font-weight: 750;">46:18</span></div>
+<div style="padding: 16px; border-radius: 28px 8px 28px 28px; background: #FFDCBE; color: #2C1600; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px;">FC moyenne</span><span style="font-size: 26px; font-weight: 750;">152 <span style="font-size: 14px; font-weight: 500;">bpm</span></span></div>
+<div style="padding: 16px; border-radius: 8px 28px 28px 28px; background: #E0E0F9; color: #191A2C; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px;">Allure moy.</span><span style="font-size: 26px; font-weight: 750;">5'30" <span style="font-size: 14px; font-weight: 500;">/km</span></span></div>
+</div>
+
+<div style="margin: 24px 16px 0; padding: 16px 20px; border-radius: 20px; background: #F4F2FA; display: flex; gap: 12px; align-items: flex-start;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46464F" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5v.5"></path></svg>
+<span style="font-size: 13px; line-height: 18px; color: #46464F;">Activité en intérieur (tapis, vélo d'appartement) : aucun point GPS, la carte n'apparaît pas et le détail commence directement par les statistiques.</span>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { step: 'idle' }; }
+  renderVals() {
+    const step = this.state.step;
+    return {
+      idle: step === 'idle', loading: step === 'loading', granted: step === 'granted',
+      blur: step === 'granted' ? 0 : 6,
+      grant: () => {
+        this.setState({ step: 'loading' });
+        clearTimeout(this.t);
+        this.t = setTimeout(() => this.setState({ step: 'granted' }), 1400);
+      }
+    };
+  }
+  componentWillUnmount() { clearTimeout(this.t); }
+}
+</script>
+</body>
+</html>

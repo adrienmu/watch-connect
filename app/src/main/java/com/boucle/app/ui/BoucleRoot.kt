@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.contracts.ExerciseRouteRequestContract
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,6 +61,7 @@ import com.boucle.app.ui.components.LocalScreenAnimationScope
 import com.boucle.app.ui.components.LocalSharedTransitionScope
 import com.boucle.app.ui.components.rememberHaptics
 import com.boucle.app.ui.navigation.Destination
+import com.boucle.app.ui.screens.ActivityDetailScreen
 import com.boucle.app.ui.screens.ActivityScreen
 import com.boucle.app.ui.screens.BodyScreen
 import com.boucle.app.ui.screens.DevicesScreen
@@ -139,6 +141,22 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
+    val sessionDetail by viewModel.sessionDetail.collectAsStateWithLifecycle()
+
+    // Séance affichée par le détail d'activité (gardée à la rotation et à la recréation de l'activité).
+    var detailPath by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(detailPath) { detailPath?.let(viewModel::openSession) }
+    fun openSession(path: String) {
+        detailPath = path
+        viewModel.openSession(path)
+        navigate(Destination.ActivityDetail)
+    }
+    // Accord séance par séance pour lire un tracé GPS dans Health Connect.
+    var pendingRouteId by rememberSaveable { mutableStateOf<String?>(null) }
+    val routeLauncher = rememberLauncherForActivityResult(ExerciseRouteRequestContract()) { route ->
+        pendingRouteId?.let { viewModel.onRouteConsentResult(it, route) }
+        pendingRouteId = null
+    }
 
     // Bracelet connecté mais pas encore configuré : on ouvre le formulaire de profil ; une fois envoyé, on le referme.
     val needsSetup = deviceState.link.connection == Connection.CONNECTED && deviceState.setupDone == false
@@ -297,7 +315,24 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             modifier = screenModifier,
                         )
                         Destination.Sleep -> SleepScreen(dayState, screenModifier)
-                        Destination.Activity -> ActivityScreen(dayState, ::navigate, screenModifier)
+                        Destination.Activity -> ActivityScreen(dayState, ::navigate, ::openSession, screenModifier)
+                        Destination.ActivityDetail -> ActivityDetailScreen(
+                            state = sessionDetail,
+                            onBack = ::back,
+                            onRequestRoute = {
+                                viewModel.requestRoute { id ->
+                                    pendingRouteId = id
+                                    runCatching { routeLauncher.launch(id) }
+                                        .onFailure { viewModel.onRouteConsentResult(id, null) }
+                                }
+                            },
+                            onOpenHealthConnect = if (deviceState.healthConnect.availability == HealthConnectAvailability.AVAILABLE) {
+                                { runCatching { context.startActivity(viewModel.healthConnectManageIntent()) } }
+                            } else {
+                                null
+                            },
+                            modifier = screenModifier,
+                        )
                         Destination.Devices -> DevicesScreen(
                             state = deviceState,
                             permissionsGranted = permissionsGranted,

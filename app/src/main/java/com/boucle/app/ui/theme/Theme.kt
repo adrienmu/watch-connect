@@ -82,6 +82,55 @@ object ChartColors {
     val EnergyDrain = Color(0xFF8F4208)
 }
 
+/**
+ * Couleurs du détail d'activité avec tracé GPS (rangée « Détail d'activité : tracé GPS » de la maquette), qui a sa
+ * propre palette indigo.
+ */
+object RouteColors {
+    val Background = Color(0xFFFBF8FF)
+    val Container = Color(0xFFF4F2FA)
+    val ContainerHigh = Color(0xFFE8E7EF)
+    val OnSurface = Color(0xFF1B1B21)
+    val OnSurfaceVariant = Color(0xFF46464F)
+    val Outline = Color(0xFFC7C5D0)
+    val Primary = Color(0xFF4355B9)
+    val OnPrimary = Color(0xFFFFFFFF)
+    val PrimaryContainer = Color(0xFFDEE0FF)
+    val OnPrimaryContainer = Color(0xFF00105C)
+    val SecondaryContainer = Color(0xFFE0E0F9)
+    val OnSecondaryContainer = Color(0xFF191A2C)
+    val TertiaryContainer = Color(0xFFFFDCBE)
+    val OnTertiaryContainer = Color(0xFF2C1600)
+
+    /** Fond de carte avant l'arrivée des tuiles. */
+    val MapGround = Color(0xFFECEEE6)
+    val Start = Color(0xFF2E7D4F)
+    val Finish = Color(0xFF1B1B21)
+
+    /** Dégradés du tracé, du minimum au maximum : allure (lente → rapide), FC, altitude. */
+    val PaceGradient = listOf(Color(0xFFF0A050), Color(0xFF9A6BC9), Color(0xFF2A3A9E))
+    val HeartGradient = listOf(Color(0xFFFFC48A), Color(0xFFF08A4B), Color(0xFFB3261E))
+    val AltitudeGradient = listOf(Color(0xFFA8D5A2), Color(0xFF5E9F63), Color(0xFF1E5A2C))
+
+    val FastestSplit = Color(0xFF8B5000)
+    val PaceAltitudeFill = Color(0xFFDCE8D6)
+    val HeartLine = Color(0xFFB3261E)
+    val HeartFill = Color(0xB3FFDCBE)
+    val AltitudeFill = Color(0xFFA8D5A2)
+    val AltitudeLine = Color(0xFF1E5A2C)
+    val Climb = Color(0xFF2E6B3A)
+    val Descent = Color(0xFF8A93B8)
+
+    /** Zones cardiaques 1 à 5 : fond de la pastille et chiffre. */
+    val Zones = listOf(
+        Color(0xFFFFE8D4) to Color(0xFF2C1600),
+        Color(0xFFFFC48A) to Color(0xFF2C1600),
+        Color(0xFFF08A4B) to Color(0xFF2C1600),
+        Color(0xFFC4502A) to Color(0xFFFFFFFF),
+        Color(0xFF8C1D18) to Color(0xFFFFFFFF),
+    )
+}
+
 private val Sans = FontFamily.Default
 
 private fun style(size: Int, weight: Int, lineHeight: Float? = null, letterSpacing: TextUnit = TextUnit.Unspecified) = TextStyle(

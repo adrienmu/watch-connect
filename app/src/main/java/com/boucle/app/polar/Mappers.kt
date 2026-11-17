@@ -21,8 +21,15 @@ import com.polar.sdk.api.model.activity.PolarDailySummaryData
 import com.polar.sdk.api.model.sleep.PolarNightlyRechargeData
 import com.polar.sdk.api.model.sleep.PolarSleepData
 import com.polar.sdk.api.model.trainingsession.PolarTrainingSession
+import com.boucle.app.data.db.TrainingRouteEntity
+import com.boucle.app.domain.RouteAnalysis
+import com.boucle.app.domain.RouteCodec
+import com.boucle.app.domain.RoutePoint
+import com.boucle.app.domain.RouteSource
+import com.boucle.app.domain.RouteStatus
 import fi.polar.remote.representation.protobuf.Types
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 private fun PolarActiveTime.toSeconds(): Int = hours * 3600 + minutes * 60 + seconds
 
@@ -194,4 +201,68 @@ fun PolarTrainingSession.toExerciseEntities(): List<TrainingExerciseEntity> = ex
         baseProto = it.exerciseSummary?.toByteArray(),
         samplesProto = it.samples?.toByteArray(),
     )
+}
+
+private fun Types.PbDuration.toMillis(): Long = toSeconds() * 1000L + millis
+
+/**
+ * Tracé GPS de la séance (GPS du bracelet ou GPS connecté du téléphone), s'il y en a un : premier exercice qui a
+ * des points. Chaque point reçoit la FC enregistrée au même moment par le bracelet.
+ */
+fun PolarTrainingSession.toRouteEntity(zone: ZoneId = ZoneId.systemDefault()): TrainingRouteEntity? {
+    val sessionStart = sessionSummary?.takeIf { it.hasStart() }?.start?.toLocalDateTime()
+    exercises.forEach { exercise ->
+        val route = exercise.route ?: return@forEach
+        if (route.latitudeCount < RouteAnalysis.MIN_POINTS) return@forEach
+        val start = exercise.exerciseSummary?.takeIf { it.hasStart() }?.start?.toLocalDateTime() ?: sessionStart ?: return@forEach
+        val samples = exercise.samples
+        val points = bandRoutePoints(
+            startMs = start.atZone(zone).toInstant().toEpochMilli(),
+            offsetsMs = route.durationList.map { it.toLong() },
+            latitudes = route.latitudeList,
+            longitudes = route.longitudeList,
+            altitudes = route.gpsAltitudeList.map { it.toDouble() },
+            hrIntervalMs = samples?.takeIf { it.hasRecordingInterval() }?.recordingInterval?.toMillis(),
+            heartRates = samples?.heartRateSamplesList.orEmpty(),
+        )
+        if (points.size < RouteAnalysis.MIN_POINTS) return@forEach
+        return TrainingRouteEntity(
+            sessionPath = reference.path,
+            status = RouteStatus.AVAILABLE.name,
+            source = RouteSource.BAND.name,
+            healthConnectId = null,
+            points = RouteCodec.encode(points),
+        )
+    }
+    return null
+}
+
+/**
+ * Assemble les colonnes du tracé du bracelet : décalages (ms depuis le début de l'exercice), latitudes, longitudes,
+ * altitudes GPS ; la FC est échantillonnée toutes les [hrIntervalMs] depuis le même début (0 = capteur absent).
+ */
+fun bandRoutePoints(
+    startMs: Long,
+    offsetsMs: List<Long>,
+    latitudes: List<Double>,
+    longitudes: List<Double>,
+    altitudes: List<Double>,
+    hrIntervalMs: Long?,
+    heartRates: List<Int>,
+): List<RoutePoint> {
+    val count = minOf(offsetsMs.size, latitudes.size, longitudes.size)
+    return (0 until count).mapNotNull { i ->
+        val lat = latitudes[i]
+        val lon = longitudes[i]
+        // (0, 0) : pas de position (recherche des satellites).
+        if (lat == 0.0 && lon == 0.0) return@mapNotNull null
+        val hr = hrIntervalMs?.takeIf { it > 0 }?.let { interval -> heartRates.getOrNull((offsetsMs[i] / interval).toInt()) }
+        RoutePoint(
+            timeMs = startMs + offsetsMs[i],
+            latitude = lat,
+            longitude = lon,
+            altitude = altitudes.getOrNull(i).takeIf { altitudes.size == count },
+            heartRate = hr?.takeIf { it > 0 },
+        )
+    }
 }

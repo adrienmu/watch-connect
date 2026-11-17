@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  * de [androidx.compose.material3.Icon] (par défaut la couleur du contenu).
  */
 object BoucleIcons {
-    private fun stroke(name: String, vararg paths: String, width: Float = 2f): ImageVector =
+    private fun stroke(name: String, vararg paths: String, width: Float = 2f, filled: List<String> = emptyList()): ImageVector =
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
             paths.forEach { data ->
                 addPath(
@@ -25,6 +25,7 @@ object BoucleIcons {
                     strokeLineJoin = StrokeJoin.Round,
                 )
             }
+            filled.forEach { data -> addPath(pathData = addPathNodes(data), fill = SolidColor(Color.Black)) }
         }.build()
 
     val Sync = stroke(
@@ -69,4 +70,33 @@ object BoucleIcons {
         "M8 11V8a4 4 0 0 1 8 0v3",
     )
     val Bluetooth = stroke("Bluetooth", "M7 7l10 10-5 4V3l5 4L7 17")
+
+    // Détail d'activité et carte du tracé GPS.
+    val Share = stroke("Share", "M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M16 7l-4-4-4 4M12 3v12")
+    val More = stroke("More", "M12 5h.01M12 12h.01M12 19h.01", width = 4f)
+    val Expand = stroke("Expand", "M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7")
+    val Close = stroke("Close", "M6 6l12 12M18 6L6 18", width = 2.2f)
+    val Layers = stroke("Layers", "M12 3l9 5-9 5-9-5 9-5z", "M3 13l9 5 9-5")
+    val Play = stroke("Play", filled = listOf("M8 5v14l11-7z"))
+    val Recenter = stroke(
+        "Recenter",
+        "M19 12a7 7 0 1 1-14 0a7 7 0 1 1 14 0z",
+        "M12 2v3M12 19v3M2 12h3M19 12h3",
+        filled = listOf("M14.5 12a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z"),
+    )
+    val Pin = stroke("Pin", "M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z", "M14 10a2 2 0 1 1-4 0a2 2 0 1 1 4 0z")
+    val Check = stroke("Check", "M5 12l5 5 9-10", width = 2.4f)
+    val ArrowForward = stroke("ArrowForward", "M5 12h14M13 6l6 6-6 6")
+    val Run = stroke("Run", "M17 4a2 2 0 1 1-4 0a2 2 0 1 1 4 0z", "M8 21l3-6 3 2v5M6 11l3-3h4l2 4 3 1M11 15l1-6")
+    val Bike = stroke(
+        "Bike",
+        "M9 17a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z",
+        "M22 17a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z",
+        "M5.5 17l3.5-7h6l3.5 7M9 10l3 7 3-7M13 6h3",
+    )
+    val Timer = stroke("Timer", "M20 13a8 8 0 1 1-16 0a8 8 0 1 1 16 0z", "M12 9v4l2.5 2M9 2h6")
+    val Gauge = stroke("Gauge", "M5 18a8 8 0 1 1 14 0M12 14l4-5")
+    val Mountain = stroke("Mountain", "M3 19l6-10 4 6 2-3 6 7z")
+    /** Synchronisation Health Connect (deux flèches en cercle). */
+    val Refresh = stroke("Refresh", "M4 12a8 8 0 0 1 14-5.3L20 9M20 12a8 8 0 0 1-14 5.3L4 15M20 4v5h-5M4 20v-5h5")
 }

@@ -9,8 +9,17 @@ import com.boucle.app.data.db.NightlyRechargeEntity
 import com.boucle.app.data.db.PpiBlockEntity
 import com.boucle.app.data.db.SkinTemperatureEntity
 import com.boucle.app.data.db.SleepEntity
+import com.boucle.app.data.db.TrainingRouteEntity
 import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.MeasurementType
+import com.boucle.app.domain.RouteCodec
+import com.boucle.app.domain.RoutePoint
+import com.boucle.app.domain.RouteSource
+import com.boucle.app.domain.RouteStatus
+import java.time.LocalDateTime
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -54,7 +63,11 @@ object DemoData {
             dao.upsertActivitySamples(listOf(activitySamples(date, minuteSteps)))
             dao.upsertDailyActivity(listOf(dailyActivity(date, steps, trained, rnd)))
 
-            if (trained) dao.upsertTrainingSessions(listOf(trainingSession(date, rnd)))
+            if (trained) {
+                val session = trainingSession(date, rnd)
+                dao.upsertTrainingSessions(listOf(session))
+                demoRoute(session)?.let { dao.upsertTrainingRoutes(listOf(it)) }
+            }
             dao.upsertExternalMeasurements(withingsMeasurements(date, offset, rnd))
         }
     }
@@ -302,6 +315,72 @@ object DemoData {
             hrZoneSec = zones.joinToString(","),
             exerciseCount = 1,
             summaryProto = null,
+        )
+    }
+
+    /** Préfixe des identifiants Health Connect fictifs : « autoriser » le tracé ne passe alors pas par Health Connect. */
+    const val DEMO_ROUTE_PREFIX = "demo-route:"
+
+    /**
+     * Tracé d'une séance de démo : les courses ont un tracé lisible ; les sorties à vélo ont un tracé « à autoriser »
+     * (comme une séance d'une autre app dans Health Connect) ; le renforcement, en salle, n'en a pas.
+     */
+    private fun demoRoute(session: TrainingSessionEntity): TrainingRouteEntity? = when (session.name) {
+        "Course à pied" -> route(session)
+        "Vélo" -> TrainingRouteEntity(
+            sessionPath = session.path,
+            status = RouteStatus.CONSENT_REQUIRED.name,
+            source = RouteSource.HEALTH_CONNECT.name,
+            healthConnectId = DEMO_ROUTE_PREFIX + session.path,
+            points = "",
+        )
+        else -> null
+    }
+
+    /**
+     * Tracé fictif d'une séance : une boucle autour du parc de la Tête d'Or (Lyon), un point toutes les 3 s, allure,
+     * altitude et FC qui varient de façon plausible.
+     */
+    fun route(session: TrainingSessionEntity): TrainingRouteEntity {
+        val rnd = Random(session.path.hashCode())
+        val duration = session.durationSec ?: 2_400
+        val meters = (session.distanceMeters ?: 0f).takeIf { it > 0f }?.toDouble() ?: (duration * 2.7)
+        val start = (session.startTime?.let(LocalDateTime::parse) ?: LocalDateTime.now()).atZone(zone).toInstant().toEpochMilli()
+        val step = 3
+        val count = duration / step
+        val meanSpeed = meters / duration
+        // Boucle déformée : rayon qui varie avec l'angle, parcourue une fois et demie.
+        val centerLat = 45.7772
+        val centerLon = 4.8558
+        val turns = 1.5
+        val baseRadius = meters / (2 * PI * turns)
+        var lat = centerLat
+        var lon = centerLon
+        var angle = PI * 1.25
+        val points = ArrayList<RoutePoint>(count)
+        for (i in 0..count) {
+            val progress = i.toDouble() / count
+            // Accélération sur la fin, petites variations d'allure.
+            val speed = meanSpeed * (0.93 + 0.12 * progress + 0.05 * sin(i / 40.0) + rnd.nextDouble(-0.02, 0.02))
+            val radius = baseRadius * (1 + 0.35 * sin(angle * 2 + 0.6))
+            angle += speed * step / radius
+            val target = Pair(
+                centerLat + radius * sin(angle) / 111_320.0,
+                centerLon + radius * cos(angle) * 1.3 / (111_320.0 * cos(centerLat * PI / 180)),
+            )
+            lat = if (i == 0) target.first else lat + (target.first - lat) * 0.6
+            lon = if (i == 0) target.second else lon + (target.second - lon) * 0.6
+            val altitude = 170 + 32 * sin(progress * PI * 2.2) + 6 * sin(progress * PI * 9) + rnd.nextDouble(-0.6, 0.6)
+            val climb = cos(progress * PI * 2.2)
+            val hr = (118 + 34 * (1 - Math.exp(-progress * 6)) + 18 * progress + 6 * climb + rnd.nextInt(-2, 3)).toInt()
+            points += RoutePoint(start + i * step * 1000L, lat, lon, altitude, hr)
+        }
+        return TrainingRouteEntity(
+            sessionPath = session.path,
+            status = RouteStatus.AVAILABLE.name,
+            source = RouteSource.BAND.name,
+            healthConnectId = null,
+            points = RouteCodec.encode(points),
         )
     }
 }
