@@ -18,3 +18,17 @@ adrien.mussio@eurl-baam.fr
 ## Confidentialité
 
 Voir la [politique de confidentialité](docs/confidentialite.md) et les [conditions d'utilisation](docs/conditions.md).
+
+## Build de release
+
+1. Générer la clé de signature (une seule fois, à sauvegarder précieusement) :
+   `keytool -genkeypair -v -keystore ~/keys/boucle-upload.jks -alias boucle -keyalg RSA -keysize 2048 -validity 10000`
+2. Créer `keystore.properties` à la racine (ignoré par git) :
+   ```
+   storeFile=/Users/<toi>/keys/boucle-upload.jks
+   storePassword=...
+   keyAlias=boucle
+   keyPassword=...
+   ```
+3. `./gradlew :app:bundleRelease` → `app/build/outputs/bundle/release/app-release.aab` (à envoyer sur la Play Console).
+   `./gradlew :app:assembleRelease` produit l'APK signé pour un test sur appareil.
