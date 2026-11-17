@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — Configuration du bracelet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B5D4B}a:hover{color:#083F33}
+</style>
+</helmet>
+<div style="width: 390px; height: 940px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Roboto Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+<a href="Appareils.dc.html" aria-label="Retour à Appareils" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Roboto Flex', sans-serif; font-size: 22px; font-weight: 700">Configuration du bracelet</h1>
+</header>
+
+<form style="display: flex; flex-direction: column; gap: 16px; padding: 8px 16px 24px; flex-grow: 1">
+
+<p style="margin: 0; font-size: 14px; line-height: 1.45; color: #55635B">Le bracelet a besoin de ton profil pour calculer calories, activité et sommeil. Ces valeurs restent sur le bracelet et le téléphone.</p>
+
+<fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px">
+<legend style="padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600">Sexe</legend>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px">
+<label style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 999px; background: #CFE9DF; color: #0A3D31; font-size: 14px; font-weight: 600"><input type="radio" name="sexe" checked style="accent-color: #0B5D4B; width: 18px; height: 18px; margin: 0">Homme</label>
+<label style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 8px 999px 999px 8px; background: #FFFFFF; font-size: 14px; font-weight: 500"><input type="radio" name="sexe" style="accent-color: #0B5D4B; width: 18px; height: 18px; margin: 0">Femme</label>
+</div>
+</fieldset>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="naissance" style="font-size: 13px; font-weight: 600">Date de naissance</label>
+<input id="naissance" type="text" inputmode="numeric" placeholder="JJ/MM/AAAA" value="14/03/1991" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="taille" style="font-size: 13px; font-weight: 600">Taille (cm)</label>
+<input id="taille" type="text" inputmode="numeric" value="178" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="poids" style="font-size: 13px; font-weight: 600">Poids (kg)</label>
+<input id="poids" type="text" inputmode="decimal" value="72,4" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="fcrepos" style="font-size: 13px; font-weight: 600">FC de repos (bpm)</label>
+<input id="fcrepos" type="text" inputmode="numeric" value="52" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="fcmax" style="font-size: 13px; font-weight: 600">FC max (bpm)</label>
+<input id="fcmax" type="text" inputmode="numeric" value="186" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+<span style="font-size: 12px; color: #55635B">Laisse vide pour utiliser 220 − âge.</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="niveau" style="font-size: 13px; font-weight: 600">Niveau d'entraînement</label>
+<select id="niveau" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+<option>Occasionnel</option>
+<option selected>Régulier</option>
+<option>Fréquent</option>
+<option>Intensif</option>
+<option>Semi-pro</option>
+<option>Pro</option>
+</select>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="journee" style="font-size: 13px; font-weight: 600">Journée type</label>
+<select id="journee" style="box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #7B8A81; border-radius: 14px; background: #FFFFFF; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 16px">
+<option selected>Plutôt assis</option>
+<option>Plutôt debout</option>
+<option>Plutôt en mouvement</option>
+</select>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="objsommeil" style="font-size: 13px; font-weight: 600">Objectif de sommeil</label>
+<div style="display: flex; align-items: center; gap: 12px">
+<input id="objsommeil" type="range" min="5" max="11" step="0.5" value="8" style="flex-grow: 1; height: 44px; margin: 0; accent-color: #0B5D4B">
+<span style="min-width: 44px; font-family: 'Roboto Flex', sans-serif; font-size: 24px; font-weight: 800; text-align: right">8 h</span>
+</div>
+</div>
+
+<a href="Main.dc.html" style="margin-top: auto; display: flex; align-items: center; justify-content: center; min-height: 64px; border-radius: 999px; background: #0B5D4B; color: #FFFFFF; font-size: 18px; font-weight: 700; text-decoration: none">Configurer le bracelet</a>
+
+</form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":940}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

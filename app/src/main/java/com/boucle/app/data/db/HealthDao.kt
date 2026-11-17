@@ -27,6 +27,9 @@ interface HealthDao {
     @Query("SELECT * FROM daily_activity WHERE date = :date")
     fun dailyActivity(date: String): Flow<DailyActivityEntity?>
 
+    @Query("SELECT * FROM daily_activity WHERE date BETWEEN :from AND :to ORDER BY date")
+    fun dailyActivityRange(from: String, to: String): Flow<List<DailyActivityEntity>>
+
     @Query("SELECT * FROM activity_samples WHERE date = :date ORDER BY startTime")
     fun activitySamples(date: String): Flow<List<ActivitySamplesEntity>>
 

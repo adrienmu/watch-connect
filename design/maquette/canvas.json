@@ -1,0 +1,30 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-16T10:00:00Z"},
+  "title": "Boucle — écrans de l'app",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 390, "h": 920, "title": "Aujourd'hui", "is_interactive": true},
+    "Sommeil.dc.html": {"x": 470, "y": 0, "w": 390, "h": 1060, "title": "Sommeil", "is_interactive": true},
+    "Recuperation.dc.html": {"x": 940, "y": 0, "w": 390, "h": 1000, "title": "Récupération", "is_interactive": true},
+    "Energie.dc.html": {"x": 1410, "y": 0, "w": 390, "h": 940, "title": "Body Battery", "is_interactive": true},
+    "Coeur.dc.html": {"x": 1880, "y": 0, "w": 390, "h": 900, "title": "Fréquence cardiaque", "is_interactive": true},
+    "Activite.dc.html": {"x": 2350, "y": 0, "w": 390, "h": 1040, "title": "Forme", "is_interactive": true},
+    "Vo2max.dc.html": {"x": 0, "y": 1500, "w": 390, "h": 844, "title": "VO2max", "is_interactive": true},
+    "Corps.dc.html": {"x": 470, "y": 1500, "w": 390, "h": 1000, "title": "Corps", "is_interactive": true},
+    "Appareils.dc.html": {"x": 940, "y": 1500, "w": 390, "h": 940, "title": "Appareils", "is_interactive": true},
+    "Association.dc.html": {"x": 1410, "y": 1500, "w": 390, "h": 844, "title": "Associer un bracelet", "is_interactive": true},
+    "Profil.dc.html": {"x": 1880, "y": 1500, "w": 390, "h": 940, "title": "Configuration du bracelet", "is_interactive": true},
+    "Bienvenue.dc.html": {"x": 2350, "y": 1500, "w": 390, "h": 844, "title": "Première ouverture", "is_interactive": true}
+  },
+  "order": [
+    "Main.dc.html", "Sommeil.dc.html", "Recuperation.dc.html", "Energie.dc.html", "Coeur.dc.html", "Activite.dc.html",
+    "Vo2max.dc.html", "Corps.dc.html", "Appareils.dc.html", "Association.dc.html", "Profil.dc.html", "Bienvenue.dc.html"
+  ],
+  "notes": {
+    "t1": {"x": 0, "y": -300, "text": "Suivi quotidien", "kind": "title1", "maxW": 2740},
+    "t2": {"x": 0, "y": 1200, "text": "Corps, appareils et mise en route", "kind": "title1", "maxW": 2740}
+  },
+  "designSystems": []
+}

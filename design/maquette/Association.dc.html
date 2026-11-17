@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — Associer un bracelet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B5D4B}a:hover{color:#083F33}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Roboto Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+<a href="Appareils.dc.html" aria-label="Retour à Appareils" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">Associer un bracelet</h1>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 24px; flex-grow: 1">
+
+<section style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 20px; border-radius: 48px; background: #CFE9DF; color: #0A3D31">
+<svg role="img" aria-label="Indicateur de chargement" width="132" height="132" viewBox="-19 -19 138 138" fill="none">
+<circle cx="50" cy="50" r="66" fill="#FFFFFF"/>
+<path d="M97 50A15 15 0 0 1 90.7 73.5A15 15 0 0 1 73.5 90.7A15 15 0 0 1 50 97A15 15 0 0 1 26.5 90.7A15 15 0 0 1 9.3 73.5A15 15 0 0 1 3 50A15 15 0 0 1 9.3 26.5A15 15 0 0 1 26.5 9.3A15 15 0 0 1 50 3A15 15 0 0 1 73.5 9.3A15 15 0 0 1 90.7 26.5A15 15 0 0 1 97 50Z" fill="#0B5D4B"/>
+<g stroke="#FFFFFF" stroke-width="3.500" stroke-linecap="round" stroke-linejoin="round"><rect x="40" y="36" width="20" height="28" rx="6"/><path d="M44 36v-7h12v7M44 64v7h12v-7"/></g>
+</svg>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -0.6px">Recherche en cours…</span>
+<span style="font-size: 13px; text-align: center">Garde le bracelet à moins d'un mètre du téléphone.</span>
+</section>
+
+<section style="display: flex; flex-direction: column; padding: 14px 16px 4px; border-radius: 28px; background: #FFFFFF">
+<h2 style="margin: 0 0 4px; font-size: 20px; font-weight: 700">Bracelets à proximité</h2>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 68px; border-bottom: 1px solid #E3E9E4">
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+<span style="font-size: 15px; font-weight: 600">Polar Loop A1B2C3D4</span>
+<span style="font-size: 13px; color: #55635B">Signal fort · −48 dBm</span>
+</span>
+<a href="Profil.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; background: #0B5D4B; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none">Associer</a>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 68px">
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+<span style="font-size: 15px; font-weight: 600">Polar Loop 9F3E21B7</span>
+<span style="font-size: 13px; color: #55635B">Signal faible · −82 dBm</span>
+</span>
+<button type="button" style="min-height: 44px; padding: 0 20px; border: 1px solid #7B8A81; border-radius: 14px; background: transparent; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 14px; font-weight: 600">Associer</button>
+</div>
+</section>
+
+<section style="display: flex; gap: 12px; padding: 16px; border-radius: 24px; background: #FBE6D2; color: #5C2B04">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M12 4l9 16H3L12 4z"/><path d="M12 10v5M12 17.500v.500"/></svg>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 14px; font-weight: 600">Avant de commencer</span>
+<p style="margin: 0; font-size: 13px; line-height: 1.45">Le Polar Loop n'accepte qu'un seul téléphone ou une seule app. S'il a déjà servi avec Polar Flow, il reste invisible : réinitialise-le d'abord, avec le bouton sous le bracelet pendant qu'il est sur son chargeur.</p>
+</div>
+</section>
+
+<button type="button" style="margin-top: auto; min-height: 48px; border: 1px solid #7B8A81; border-radius: 999px; background: transparent; color: #16201B; font-family: 'Roboto Flex', sans-serif; font-size: 15px; font-weight: 600">Arrêter la recherche</button>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

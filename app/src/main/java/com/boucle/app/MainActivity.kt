@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.boucle.app.ui.BoucleRoot
-import com.boucle.app.ui.BoucleTheme
+import com.boucle.app.ui.theme.BoucleTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

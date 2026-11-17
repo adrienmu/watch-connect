@@ -20,8 +20,8 @@ object BodyBatteryInputs {
     private const val SLOT_SECONDS = BodyBatteryModel.SLOT_MINUTES * 60L
     private const val DEFAULT_MET_INTERVAL_SEC = 30L
     /** FC 24/7 : moyennes de 5 minutes au repos, une mesure par seconde en activité intense. */
-    private const val LOW_ACTIVITY_HR_INTERVAL_SEC = 300L
-    private const val HIGH_ACTIVITY_HR_INTERVAL_SEC = 1L
+    internal const val LOW_ACTIVITY_HR_INTERVAL_SEC = 300L
+    internal const val HIGH_ACTIVITY_HR_INTERVAL_SEC = 1L
     private const val DEFAULT_RESTING_HR = 60.0
     /**
      * Le bracelet n'enregistre des PPI que par moments : une mesure de stress VFC vaut aussi pour les

@@ -38,6 +38,8 @@ data class AppSettings(
     val lastHealthConnectSyncAt: String? = null,
     /** Jour de la dernière lecture Health Connect réussie (yyyy-MM-dd), pour reprendre à partir de là. */
     val lastHealthConnectSyncedDate: String? = null,
+    /** Vrai une fois l'écran de première ouverture passé (Bluetooth autorisé ou démo chargée). */
+    val onboardingDone: Boolean = false,
 )
 
 class Settings(private val context: Context) {
@@ -50,6 +52,7 @@ class Settings(private val context: Context) {
             lastSyncAt = prefs[LAST_SYNC_AT],
             lastHealthConnectSyncAt = prefs[LAST_HEALTH_CONNECT_SYNC_AT],
             lastHealthConnectSyncedDate = prefs[LAST_HEALTH_CONNECT_SYNCED_DATE],
+            onboardingDone = prefs[ONBOARDING_DONE] ?: false,
             profile = prefs[PROFILE_BIRTH_DATE]?.let { birth ->
                 runCatching {
                     UserProfile(
@@ -88,6 +91,10 @@ class Settings(private val context: Context) {
         }
     }
 
+    suspend fun markOnboardingDone() {
+        context.dataStore.edit { it[ONBOARDING_DONE] = true }
+    }
+
     suspend fun saveSync(lastSyncedDate: String, lastSyncAt: String) {
         context.dataStore.edit {
             it[LAST_SYNCED_DATE] = lastSyncedDate
@@ -114,5 +121,6 @@ class Settings(private val context: Context) {
         val PROFILE_HEIGHT = floatPreferencesKey("profile_height_cm")
         val PROFILE_WEIGHT = floatPreferencesKey("profile_weight_kg")
         val PROFILE_MAX_HR = intPreferencesKey("profile_max_hr")
+        val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     }
 }

@@ -55,6 +55,12 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
+private data class BodyReadings(
+    val summary: com.boucle.app.domain.BodySummary?,
+    val spo2: com.boucle.app.domain.Spo2Stats?,
+    val weights: List<WeightPoint>,
+)
+
 private data class DayScores(
     val sleep: SleepScore?,
     val recovery: RecoveryScore?,
@@ -103,6 +109,10 @@ data class DeviceUiState(
     val log: List<String> = emptyList(),
     val message: String? = null,
     val healthConnect: HealthConnectUiState = HealthConnectUiState(),
+    /** Profil enregistré (pour préremplir le formulaire de configuration). */
+    val profile: UserProfile? = null,
+    /** `null` tant que les réglages n'ont pas été lus. */
+    val onboardingDone: Boolean? = null,
 )
 
 class MainViewModel(app: BoucleApp) : ViewModel() {
@@ -149,6 +159,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                     lastSyncAt = saved.lastHealthConnectSyncAt,
                     replacesBand = saved.device == null,
                 ),
+                profile = saved.profile,
+                onboardingDone = saved.onboardingDone,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceUiState())
 
@@ -364,6 +376,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 DemoData.load(dao)
                 // Un profil fictif seulement s'il n'y en a pas : on n'écrase jamais le vrai.
                 if (settings.flow.first().profile == null) settings.saveProfile(DemoData.profile)
+                settings.markOnboardingDone()
+                selectedDate.value = LocalDate.now()
                 onDone()
             } catch (e: CancellationException) {
                 throw e
@@ -384,6 +398,16 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     }
 
     fun previousDay() = selectedDate.update { it.minusDays(1) }
+
+    /** Affiche [date] (jamais après aujourd'hui). */
+    fun selectDate(date: LocalDate) {
+        val today = LocalDate.now()
+        selectedDate.value = if (date > today) today else date
+    }
+
+    fun completeOnboarding() {
+        viewModelScope.launch { settings.markOnboardingDone() }
+    }
 
     fun nextDay() = selectedDate.update { if (it < LocalDate.now()) it.plusDays(1) else it }
 
@@ -441,7 +465,16 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 minuteStepBlocks = minuteStepBlocks(samples),
                 heartRate = heartRateStats(hr),
                 ppiIntervalCount = ppiIntervalCount(ppi),
+                hourlyHeartRate = hourlyHeartRate(hr),
             )
+        }
+        val weekStart = date.minusDays(6)
+        val week = dao.dailyActivityRange(weekStart.toString(), key).map { days ->
+            val byDate = days.associateBy { it.date }
+            (0L..6L).map { offset ->
+                val day = weekStart.plusDays(offset)
+                DaySteps(day, byDate[day.toString()]?.steps)
+            }
         }
         val night = combine(
             dao.sleep(key),
@@ -528,8 +561,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
         // Poids : la dernière pesée peut dater de plusieurs jours, et l'évolution remonte jusqu'à 30 jours avant.
         val body = dao.externalMeasurementsRange(date.minusDays(BodyMeasurements.HISTORY_DAYS).toString(), key)
-            .map { BodyMeasurements.body(it, date) to BodyMeasurements.spo2(it, date) }
-        return combine(activity, night, scores, vo2Max, body) { a, n, scores, vo2, (bodySummary, spo2) ->
+            .map { BodyReadings(BodyMeasurements.body(it, date), BodyMeasurements.spo2(it, date), weightHistory(it, date.minusDays(30), date)) }
+        return combine(activity, night, scores, vo2Max, combine(body, week) { b, w -> b to w }) { a, n, scores, vo2, (readings, weekSteps) ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
@@ -539,8 +572,10 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 recovery = scores.recovery,
                 battery = scores.battery,
                 vo2Max = vo2,
-                body = bodySummary,
-                spo2 = spo2,
+                body = readings.summary,
+                spo2 = readings.spo2,
+                weightHistory = readings.weights,
+                weekSteps = weekSteps,
             )
         }
     }

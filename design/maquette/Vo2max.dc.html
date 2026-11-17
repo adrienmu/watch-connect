@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — VO2max</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B5D4B}a:hover{color:#083F33}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Roboto Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+<a href="Activite.dc.html" aria-label="Retour à Forme" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">VO2max</h1>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 24px">
+
+<section style="display: flex; flex-direction: column; gap: 18px; padding: 28px 24px; border-radius: 48px; background: #D8EDF4; color: #083A4C">
+<div style="display: flex; align-items: flex-end; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 13px; font-weight: 600">VO2max estimée</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.85">47 <span style="font-size: 18px; font-weight: 500">ml/kg/min</span></span>
+</div>
+<span style="padding: 8px 14px; border-radius: 999px; background: #FFFFFF; font-size: 13px; font-weight: 600">Bon</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div role="img" aria-label="Position sur l'échelle : 47, dans la zone Bon" style="display: flex; gap: 3px; height: 12px">
+<div style="flex: 1; border-radius: 999px; background: #FFFFFF"></div>
+<div style="flex: 1; border-radius: 999px; background: #FFFFFF"></div>
+<div style="flex: 1; border-radius: 999px; background: #0F5F7A"></div>
+<div style="flex: 1; border-radius: 999px; background: #FFFFFF"></div>
+</div>
+<div style="display: flex; gap: 3px; font-size: 12px; text-align: center">
+<span style="flex: 1">Faible</span><span style="flex: 1">Moyen</span><span style="flex: 1; font-weight: 600">Bon</span><span style="flex: 1">Excellent</span>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; padding: 4px 16px; border-radius: 28px; background: #FFFFFF">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Estimation par la course</span><span style="font-size: 13px; color: #55635B">D'après 6 courses</span></span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 24px; font-weight: 700">48</span>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Estimation par la FC de repos</span><span style="font-size: 13px; color: #55635B">D'après ta FC de repos et ta FC max</span></span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 24px; font-weight: 700">46</span>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">FC max (observée)</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">186 bpm</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">FC de repos</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">52 bpm</span>
+</div>
+</section>
+
+<section style="display: flex; gap: 12px; padding: 16px; border-radius: 24px; background: #E7EDE8">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16201B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500v.500"/></svg>
+<p style="margin: 0; font-size: 13px; line-height: 1.45; color: #16201B">Estimation indicative : la distance du Loop vient de l'accéléromètre, sans GPS. Une FC max mesurée dans ton profil améliore nettement la précision.</p>
+</section>
+
+<a href="Profil.dc.html" style="align-self: flex-start; display: flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; background: #0B5D4B; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none">Renseigner ma FC max</a>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

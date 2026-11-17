@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — Body Battery</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B5D4B}a:hover{color:#083F33}
+</style>
+</helmet>
+<div style="width: 390px; height: 940px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Roboto Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+<a href="Main.dc.html" aria-label="Retour à Aujourd'hui" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">Body Battery</h1>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 24px">
+
+<section style="display: flex; flex-direction: column; gap: 16px; padding: 28px 24px; border-radius: 48px; background: #FBE6D2; color: #5C2B04">
+<div style="display: flex; align-items: flex-end; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 13px; font-weight: 600">Niveau à 16:42</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.85">54</span>
+</div>
+<span style="padding: 8px 14px; border-radius: 999px; background: #FFFFFF; font-size: 13px; font-weight: 600">Modérée</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 54%; height: 12px; border-radius: 999px; background: #B4560F"></div><div style="flex: 1; height: 12px; border-radius: 999px; background: #FFFFFF"></div></div>
+<span style="font-size: 13px">Il te reste de quoi finir la journée. Une soirée calme préparera la recharge de cette nuit.</span>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; border-radius: 28px; background: #FFFFFF">
+<h2 style="margin: 0; font-size: 20px; font-weight: 700">Sur la journée</h2>
+<svg role="img" aria-label="Courbe du niveau d'énergie : 31 à minuit, 86 au réveil à 7 h, 54 à 16 h 42" width="326" height="150" viewBox="0 0 326 150" fill="none">
+<rect x="0" y="0" width="95" height="140" rx="8" fill="#E2E3F8"/>
+<path d="M0 0.500h326M0 70h326M0 139.500h326" stroke="#E3E9E4" stroke-width="1"/>
+<path d="M0 97L27 73L54 48L95 20L102 22L112 42L136 45L163 50L177 48L204 59L227 64L227 140L0 140Z" fill="#FBE6D2"/>
+<path d="M0 97L27 73L54 48L95 20L102 22L112 42L136 45L163 50L177 48L204 59L227 64" stroke="#B4560F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="227" cy="64" r="5" fill="#B4560F" stroke="#FFFFFF" stroke-width="2"/>
+<circle cx="95" cy="20" r="4" fill="#FFFFFF" stroke="#B4560F" stroke-width="2"/>
+</svg>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #55635B">
+<span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span>
+</div>
+<div style="display: flex; gap: 16px; font-size: 12px; color: #55635B">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #E2E3F8; border: 1px solid #5158C4"></span>Sommeil</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 999px; background: #B4560F"></span>Niveau d'énergie</span>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">Au réveil</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">86</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">Plus haut / plus bas</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">86 / 31</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">Rechargé</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700; color: #0B5D4B">+55</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">Dépensé</span>
+<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700; color: #8F4208">−32</span>
+</div>
+</section>
+
+<p style="margin: 0; padding: 0 4px; font-size: 13px; line-height: 1.45; color: #55635B">Modèle maison : le sommeil recharge, l'activité et le stress consomment, le calme recharge un peu. Ce n'est pas l'algorithme de Garmin.</p>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":940}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

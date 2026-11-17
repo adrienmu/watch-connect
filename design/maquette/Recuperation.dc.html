@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — Récupération</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B5D4B}a:hover{color:#083F33}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Roboto Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+<a href="Main.dc.html" aria-label="Retour à Aujourd'hui" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+</a>
+<h1 style="margin: 0; font-size: 26px; font-weight: 700">Récupération</h1>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 24px">
+
+<section style="display: flex; flex-direction: column; gap: 16px; padding: 28px 24px; border-radius: 48px; background: #0B5D4B; color: #FFFFFF">
+<div style="display: flex; align-items: flex-end; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600; color: #A9F0D6">Niveau de récupération</span>
+<span style="font-size: 120px; font-weight: 800; line-height: 0.82">74</span>
+</div>
+<span style="padding: 10px 18px; border-radius: 999px; background: #A9F0D6; color: #063D31; font-size: 18px; font-weight: 800">Bonne</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div role="img" aria-label="Échelle : Basse, Modérée, Bonne, Pleine forme. Niveau actuel : Bonne" style="display: flex; gap: 3px; height: 12px">
+<div style="flex: 1; border-radius: 999px 4px 4px 999px; background: #1F6E5C"></div>
+<div style="flex: 1; border-radius: 4px; background: #1F6E5C"></div>
+<div style="flex: 1; border-radius: 999px; background: #A9F0D6"></div>
+<div style="flex: 1; border-radius: 4px 999px 999px 4px; background: #1F6E5C"></div>
+</div>
+<div style="display: flex; gap: 3px; font-size: 12px; text-align: center; color: #CFE9DF">
+<span style="flex: 1">Basse</span><span style="flex: 1">Modérée</span><span style="flex: 1; font-weight: 800; color: #FFFFFF">Bonne</span><span style="flex: 1">Pleine forme</span>
+</div>
+</div>
+<span style="font-size: 14px; line-height: 1.4">Ton corps a bien récupéré cette nuit. Une séance modérée à soutenue passe bien aujourd'hui.</span>
+</section>
+
+<section style="display: flex; flex-direction: column; padding: 6px 16px; border-radius: 32px; background: #FFFFFF">
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">VFC (RMSSD)</span>
+<span style="font-size: 24px; font-weight: 700">48 ms</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 81%; height: 8px; border-radius: 999px; background: #0B5D4B"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #CFE9DF"></div></div>
+<span style="font-size: 13px; color: #55635B">Référence 45 ms · au-dessus de ta moyenne</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">FC nocturne</span>
+<span style="font-size: 24px; font-weight: 700">52 bpm</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 76%; height: 8px; border-radius: 999px; background: #0B5D4B"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #CFE9DF"></div></div>
+<span style="font-size: 13px; color: #55635B">Référence 54 bpm · plus basse que d'habitude</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">Respiration</span>
+<span style="font-size: 24px; font-weight: 700">14,2 /min</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 70%; height: 8px; border-radius: 999px; background: #0B5D4B"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #CFE9DF"></div></div>
+<span style="font-size: 13px; color: #55635B">Stable par rapport à tes nuits récentes</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">Sommeil</span>
+<span style="font-size: 24px; font-weight: 700">82</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 82%; height: 8px; border-radius: 999px; background: #0B5D4B"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #CFE9DF"></div></div>
+<span style="font-size: 13px; color: #55635B">Score de la nuit · 7 h 46</span>
+</div>
+
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 28px 8px 8px 28px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">Température nocturne</span>
+<span style="font-size: 26px; font-weight: 700">+0,12 °C</span>
+<span style="font-size: 12px; color: #55635B">Aucune pénalité</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 8px 28px 28px 8px; background: #FFFFFF">
+<span style="font-size: 12px; color: #55635B">Statut SNA</span>
+<span style="font-size: 26px; font-weight: 700">+2,4</span>
+<span style="font-size: 12px; color: #55635B">Nightly Recharge</span>
+</div>
+</section>
+
+<p style="margin: 0; padding: 0 4px; font-size: 13px; line-height: 1.45; color: #55635B">Référence : tes 28 dernières nuits. Le score compare ta nuit à tes propres habitudes, pas à une moyenne générale.</p>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
