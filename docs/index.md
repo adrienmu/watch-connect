@@ -8,7 +8,9 @@ Boucle affiche et analyse sur votre téléphone les données de votre bracelet c
 
 ## Tout reste en local
 
-Boucle ne fait passer aucune donnée par un serveur. Il n'y a pas de compte, pas de publicité, pas de pistage : vos données de santé restent sur votre téléphone.
+Aucune de vos données de santé ne passe par un serveur : tout reste sur votre téléphone. Il n'y a pas de compte, pas de publicité, pas de pistage.
+
+Seule exception : l'affichage de la carte d'un parcours GPS télécharge des images de fond de carte depuis OpenStreetMap, sans envoyer vos mesures ni votre tracé. Détails dans la [politique de confidentialité](confidentialite/).
 
 ## Compatibilité
 

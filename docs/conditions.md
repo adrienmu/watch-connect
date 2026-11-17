@@ -29,6 +29,10 @@ Boucle est fournie « en l'état », sans garantie de disponibilité, de précis
 
 Polar, Polar Flow, Garmin, Withings et Health Connect sont des marques de leurs détenteurs respectifs. Boucle est indépendante et n'est ni affiliée à eux ni approuvée par eux.
 
+## Licence du code source
+
+Le code source de Boucle est publié sous licence [PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0). Vous pouvez l'utiliser, le modifier et le redistribuer pour un usage non commercial. Tout usage commercial exige l'accord écrit de l'auteur (voir l'adresse de contact ci-dessus).
+
 ## Données personnelles
 
 Voir la [politique de confidentialité](../confidentialite/).
