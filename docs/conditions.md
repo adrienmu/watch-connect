@@ -13,7 +13,7 @@ Dernière mise à jour : 17 novembre 2026
 
 Boucle est un outil de suivi personnel de la forme et du bien-être. Elle ne sert ni à diagnostiquer, ni à traiter, ni à surveiller une maladie.
 
-Les scores et estimations (récupération, Body Battery, VO2max, stress, qualité du sommeil) sont indicatifs. Ils dépendent de la précision de votre bracelet et peuvent être inexacts.
+Les scores et estimations (récupération, Énergie, VO2max, stress, qualité du sommeil) sont indicatifs. Ils dépendent de la précision de votre bracelet et peuvent être inexacts.
 
 Ne prenez aucune décision médicale en vous fondant sur Boucle. En cas de doute sur votre santé, consultez un professionnel de santé. En cas d'urgence, appelez le 15 ou le 112.
 

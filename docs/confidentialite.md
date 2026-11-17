@@ -29,7 +29,9 @@ Les données d'activité de Health Connect ne sont lues que depuis l'application
 
 ## À quoi servent ces données
 
-Uniquement à afficher vos mesures et à calculer vos scores (sommeil, récupération, Body Battery, VO2max estimé, stress) sur votre téléphone. Elles ne servent ni à la publicité, ni au profilage, ni à des décisions automatisées vous concernant.
+Uniquement à afficher vos mesures et à calculer vos scores (sommeil, récupération, Énergie, VO2max estimé, stress) sur votre téléphone. Elles ne servent ni à la publicité, ni au profilage, ni à des décisions automatisées vous concernant.
+
+L'utilisation par Boucle des informations reçues de Health Connect respecte la [politique relative aux données utilisateur de Google Play](https://support.google.com/googleplay/android-developer/answer/9888076), y compris ses exigences d'utilisation limitée : ces données ne sont ni vendues, ni utilisées pour la publicité, ni transmises à des tiers, et personne chez Boucle ne les consulte.
 
 ## Où elles sont stockées
 
@@ -53,6 +55,7 @@ La permission « Internet » sert à télécharger ces images de carte et, pour 
 Quand vous ouvrez la carte d'une séance avec un tracé GPS, Boucle télécharge des images de fond de carte depuis OpenStreetMap (`tile.openstreetmap.org`) et, pour le style « Relief », depuis OpenTopoMap (`tile.opentopomap.org`). Ces services reçoivent votre adresse IP et les coordonnées des carrés de carte demandés, ce qui révèle la zone géographique de la séance. Ils ne reçoivent ni vos mesures de santé, ni le tracé lui-même, qui est dessiné sur votre téléphone, ni aucun identifiant de compte.
 
 Les images téléchargées sont gardées en cache sur le téléphone pour limiter ces requêtes. Ces services appliquent leurs propres règles, par exemple la [politique de confidentialité de la fondation OpenStreetMap](https://osmfoundation.org/wiki/Privacy_Policy).
+
 ## Consentement et vos droits
 
 Les données de santé sont des données sensibles. Boucle ne les lit qu'avec votre accord, donné au moment où vous accordez les autorisations Bluetooth et Health Connect. Vous pouvez le retirer à tout moment :
