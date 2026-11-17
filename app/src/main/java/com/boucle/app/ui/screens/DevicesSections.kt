@@ -370,7 +370,7 @@ private fun ImportRow(importing: Boolean, onImport: () -> Unit) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("Importer une sauvegarde", style = rowTitleStyle)
             Text(
-                "Archive ZIP créée par « Exporter mes données », ajoutée sans doublon",
+                "Archive créée par « Exporter mes données » : ajoute seulement ce qui manque",
                 style = BoucleType.small,
                 color = BoucleColors.OnSurfaceVariant,
             )
@@ -419,7 +419,7 @@ private fun AutoBackupRow(
                 SetupOutlinedButton(
                     if (state.running) "Sauvegarde…" else "Sauvegarder",
                     onBackupNow,
-                    enabled = !state.running && state.folderAccessible && state.keyAvailable && !state.savingKey,
+                    enabled = !state.running && state.folderAccessible && state.keyAvailable && !state.savingKey && !state.demoMode,
                 )
             } else {
                 SetupOutlinedButton(if (state.savingKey) "Activation…" else "Activer", onEnable, enabled = !state.savingKey)
@@ -438,6 +438,9 @@ private fun AutoBackupRow(
             }
             Text(status, style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
             val problem = when {
+                state.demoMode ->
+                    "En pause pendant la démo : les données fictives ne sont pas sauvegardées et tes sauvegardes " +
+                        "restent intactes. « Tout effacer » pour la reprendre."
                 !state.folderAccessible -> "Dossier inaccessible : choisis-le à nouveau."
                 !state.keyAvailable ->
                     "Phrase de passe à ressaisir : la clé de chiffrement n'est pas disponible sur ce téléphone " +

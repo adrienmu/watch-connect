@@ -44,7 +44,24 @@ data class AppSettings(
     val backup: BackupSettings = BackupSettings(),
     /** Augmente à chaque modification des données (synchro, lecture Health Connect, import) : décide des sauvegardes. */
     val dataVersion: Long = 0,
+    /**
+     * Vrai depuis le chargement de la démo jusqu'à « Tout effacer » : la base contient des données fictives, que la
+     * sauvegarde (automatique ou manuelle) ne doit ni copier ni laisser évincer les vraies sauvegardes du dossier.
+     */
+    val demoMode: Boolean = false,
 )
+
+/**
+ * Activation de la sauvegarde automatique en attente du choix d'un dossier, enregistrée avant d'ouvrir le
+ * sélecteur : elle survit à l'arrêt du processus pendant que le sélecteur du système est affiché.
+ */
+enum class PendingBackupEnable {
+    /** Sauvegardes en clair, choisi explicitement. */
+    PLAIN,
+
+    /** Sauvegardes chiffrées : la clé est déjà enregistrée ([BackupEncryptionSettings]) avant l'ouverture du sélecteur. */
+    ENCRYPTED,
+}
 
 /** Sauvegarde automatique dans un dossier choisi par l'utilisateur (voir `data/backup`). */
 data class BackupSettings(
@@ -63,6 +80,14 @@ data class BackupSettings(
     val lastDataVersion: Long? = null,
     /** Chiffrement des sauvegardes ; `null` quand elles sont écrites en clair. */
     val encryption: BackupEncryptionSettings? = null,
+    /** Activation en attente d'un dossier (sélecteur ouvert) ; `null` sinon. */
+    val pendingEnable: PendingBackupEnable? = null,
+    /**
+     * Sauvegarde en cours d'écriture sous son nom final (fournisseur sans renommage) et son dossier : si elle est
+     * encore marquée au passage suivant, l'écriture a été interrompue et le fichier est incomplet.
+     */
+    val writingFile: String? = null,
+    val writingFolder: String? = null,
 ) {
     val enabled: Boolean get() = folderUri != null
 }
@@ -98,6 +123,7 @@ class Settings(private val context: Context) {
             lastHealthConnectSyncedDate = prefs[LAST_HEALTH_CONNECT_SYNCED_DATE],
             onboardingDone = prefs[ONBOARDING_DONE] ?: false,
             dataVersion = prefs[DATA_VERSION] ?: 0,
+            demoMode = prefs[DEMO_MODE] ?: false,
             backup = BackupSettings(
                 folderUri = prefs[BACKUP_FOLDER_URI],
                 folderName = prefs[BACKUP_FOLDER_NAME],
@@ -111,6 +137,11 @@ class Settings(private val context: Context) {
                 } else {
                     null
                 },
+                pendingEnable = prefs[BACKUP_PENDING_ENABLE]?.let { name ->
+                    PendingBackupEnable.entries.firstOrNull { it.name == name }
+                },
+                writingFile = prefs[BACKUP_WRITING_FILE],
+                writingFolder = prefs[BACKUP_WRITING_FOLDER],
             ),
             profile = prefs[PROFILE_BIRTH_DATE]?.let { birth ->
                 runCatching {
@@ -167,10 +198,44 @@ class Settings(private val context: Context) {
         context.dataStore.edit { it[DATA_VERSION] = (it[DATA_VERSION] ?: 0) + 1 }
     }
 
-    /** Active la sauvegarde automatique dans [uri], ou change de dossier : l'historique des sauvegardes repart de zéro. */
+    /** Données de démo chargées ([demo] vrai) ou effacées : la sauvegarde est suspendue pendant la démo. */
+    suspend fun setDemoMode(demo: Boolean) {
+        context.dataStore.edit { if (demo) it[DEMO_MODE] = true else it.remove(DEMO_MODE) }
+    }
+
+    /** Enregistre l'activation demandée, juste avant d'ouvrir le sélecteur de dossier. */
+    suspend fun savePendingBackupEnable(mode: PendingBackupEnable) {
+        context.dataStore.edit { it[BACKUP_PENDING_ENABLE] = mode.name }
+    }
+
+    suspend fun clearPendingBackupEnable() {
+        context.dataStore.edit { it.remove(BACKUP_PENDING_ENABLE) }
+    }
+
+    /** Marque [file] (dans [folderUri]) comme en cours d'écriture sous son nom final, avant de le créer. */
+    suspend fun saveBackupWriting(folderUri: String, file: String) {
+        context.dataStore.edit {
+            it[BACKUP_WRITING_FOLDER] = folderUri
+            it[BACKUP_WRITING_FILE] = file
+        }
+    }
+
+    /** L'écriture marquée par [saveBackupWriting] est terminée, ou son fichier incomplet a été supprimé. */
+    suspend fun clearBackupWriting() {
+        context.dataStore.edit {
+            it.remove(BACKUP_WRITING_FOLDER)
+            it.remove(BACKUP_WRITING_FILE)
+        }
+    }
+
+    /**
+     * Active la sauvegarde automatique dans [uri], ou change de dossier : l'historique des sauvegardes repart de zéro.
+     * L'activation en attente, s'il y en avait une, est terminée.
+     */
     suspend fun saveBackupFolder(uri: String, name: String?) {
         context.dataStore.edit {
             clearBackupResult(it)
+            it.remove(BACKUP_PENDING_ENABLE)
             it[BACKUP_FOLDER_URI] = uri
             if (name != null) it[BACKUP_FOLDER_NAME] = name else it.remove(BACKUP_FOLDER_NAME)
         }
@@ -180,6 +245,7 @@ class Settings(private val context: Context) {
     suspend fun clearBackupFolder() {
         context.dataStore.edit {
             clearBackupResult(it)
+            it.remove(BACKUP_PENDING_ENABLE)
             it.remove(BACKUP_FOLDER_URI)
             it.remove(BACKUP_FOLDER_NAME)
         }
@@ -315,5 +381,9 @@ class Settings(private val context: Context) {
         val BACKUP_KEY_SALT = stringPreferencesKey("backup_key_salt")
         val BACKUP_KEY_ITERATIONS = intPreferencesKey("backup_key_iterations")
         val BACKUP_KEY_WRAPPED = stringPreferencesKey("backup_key_wrapped")
+        val BACKUP_PENDING_ENABLE = stringPreferencesKey("backup_pending_enable")
+        val BACKUP_WRITING_FILE = stringPreferencesKey("backup_writing_file")
+        val BACKUP_WRITING_FOLDER = stringPreferencesKey("backup_writing_folder")
+        val DEMO_MODE = booleanPreferencesKey("demo_mode")
     }
 }

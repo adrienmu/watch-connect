@@ -1,5 +1,6 @@
 package com.boucle.app.data.backup
 
+import com.boucle.app.data.PendingBackupEnable
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -67,12 +68,18 @@ object BackupNaming {
  * `.boucle` comptés ensemble. Les fichiers qui ne
  * sont pas des sauvegardes complètes de l'app (autres fichiers du dossier, `.partial`, noms modifiés) ne sont
  * jamais retenus, pas plus que [protect] (la sauvegarde qui vient d'être écrite, même si l'horloge du téléphone a
- * reculé et lui donne un nom plus ancien que les autres).
+ * reculé et lui donne un nom plus ancien que les autres). [incomplete], une sauvegarde dont l'écriture sous son
+ * nom final a été interrompue ([completeBackups]), n'est ni comptée parmi les sauvegardes gardées ni supprimée ici.
  */
-fun backupsToDelete(names: Collection<String>, keep: Int = BackupNaming.KEEP, protect: String? = null): List<String> {
+fun backupsToDelete(
+    names: Collection<String>,
+    keep: Int = BackupNaming.KEEP,
+    protect: String? = null,
+    incomplete: String? = null,
+): List<String> {
     require(keep >= 1) { "keep doit être au moins 1" }
     val newestFirst = compareByDescending<String> { BackupNaming.backupTime(it) }.thenByDescending { it }
-    val backups = names.filter(BackupNaming::isBackup).distinct().sortedWith(newestFirst)
+    val backups = completeBackups(names, incomplete).sortedWith(newestFirst)
     val kept = buildSet {
         protect?.takeIf(BackupNaming::isBackup)?.let(::add)
         backups.forEach { if (size < keep) add(it) }
@@ -87,12 +94,30 @@ fun backupsToDelete(names: Collection<String>, keep: Int = BackupNaming.KEEP, pr
 fun stalePartials(names: Collection<String>, inProgress: String? = null): List<String> =
     names.filter { BackupNaming.isPartial(it) && it != inProgress }.distinct().sorted()
 
+/**
+ * Sauvegardes complètes de l'app parmi [names] : celles au motif exact, sauf [incomplete], encore marquée comme en
+ * cours d'écriture sous son nom final (fournisseur sans renommage) et donc peut-être tronquée.
+ */
+fun completeBackups(names: Collection<String>, incomplete: String? = null): List<String> =
+    names.filter { BackupNaming.isBackup(it) && it != incomplete }.distinct()
+
+/**
+ * Fichier à supprimer au début d'un passage : [writingFile], marqué avant une écriture sous le nom final et jamais
+ * démarqué, est une sauvegarde interrompue (processus tué). Seulement s'il porte le motif de l'app et qu'il est
+ * dans le dossier ; `null` sinon.
+ */
+fun interruptedBackupToDelete(writingFile: String?, names: Collection<String>): String? =
+    writingFile?.takeIf { BackupNaming.isBackup(it) && it in names }
+
 enum class BackupDecision {
     /** Écrire une nouvelle sauvegarde. */
     BACKUP,
 
     /** Pas de dossier choisi : sauvegarde automatique désactivée. */
     NOT_CONFIGURED,
+
+    /** Données de démo chargées : les sauvegarder ferait sortir les vraies sauvegardes du dossier par la rotation. */
+    DEMO_MODE,
 
     /** Base vide : une sauvegarde vide ne ferait que pousser les vraies vers la sortie. */
     NO_DATA,
@@ -110,6 +135,7 @@ enum class BackupDecision {
  *   dossier, `null` s'il n'y en a pas eu (ou si le dossier a changé depuis).
  * @param backupsInFolder nombre de sauvegardes de l'app présentes dans le dossier : s'il n'y en a plus (supprimées à
  *   la main), on en refait une même sans changement.
+ * @param demoMode données de démo chargées : aucune sauvegarde, même demandée.
  */
 fun decideBackup(
     force: Boolean,
@@ -118,8 +144,10 @@ fun decideBackup(
     dataVersion: Long,
     lastBackupDataVersion: Long?,
     backupsInFolder: Int,
+    demoMode: Boolean = false,
 ): BackupDecision = when {
     !folderConfigured -> BackupDecision.NOT_CONFIGURED
+    demoMode -> BackupDecision.DEMO_MODE
     !hasData -> BackupDecision.NO_DATA
     force -> BackupDecision.BACKUP
     backupsInFolder == 0 -> BackupDecision.BACKUP
@@ -127,3 +155,40 @@ fun decideBackup(
     dataVersion != lastBackupDataVersion -> BackupDecision.BACKUP
     else -> BackupDecision.UNCHANGED
 }
+
+/** Que faire du dossier renvoyé par le sélecteur ([decideFolderPick]). */
+enum class FolderPickAction {
+    /** Activer la sauvegarde dans ce dossier, selon l'activation enregistrée (en clair ou chiffrée). */
+    ACTIVATE,
+
+    /** Sauvegarde déjà active : changer de dossier, sans toucher au chiffrement. */
+    CHANGE_FOLDER,
+
+    /** Activation chiffrée demandée mais clé introuvable ou illisible : ne rien activer, plutôt qu'en clair. */
+    KEY_MISSING,
+
+    /** Ni sauvegarde active ni activation enregistrée : rien n'est activé, l'accès au dossier est rendu. */
+    IGNORE,
+}
+
+/**
+ * Décide de l'usage d'un dossier choisi dans le sélecteur, uniquement d'après l'état enregistré : le processus a pu
+ * être tué pendant que le sélecteur était ouvert, et rien en mémoire ne doit compter.
+ *
+ * @param backupEnabled la sauvegarde automatique est déjà active (un dossier est enregistré).
+ * @param pending activation enregistrée avant l'ouverture du sélecteur, s'il y en a une.
+ * @param keyUsable la clé de chiffrement enregistrée se relit sur ce téléphone.
+ */
+fun decideFolderPick(backupEnabled: Boolean, pending: PendingBackupEnable?, keyUsable: Boolean): FolderPickAction = when {
+    pending == PendingBackupEnable.ENCRYPTED && !keyUsable -> FolderPickAction.KEY_MISSING
+    pending != null -> FolderPickAction.ACTIVATE
+    backupEnabled -> FolderPickAction.CHANGE_FOLDER
+    else -> FolderPickAction.IGNORE
+}
+
+/**
+ * Sélecteur fermé sans choix : la clé enregistrée pour une activation chiffrée est effacée, sauf si la sauvegarde
+ * était déjà active (sa clé sert alors aux sauvegardes en cours).
+ */
+fun discardKeyOnPickCancelled(backupEnabled: Boolean, pending: PendingBackupEnable?): Boolean =
+    pending == PendingBackupEnable.ENCRYPTED && !backupEnabled

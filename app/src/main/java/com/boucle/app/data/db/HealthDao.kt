@@ -1,6 +1,8 @@
 package com.boucle.app.data.db
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +20,47 @@ interface HealthDao {
     @Upsert suspend fun upsertTrainingExercises(items: List<TrainingExerciseEntity>)
     @Upsert suspend fun upsertExternalMeasurements(items: List<ExternalMeasurementEntity>)
     @Upsert suspend fun upsertTrainingRoutes(items: List<TrainingRouteEntity>)
+
+    // Import d'une sauvegarde : seules les lignes dont la clé est absente sont ajoutées, une ligne déjà présente
+    // (plus récente, synchronisée depuis la sauvegarde) n'est jamais remplacée. Le résultat donne, pour chaque
+    // ligne, son rowid, ou -1 si elle a été ignorée parce qu'elle existait déjà.
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDailyActivityIfAbsent(items: List<DailyActivityEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertActivitySamplesIfAbsent(items: List<ActivitySamplesEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertHrBlocksIfAbsent(items: List<HrBlockEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertPpiBlocksIfAbsent(items: List<PpiBlockEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSleepIfAbsent(items: List<SleepEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNightlyRechargeIfAbsent(items: List<NightlyRechargeEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSkinTemperatureIfAbsent(items: List<SkinTemperatureEntity>): List<Long>
+
+    /** Une séance à la fois : ses exercices et son tracé ne sont importés que si elle vient d'être ajoutée. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrainingSessionIfAbsent(item: TrainingSessionEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrainingExercisesIfAbsent(items: List<TrainingExerciseEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrainingRoutesIfAbsent(items: List<TrainingRouteEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertExternalMeasurementsIfAbsent(items: List<ExternalMeasurementEntity>): List<Long>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM training_session WHERE path = :path)")
+    suspend fun hasTrainingSession(path: String): Boolean
 
     @Query("SELECT * FROM training_route WHERE sessionPath = :path")
     fun trainingRoute(path: String): Flow<TrainingRouteEntity?>

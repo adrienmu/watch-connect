@@ -7,15 +7,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.boucle.app.BoucleApp
 import com.boucle.app.data.DemoData
+import com.boucle.app.data.PendingBackupEnable
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
 import com.boucle.app.data.backup.BackupCrypto
 import com.boucle.app.data.backup.BackupFolder
-import com.boucle.app.data.backup.BackupKey
+import com.boucle.app.data.backup.FolderPickAction
 import com.boucle.app.data.backup.WrongPassphraseException
+import com.boucle.app.data.backup.decideFolderPick
+import com.boucle.app.data.backup.discardKeyOnPickCancelled
 import com.boucle.app.data.backup.wipe
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
 import com.boucle.app.data.export.BackupFormatException
 import com.boucle.app.data.export.DataExporter
 import com.boucle.app.data.export.DataImporter
@@ -156,6 +157,8 @@ data class BackupUiState(
     val keyAvailable: Boolean = true,
     /** Dérivation et enregistrement d'une nouvelle clé en cours. */
     val savingKey: Boolean = false,
+    /** Données de démo chargées : aucune sauvegarde tant qu'elles n'ont pas été effacées. */
+    val demoMode: Boolean = false,
 )
 
 data class DeviceUiState(
@@ -184,6 +187,8 @@ data class DeviceUiState(
     /** Import d'une sauvegarde en cours. */
     val importing: Boolean = false,
     val backup: BackupUiState = BackupUiState(),
+    /** L'activation est enregistrée : l'écran doit ouvrir le sélecteur de dossier, puis appeler `onBackupFolderPickLaunched`. */
+    val backupFolderPickRequested: Boolean = false,
     /** Profil enregistré (pour préremplir le formulaire de configuration). */
     val profile: UserProfile? = null,
     /** `null` tant que les réglages n'ont pas été lus. */
@@ -222,15 +227,8 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         val backupFolderAccessible: Boolean = true,
         val backupKeyAvailable: Boolean = true,
         val savingBackupKey: Boolean = false,
+        val backupFolderPickRequested: Boolean = false,
     )
-
-    /**
-     * Activation de la sauvegarde automatique en cours : clé en cours de dérivation pendant que l'utilisateur choisit
-     * le dossier (`null` si elle se fait sans chiffrement). La phrase de passe elle-même est effacée dès la dérivation.
-     */
-    private var enabling: Enabling? = null
-
-    private class Enabling(val key: Deferred<BackupKey>?)
 
     private val local = MutableStateFlow(Local())
 
@@ -270,7 +268,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                     encrypted = saved.backup.encryption != null,
                     keyAvailable = saved.backup.encryption == null || local.backupKeyAvailable,
                     savingKey = local.savingBackupKey,
+                    demoMode = saved.demoMode,
                 ),
+                backupFolderPickRequested = local.backupFolderPickRequested,
                 healthConnect = local.healthConnect.copy(
                     lastSyncAt = saved.lastHealthConnectSyncAt,
                     replacesBand = saved.device == null,
@@ -510,6 +510,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     fun loadDemo(onDone: () -> Unit) {
         viewModelScope.launch {
             try {
+                // Avant de toucher à la base : aucune sauvegarde ne doit copier les données fictives, ni laisser la
+                // rotation évincer les vraies sauvegardes du dossier.
+                settings.setDemoMode(true)
                 withContext(Dispatchers.IO) { database.clearAllTables() }
                 DemoData.load(dao)
                 // Un profil fictif seulement s'il n'y en a pas : on n'écrase jamais le vrai.
@@ -599,9 +602,17 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
     }
 
+    /** « Tout effacer » : base vide, fin du mode démo (la sauvegarde reprendra avec les prochaines vraies données). */
     fun clearData() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { database.clearAllTables() }
+            try {
+                withContext(Dispatchers.IO) { database.clearAllTables() }
+                settings.setDemoMode(false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Effacement impossible", e)
+            }
         }
     }
 
@@ -711,6 +722,11 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 local.update { it.copy(message = e.message) }
             } catch (e: Exception) {
                 report("Import impossible", e)
+            } catch (e: StackOverflowError) {
+                // Fichier fabriqué ou très endommagé : la transaction est annulée, rien n'a été modifié.
+                local.update { it.copy(message = IMPORT_TOO_LARGE_MESSAGE) }
+            } catch (e: OutOfMemoryError) {
+                local.update { it.copy(message = IMPORT_TOO_LARGE_MESSAGE) }
             } finally {
                 local.update { it.copy(importing = false) }
             }
@@ -718,60 +734,128 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     }
 
     /**
-     * Début de l'activation de la sauvegarde automatique, juste avant le choix du dossier. Avec [passphrase]
-     * (chiffrement, proposé par défaut), la clé est dérivée pendant que l'utilisateur choisit le dossier, et la
-     * phrase de passe effacée aussitôt après. Sans, les sauvegardes seront en clair.
+     * Activation de la sauvegarde automatique, avant le choix du dossier. L'intention est enregistrée avant d'ouvrir
+     * le sélecteur, pour survivre à l'arrêt du processus pendant qu'il est affiché : avec [passphrase] (effacée ici),
+     * la clé est d'abord dérivée et enregistrée, enveloppée par le Keystore, puis l'activation chiffrée est marquée en
+     * attente ; sans, la clé éventuelle est effacée et l'activation en clair est marquée. L'écran ouvre ensuite le
+     * sélecteur ([DeviceUiState.backupFolderPickRequested]).
      */
     fun startEnableBackup(passphrase: CharArray?) {
-        abandonEnabling()
-        val key = passphrase?.let {
-            viewModelScope.async(Dispatchers.Default) {
-                try {
-                    BackupCrypto.deriveKey(it)
-                } finally {
-                    it.wipe()
-                }
-            }
-        }
-        enabling = Enabling(key)
-    }
-
-    /** Sélecteur de dossier fermé sans choix : l'activation est abandonnée, la clé dérivée effacée. */
-    fun onBackupFolderPickCancelled() {
-        abandonEnabling()
-    }
-
-    private fun abandonEnabling() {
-        val pending = enabling?.key ?: run {
-            enabling = null
+        if (local.value.savingBackupKey) {
+            passphrase?.wipe()
             return
         }
-        enabling = null
-        viewModelScope.launch { runCatching { pending.await() }.getOrNull()?.close() }
+        local.update { it.copy(savingBackupKey = passphrase != null, message = null) }
+        viewModelScope.launch {
+            try {
+                settings.clearPendingBackupEnable()
+                if (passphrase != null) {
+                    withContext(Dispatchers.Default) {
+                        try {
+                            BackupCrypto.deriveKey(passphrase)
+                        } finally {
+                            passphrase.wipe()
+                        }
+                    }.use { key -> withContext(Dispatchers.IO) { backupKeys.save(key) } }
+                    settings.savePendingBackupEnable(PendingBackupEnable.ENCRYPTED)
+                } else {
+                    withContext(Dispatchers.IO) { backupKeys.clear() }
+                    settings.savePendingBackupEnable(PendingBackupEnable.PLAIN)
+                }
+                local.update { it.copy(backupKeyAvailable = true, backupFolderPickRequested = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Activation de la sauvegarde impossible", e)
+            } finally {
+                passphrase?.wipe()
+                local.update { it.copy(savingBackupKey = false) }
+            }
+        }
+    }
+
+    /** « Choisir un autre dossier » (sauvegarde déjà active) : aucune activation en attente ne doit s'y appliquer. */
+    fun chooseBackupFolder() {
+        viewModelScope.launch {
+            try {
+                settings.clearPendingBackupEnable()
+                local.update { it.copy(backupFolderPickRequested = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Dossier de sauvegarde inutilisable", e)
+            }
+        }
+    }
+
+    /** Le sélecteur de dossier demandé par [DeviceUiState.backupFolderPickRequested] vient d'être ouvert. */
+    fun onBackupFolderPickLaunched() {
+        local.update { it.copy(backupFolderPickRequested = false) }
     }
 
     /**
-     * Dossier choisi pour la sauvegarde automatique (nouveau ou changement) : on garde l'accès et on sauvegarde
-     * aussitôt. À l'activation, le chiffrement est réglé avant que le dossier soit enregistré : aucune sauvegarde ne
-     * peut partir en clair si l'utilisateur a choisi de chiffrer.
+     * Sélecteur de dossier fermé sans choix : l'activation en attente est abandonnée et la clé enregistrée pour elle
+     * effacée. D'après l'état enregistré seulement : le processus a pu être tué pendant que le sélecteur était ouvert.
      */
-    fun onBackupFolderPicked(uri: Uri) {
-        val activation = enabling
-        enabling = null
+    fun onBackupFolderPickCancelled() {
         viewModelScope.launch {
             try {
-                if (activation != null) {
-                    local.update { it.copy(savingBackupKey = activation.key != null) }
-                    val key = activation.key?.await()
-                    withContext(Dispatchers.IO) {
-                        if (key != null) key.use { backupKeys.save(it) } else backupKeys.clear()
+                val backup = settings.flow.first().backup
+                if (backup.pendingEnable == null) return@launch
+                settings.clearPendingBackupEnable()
+                if (discardKeyOnPickCancelled(backup.enabled, backup.pendingEnable)) {
+                    withContext(Dispatchers.IO) { backupKeys.clear() }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Annulation de l'activation incomplète", e)
+            }
+        }
+    }
+
+    /**
+     * Dossier choisi pour la sauvegarde automatique : activation (selon l'intention enregistrée avant l'ouverture du
+     * sélecteur) ou changement de dossier, puis sauvegarde aussitôt. Seul l'état enregistré compte, jamais la mémoire
+     * du ViewModel, qui a pu être recréé entre-temps : sans sauvegarde active ni activation en attente, rien n'est
+     * activé ; une activation chiffrée dont la clé manque n'est pas faite en clair.
+     */
+    fun onBackupFolderPicked(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val backup = settings.flow.first().backup
+                val keyUsable = backup.encryption?.let { enc -> withContext(Dispatchers.IO) { backupKeys.canUnlock(enc) } } ?: false
+                when (decideFolderPick(backup.enabled, backup.pendingEnable, keyUsable)) {
+                    FolderPickAction.IGNORE -> {
+                        withContext(Dispatchers.IO) { releaseFolder(uri.toString()) }
+                        local.update { it.copy(message = "Activation de la sauvegarde interrompue : recommence.") }
+                        return@launch
                     }
-                    local.update { it.copy(backupKeyAvailable = true, savingBackupKey = false) }
+                    FolderPickAction.KEY_MISSING -> {
+                        settings.clearPendingBackupEnable()
+                        withContext(Dispatchers.IO) {
+                            backupKeys.clear()
+                            releaseFolder(uri.toString())
+                        }
+                        local.update {
+                            it.copy(message = "Clé de chiffrement introuvable : rien n'a été activé. Recommence l'activation.")
+                        }
+                        return@launch
+                    }
+                    FolderPickAction.ACTIVATE -> {
+                        // Activation en clair choisie : aucune clé ne doit rester d'une tentative précédente.
+                        if (backup.pendingEnable == PendingBackupEnable.PLAIN && backup.encryption != null) {
+                            withContext(Dispatchers.IO) { backupKeys.clear() }
+                        }
+                        local.update { it.copy(backupKeyAvailable = true) }
+                    }
+                    FolderPickAction.CHANGE_FOLDER -> Unit
                 }
                 withContext(Dispatchers.IO) {
                     contentResolver.takePersistableUriPermission(uri, BackupFolder.PERSISTABLE_FLAGS)
-                    val previous = settings.flow.first().backup.folderUri
+                    val previous = backup.folderUri
                     val name = BackupFolder.displayName(contentResolver, uri)
+                    // Termine aussi l'activation en attente.
                     settings.saveBackupFolder(uri.toString(), name)
                     if (previous != null && previous != uri.toString()) releaseFolder(previous)
                 }
@@ -781,7 +865,6 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                local.update { it.copy(savingBackupKey = false) }
                 report("Dossier de sauvegarde inutilisable", e)
             }
         }
@@ -790,14 +873,20 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     /** Désactive la sauvegarde automatique ; les sauvegardes déjà écrites restent dans le dossier. La clé est effacée. */
     fun disableBackup() {
         viewModelScope.launch {
-            autoBackup.cancelAll()
-            val previous = settings.flow.first().backup.folderUri
-            settings.clearBackupFolder()
-            withContext(Dispatchers.IO) {
-                backupKeys.clear()
-                previous?.let { releaseFolder(it) }
+            try {
+                autoBackup.cancelAll()
+                val previous = settings.flow.first().backup.folderUri
+                settings.clearBackupFolder()
+                withContext(Dispatchers.IO) {
+                    backupKeys.clear()
+                    previous?.let { releaseFolder(it) }
+                }
+                local.update { it.copy(backupFolderAccessible = true, backupKeyAvailable = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Désactivation de la sauvegarde impossible", e)
             }
-            local.update { it.copy(backupFolderAccessible = true, backupKeyAvailable = true) }
         }
     }
 
@@ -847,20 +936,37 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     /** Les prochaines sauvegardes seront en clair ; celles déjà chiffrées le restent. */
     fun disableBackupEncryption() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { backupKeys.clear() }
-            local.update {
-                it.copy(
-                    backupKeyAvailable = true,
-                    message = "Chiffrement désactivé : les prochaines sauvegardes seront en clair. Celles déjà " +
-                        "chiffrées le restent, avec leur phrase de passe.",
-                )
+            try {
+                withContext(Dispatchers.IO) { backupKeys.clear() }
+                local.update {
+                    it.copy(
+                        backupKeyAvailable = true,
+                        message = "Chiffrement désactivé : les prochaines sauvegardes seront en clair. Celles déjà " +
+                            "chiffrées le restent, avec leur phrase de passe.",
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Désactivation du chiffrement impossible", e)
             }
         }
     }
 
     fun backupNow() {
         viewModelScope.launch {
-            if (settings.flow.first().backup.enabled) autoBackup.requestNow()
+            try {
+                val saved = settings.flow.first()
+                if (saved.demoMode) {
+                    local.update { it.copy(message = BACKUP_DEMO_MESSAGE) }
+                } else if (saved.backup.enabled) {
+                    autoBackup.requestNow()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Sauvegarde impossible", e)
+            }
         }
     }
 
@@ -870,13 +976,19 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
      */
     fun refreshBackupFolder() {
         viewModelScope.launch {
-            val backup = settings.flow.first().backup
-            val uri = backup.folderUri
-            val accessible = uri == null || withContext(Dispatchers.IO) {
-                runCatching { BackupFolder.hasPermission(contentResolver, Uri.parse(uri)) }.getOrDefault(false)
+            try {
+                val backup = settings.flow.first().backup
+                val uri = backup.folderUri
+                val accessible = uri == null || withContext(Dispatchers.IO) {
+                    runCatching { BackupFolder.hasPermission(contentResolver, Uri.parse(uri)) }.getOrDefault(false)
+                }
+                val keyAvailable = backup.encryption?.let { enc -> withContext(Dispatchers.IO) { backupKeys.canUnlock(enc) } } ?: true
+                local.update { it.copy(backupFolderAccessible = accessible, backupKeyAvailable = keyAvailable) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Vérification de la sauvegarde impossible", e)
             }
-            val keyAvailable = backup.encryption?.let { enc -> withContext(Dispatchers.IO) { backupKeys.canUnlock(enc) } } ?: true
-            local.update { it.copy(backupFolderAccessible = accessible, backupKeyAvailable = keyAvailable) }
         }
     }
 
@@ -1091,6 +1203,11 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         private const val HEALTH_CONNECT_FIRST_SYNC_DAYS = 30L
         /** Attente simulée de l'autorisation d'un tracé de démo, comme le temps de lecture dans Health Connect. */
         private const val DEMO_ROUTE_DELAY_MS = 1_400L
+        private const val IMPORT_TOO_LARGE_MESSAGE =
+            "Cette sauvegarde est trop volumineuse ou endommagée pour être importée. Rien n'a été modifié."
+        private const val BACKUP_DEMO_MESSAGE =
+            "Sauvegarde désactivée pendant la démo, pour ne pas remplacer tes vraies sauvegardes. " +
+                "« Tout effacer » pour la reprendre."
         private val SYNC_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
         private val BIRTH_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/uuuu")
 

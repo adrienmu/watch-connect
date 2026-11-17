@@ -433,8 +433,9 @@ class DataExporter(private val dao: HealthDao) {
               l'extension Garmin TrackPointExtension.
 
             Restaurer : dans Boucle, Appareils > Importer une sauvegarde, puis choisir cette archive (sans la
-            décompresser). Les données sont fusionnées avec celles du téléphone, sans doublon ; réimporter la
-            même archive ne change rien. Seul $JSON_FILE est relu : les fichiers GPX ne servent pas à l'import.
+            décompresser). Seules les données absentes du téléphone sont ajoutées : un jour, une nuit ou une
+            séance déjà présents sont conservés tels quels, jamais remplacés par ceux de l'archive ; réimporter
+            la même archive ne change rien. Seul $JSON_FILE est relu : les fichiers GPX ne servent pas à l'import.
             Une sauvegarde automatique chiffrée (boucle-sauvegarde-….boucle) contient cette même archive,
             chiffrée par une phrase de passe ; Boucle l'importe de la même façon, après avoir demandé la phrase
             de passe. Son format est public (docs/format-sauvegarde.md dans le dépôt de Boucle).

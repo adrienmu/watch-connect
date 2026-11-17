@@ -109,6 +109,15 @@ class BackupImportTest {
     }
 
     @Test
+    fun `imbrication excessive refusée sans débordement de pile`() {
+        fun nested(depth: Int) = """{"formatVersion":1,"profile":${"[".repeat(depth)}${"]".repeat(depth)}}"""
+        readJson(nested(BackupReader.MAX_DEPTH))
+        assertRefused(nested(BackupReader.MAX_DEPTH + 1), "imbriquées")
+        assertRefused(nested(100_000), "imbriquées")
+        assertRefused("""{"formatVersion":1,"dailyActivity":[${"{\"a\":".repeat(100_000)}1${"}".repeat(100_000)}]}""", "imbriquées")
+    }
+
+    @Test
     fun `champs et sections inconnus ignorés`() {
         val sink = CollectingSink()
         val header = readJson(
@@ -294,12 +303,114 @@ class BackupImportTest {
         }
     }
 
+    private fun importInto(dao: FakeDao, archive: ByteArray): ImportWriter {
+        val writer = ImportWriter(dao)
+        runBlocking {
+            BackupReader.readArchive(ByteArrayInputStream(archive), writer)
+            writer.flush()
+        }
+        return writer
+    }
+
     @Test
     fun `réimporter l'export d'une base importée donne le même fichier`() {
         val first = exportArchive(sampleDao())
         val imported = FakeDao()
-        runBlocking { BackupReader.readArchive(ByteArrayInputStream(first), imported.asSink()) }
+        val writer = importInto(imported, first)
         assertArrayEquals(jsonOf(first), jsonOf(exportArchive(imported)))
+        // Base vide : tout ce qui a été relu a été ajouté.
+        assertEquals(writer.counts(), writer.added())
+    }
+
+    @Test
+    fun `réimporter la même sauvegarde n'ajoute rien`() {
+        val archive = exportArchive(sampleDao())
+        val dao = FakeDao()
+        importInto(dao, archive)
+        val second = importInto(dao, archive)
+        assertEquals(ImportCounts(), second.added())
+        assertEquals(second.counts(), ImportSummary(second.counts(), second.added(), null, RestoredSettings()).kept)
+        assertArrayEquals(jsonOf(archive), jsonOf(exportArchive(dao)))
+    }
+
+    @Test
+    fun `une ligne déjà présente n'est jamais remplacée par la sauvegarde`() {
+        // Sauvegarde de la mi-journée : journée partielle, tracé pas encore autorisé, séance sans exercice.
+        val backup = FakeDao().apply {
+            daily += DailyActivityEntity("2026-11-17", 3000, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+            daily += DailyActivityEntity("2026-11-15", 8000, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+            sleep += SleepEntity("2026-11-17", null, null, null, "", "", null, null, null, null)
+            samples += ActivitySamplesEntity("2026-11-17", "2026-11-17T00:00", 60, "1,2", null, "", "")
+            skin += SkinTemperatureEntity("2026-11-17", null, null, "0:33.0")
+            sessions += TrainingSessionEntity("s1", "2026-11-17", null, null, null, "Ancienne", null, null, null, null, null, null, "", 1, null)
+            exercises += TrainingExerciseEntity("s1", 0, null, null)
+            exercises += TrainingExerciseEntity("s1", 5, null, null)
+            routes += TrainingRouteEntity("s1", "CONSENT_REQUIRED", "HEALTH_CONNECT", "hc", "")
+            sessions += TrainingSessionEntity("s2", "2026-11-15", null, null, null, "Nouvelle", null, null, null, null, null, null, "", 1, null)
+            exercises += TrainingExerciseEntity("s2", 0, null, null)
+            routes += TrainingRouteEntity("s2", "AVAILABLE", "BAND", null, routePoints)
+            // Exercice orphelin d'une séance présente sur le téléphone : laissé tel quel.
+            exercises += TrainingExerciseEntity("s3", 0, null, null)
+        }
+        // Le téléphone a synchronisé la journée complète depuis.
+        val fullDay = DailyActivityEntity(
+            "2026-11-17", 12034, 450, 120, 1650, 9123.5f, 1.0f, 0.875f, 3600, 1800, 900, 300, 28000, 60, "BALANCED", "RECOVERED",
+        )
+        val fullNight = SleepEntity("2026-11-17", "2026-11-16T23:10", "2026-11-17T07:02", 480, "0:WAKE", "", null, false, null, null)
+        val fullSamples = ActivitySamplesEntity("2026-11-17", "2026-11-17T00:00", 60, "1,2,3,4", null, "", "")
+        val fullSkin = SkinTemperatureEntity("2026-11-17", "WRIST", "SKIN", "0:33.0,60000:33.2")
+        val session = TrainingSessionEntity("s1", "2026-11-17", null, 3600, null, "Course", null, null, null, null, null, null, "", 2, null)
+        val route = TrainingRouteEntity("s1", "AVAILABLE", "HEALTH_CONNECT", "hc", routePoints)
+        val exercise = TrainingExerciseEntity("s1", 0, proto, proto)
+        val s3 = TrainingSessionEntity("s3", "2026-11-16", null, null, null, null, null, null, null, null, null, null, "", 0, null)
+        val phone = FakeDao().apply {
+            daily += fullDay
+            sleep += fullNight
+            samples += fullSamples
+            skin += fullSkin
+            sessions += session
+            sessions += s3
+            exercises += exercise
+            routes += route
+        }
+
+        val writer = importInto(phone, exportArchive(backup))
+
+        // Lignes existantes conservées telles quelles.
+        assertEquals(fullDay, phone.daily.single { it.date == "2026-11-17" })
+        assertEquals(listOf(fullNight), phone.sleep)
+        assertEquals(listOf(fullSamples), phone.samples)
+        assertEquals(listOf(fullSkin), phone.skin)
+        assertEquals("Course", phone.sessions.single { it.path == "s1" }.name)
+        // Le tracé AVAILABLE n'est pas écrasé par le CONSENT_REQUIRED vide de la sauvegarde.
+        assertEquals(route, phone.routes.single { it.sessionPath == "s1" })
+        // Séance déjà présente : ses exercices ne sont pas touchés, même l'index absent du téléphone.
+        assertEquals(listOf(exercise), phone.exercises.filter { it.sessionPath == "s1" })
+        assertTrue(phone.exercises.none { it.sessionPath == "s3" })
+        // Ce qui manquait est ajouté, avec tous ses enfants.
+        assertEquals(8000, phone.daily.single { it.date == "2026-11-15" }.steps)
+        assertEquals("Nouvelle", phone.sessions.single { it.path == "s2" }.name)
+        assertEquals(listOf(0), phone.exercises.filter { it.sessionPath == "s2" }.map { it.exerciseIndex })
+        assertEquals("AVAILABLE", phone.routes.single { it.sessionPath == "s2" }.status)
+
+        assertEquals(
+            ImportCounts(dailyActivity = 1, trainingSessions = 1, trainingExercises = 1, trainingRoutes = 1),
+            writer.added(),
+        )
+        val summary = ImportSummary(writer.counts(), writer.added(), null, RestoredSettings())
+        assertEquals(
+            ImportCounts(
+                dailyActivity = 1, activitySamples = 1, sleep = 1, skinTemperature = 1, trainingSessions = 1,
+                trainingExercises = 3, trainingRoutes = 1,
+            ),
+            summary.kept,
+        )
+        assertEquals(
+            "Sauvegarde importée. Ajoutés : 1 jour d'activité, 1 séance, 1 parcours GPS. " +
+                "Déjà présents (conservés) : 1 jour d'activité, 1 nuit, 1 séance, 1 parcours GPS, " +
+                "2 séries de mesures en continu.",
+            summary.message(),
+        )
     }
 
     @Test
@@ -332,19 +443,21 @@ class BackupImportTest {
 
     @Test
     fun `résumé lisible`() {
-        val summary = ImportSummary(
-            ImportCounts(dailyActivity = 12, sleep = 1, nightlyRecharge = 1, trainingSessions = 3, heartRate = 40),
-            null,
-            RestoredSettings(profile = true),
-        )
+        val read = ImportCounts(dailyActivity = 12, sleep = 1, nightlyRecharge = 1, trainingSessions = 3, heartRate = 40)
+        val summary = ImportSummary(read, read, null, RestoredSettings(profile = true))
         assertEquals(
-            "Sauvegarde importée : 12 jours d'activité, 1 nuit, 3 séances, 40 séries de mesures en continu. " +
+            "Sauvegarde importée. Ajoutés : 12 jours d'activité, 1 nuit, 3 séances, 40 séries de mesures en continu. " +
                 "Repris aussi : profil.",
             summary.message(),
         )
         assertEquals(
+            "Sauvegarde importée. Rien d'ajouté. Déjà présents (conservés) : 12 jours d'activité, 1 nuit, 3 séances, " +
+                "40 séries de mesures en continu.",
+            ImportSummary(read, ImportCounts(), null, RestoredSettings()).message(),
+        )
+        assertEquals(
             "Sauvegarde importée : elle ne contenait aucune mesure.",
-            ImportSummary(ImportCounts(), null, RestoredSettings()).message(),
+            ImportSummary(ImportCounts(), ImportCounts(), null, RestoredSettings()).message(),
         )
     }
 
@@ -390,7 +503,31 @@ private open class CollectingSink : BackupSink {
 
 /** Base en mémoire : seules les requêtes de l'export sont implémentées. */
 private class FakeDao : CollectingSink(), HealthDao {
-    fun asSink(): BackupSink = this
+    /** Comme `INSERT OR IGNORE` : ajoute les lignes dont la clé est absente, -1 pour les autres. */
+    private fun <T> insertIgnore(table: MutableList<T>, items: List<T>, key: (T) -> Any): List<Long> = items.map { item ->
+        if (table.any { key(it) == key(item) }) {
+            -1L
+        } else {
+            table += item
+            table.size.toLong()
+        }
+    }
+
+    override suspend fun insertDailyActivityIfAbsent(items: List<DailyActivityEntity>) = insertIgnore(daily, items) { it.date }
+    override suspend fun insertActivitySamplesIfAbsent(items: List<ActivitySamplesEntity>) =
+        insertIgnore(samples, items) { it.date to it.startTime }
+    override suspend fun insertHrBlocksIfAbsent(items: List<HrBlockEntity>) = insertIgnore(hr, items) { it.date to it.startTime }
+    override suspend fun insertPpiBlocksIfAbsent(items: List<PpiBlockEntity>) = insertIgnore(ppi, items) { it.date to it.startTime }
+    override suspend fun insertSleepIfAbsent(items: List<SleepEntity>) = insertIgnore(sleep, items) { it.date }
+    override suspend fun insertNightlyRechargeIfAbsent(items: List<NightlyRechargeEntity>) = insertIgnore(recharge, items) { it.date }
+    override suspend fun insertSkinTemperatureIfAbsent(items: List<SkinTemperatureEntity>) = insertIgnore(skin, items) { it.date }
+    override suspend fun insertTrainingSessionIfAbsent(item: TrainingSessionEntity) = insertIgnore(sessions, listOf(item)) { it.path }.single()
+    override suspend fun insertTrainingExercisesIfAbsent(items: List<TrainingExerciseEntity>) =
+        insertIgnore(exercises, items) { it.sessionPath to it.exerciseIndex }
+    override suspend fun insertTrainingRoutesIfAbsent(items: List<TrainingRouteEntity>) = insertIgnore(routes, items) { it.sessionPath }
+    override suspend fun insertExternalMeasurementsIfAbsent(items: List<ExternalMeasurementEntity>) =
+        insertIgnore(measurements, items) { it.id }
+    override suspend fun hasTrainingSession(path: String) = sessions.any { it.path == path }
 
     override suspend fun upsertDailyActivity(items: List<DailyActivityEntity>) { daily += items }
     override suspend fun upsertActivitySamples(items: List<ActivitySamplesEntity>) { samples += items }

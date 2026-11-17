@@ -358,24 +358,36 @@ object BackupReader {
     private fun corrupt(detail: String) = BackupFormatException("${JsonPullReader.CORRUPT_MESSAGE} ($detail).")
 
     /**
+     * Imbrication maximale d'une valeur lue par [readTree]. Les sauvegardes en ont 4 ou 5 niveaux ; au-delà, le
+     * fichier est refusé plutôt que de risquer un débordement de pile sur un fichier fabriqué.
+     */
+    internal const val MAX_DEPTH = 64
+
+    /**
      * Valeur suivante sous forme d'arbre (objets, listes, chaînes, [JsonNumber], booléens, null) : réservé aux
      * petits morceaux du document (une ligne, un réglage), jamais à une section entière.
+     *
+     * @throws BackupFormatException si la valeur est imbriquée sur plus de [MAX_DEPTH] niveaux.
      */
-    internal fun readTree(r: JsonPullReader): Any? = when (r.peek()) {
+    internal fun readTree(r: JsonPullReader): Any? = readTree(r, depth = 1)
+
+    private fun readTree(r: JsonPullReader, depth: Int): Any? = when (r.peek()) {
         JsonPullReader.Token.BEGIN_OBJECT -> {
+            if (depth > MAX_DEPTH) throw corrupt("valeurs imbriquées sur plus de $MAX_DEPTH niveaux")
             r.beginObject()
             val map = LinkedHashMap<String, Any?>()
             while (r.hasNext()) {
                 val key = r.nextName()
-                map[key] = readTree(r)
+                map[key] = readTree(r, depth + 1)
             }
             r.endObject()
             map
         }
         JsonPullReader.Token.BEGIN_ARRAY -> {
+            if (depth > MAX_DEPTH) throw corrupt("valeurs imbriquées sur plus de $MAX_DEPTH niveaux")
             r.beginArray()
             val list = ArrayList<Any?>()
-            while (r.hasNext()) list.add(readTree(r))
+            while (r.hasNext()) list.add(readTree(r, depth + 1))
             r.endArray()
             list
         }

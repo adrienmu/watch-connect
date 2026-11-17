@@ -1,6 +1,7 @@
 package com.boucle.app.ui
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.PredictiveBackHandler
@@ -155,6 +156,17 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
+
+    // Le sélecteur de dossier s'ouvre une fois l'activation (et sa clé) enregistrée par le ViewModel.
+    LaunchedEffect(deviceState.backupFolderPickRequested) {
+        if (!deviceState.backupFolderPickRequested) return@LaunchedEffect
+        viewModel.onBackupFolderPickLaunched()
+        try {
+            backupFolderLauncher.launch(null)
+        } catch (e: ActivityNotFoundException) {
+            viewModel.onBackupFolderPickCancelled()
+        }
+    }
     val sessionDetail by viewModel.sessionDetail.collectAsStateWithLifecycle()
 
     // Séance affichée par le détail d'activité (gardée à la rotation et à la recréation de l'activité).
@@ -367,11 +379,8 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             onImportData = { importLauncher.launch(arrayOf("*/*")) },
                             onConfirmImport = viewModel::confirmImport,
                             onCancelImport = viewModel::cancelImport,
-                            onEnableBackup = { passphrase ->
-                                viewModel.startEnableBackup(passphrase)
-                                backupFolderLauncher.launch(null)
-                            },
-                            onChooseBackupFolder = { backupFolderLauncher.launch(null) },
+                            onEnableBackup = viewModel::startEnableBackup,
+                            onChooseBackupFolder = viewModel::chooseBackupFolder,
                             onSetBackupPassphrase = viewModel::setBackupPassphrase,
                             onDisableBackupEncryption = viewModel::disableBackupEncryption,
                             onBackupNow = viewModel::backupNow,

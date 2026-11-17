@@ -47,8 +47,10 @@ sealed interface BackupOutcome {
  * sauvegarde échoue avec un message clair : elle n'est jamais écrite en clair à la place.
  *
  * Écriture : `boucle-sauvegarde-AAAAMMJJ-HHMMSS.zip.partial` (ou `.boucle.partial`), renommé une fois complet ; si
- * le fournisseur du dossier ne sait pas renommer, écriture directe sous le nom final, supprimé en cas d'échec. Une
- * sauvegarde à moitié écrite ne porte donc jamais le nom d'une vraie. Puis rotation : seules les [BackupNaming.KEEP]
+ * le fournisseur du dossier ne sait pas renommer, écriture directe sous le nom final, marqué « en cours d'écriture »
+ * dans les réglages avant la création du fichier et démarqué à la réussite : supprimé en cas d'échec, ou au passage
+ * suivant si le processus a été tué entre-temps (il est d'ici là exclu du compte des sauvegardes et de la rotation).
+ * Une sauvegarde à moitié écrite n'est donc jamais prise pour une vraie. Puis rotation : seules les [BackupNaming.KEEP]
  * dernières (chiffrées ou non) sont gardées, et seuls les fichiers au motif exact de l'app sont supprimés.
  */
 class AutoBackup(
@@ -88,23 +90,31 @@ class AutoBackup(
         return try {
             val folder = BackupFolder(context.contentResolver, Uri.parse(folderUri))
             folder.checkWritable()
-            val entries = folder.list()
+            var entries = folder.list()
+            // Avant toute décision : une écriture sous le nom final restée marquée a été interrompue.
+            val incomplete = cleanUpInterrupted(folder, folderUri, saved, entries)
+            if (incomplete == null && saved.backup.writingFile != null) entries = folder.list()
             val decision = decideBackup(
                 force = force,
                 folderConfigured = true,
                 hasData = dao.hasAnyData(),
                 dataVersion = saved.dataVersion,
                 lastBackupDataVersion = saved.backup.lastDataVersion,
-                backupsInFolder = entries.count { BackupNaming.isBackup(it.name) },
+                backupsInFolder = completeBackups(entries.map { it.name }, incomplete).size,
+                demoMode = saved.demoMode,
             )
             when (decision) {
                 BackupDecision.BACKUP -> {
                     // Clé vérifiée avant de créer le moindre fichier ; sans elle, échec plutôt qu'une copie en clair.
                     val key = saved.backup.encryption?.let { keys.unlock(it) ?: throw BackupKeyUnavailableException() }
-                    val name = key.useOrNull { write(folder, entries, saved, it) }
+                    val name = key.useOrNull { write(folder, folderUri, entries, saved, it) }
                     settings.saveBackupSuccess(folderUri, now(), name, saved.dataVersion)
-                    rotate(folder, protect = name)
+                    rotate(folder, protect = name, incomplete = incomplete)
                     BackupOutcome.Done(name)
+                }
+                BackupDecision.DEMO_MODE -> {
+                    if (force) settings.saveBackupError(folderUri, now(), DEMO_MODE_MESSAGE)
+                    BackupOutcome.Skipped(decision)
                 }
                 BackupDecision.NO_DATA -> {
                     // Seule une demande explicite mérite une réponse ; en automatique, on attend simplement des données.
@@ -126,8 +136,37 @@ class AutoBackup(
         }
     }
 
+    /**
+     * Supprime la sauvegarde dont l'écriture sous son nom final a été interrompue (marque restée dans les réglages),
+     * puis efface la marque. Renvoie le nom de ce fichier s'il n'a pas pu être supprimé : la marque reste alors, et
+     * le fichier est exclu du compte des sauvegardes et de la rotation jusqu'à ce qu'il le soit.
+     */
+    private suspend fun cleanUpInterrupted(
+        folder: BackupFolder,
+        folderUri: String,
+        saved: AppSettings,
+        entries: List<FolderEntry>,
+    ): String? {
+        val writing = saved.backup.writingFile ?: return null
+        // Marque d'un autre dossier (changé depuis) : ce dossier n'est plus le nôtre, on n'y touche pas.
+        if (saved.backup.writingFolder != folderUri) {
+            settings.clearBackupWriting()
+            return null
+        }
+        val doomed = interruptedBackupToDelete(writing, entries.map { it.name })
+        if (doomed != null && !entries.filter { it.name == doomed }.all { folder.delete(it.uri) }) return doomed
+        settings.clearBackupWriting()
+        return null
+    }
+
     /** Écrit une nouvelle sauvegarde complète et renvoie son nom. */
-    private suspend fun write(folder: BackupFolder, entries: List<FolderEntry>, saved: AppSettings, key: BackupKey?): String {
+    private suspend fun write(
+        folder: BackupFolder,
+        folderUri: String,
+        entries: List<FolderEntry>,
+        saved: AppSettings,
+        key: BackupKey?,
+    ): String {
         val existing = entries.mapTo(HashSet()) { it.name }
         var at = LocalDateTime.now()
         // Un seul fichier par seconde, quelle que soit l'extension : la rotation les trie par date.
@@ -141,7 +180,15 @@ class AutoBackup(
         var renameAtEnd = true
         if (!folder.supportsRename(target)) {
             folder.delete(target)
-            target = folder.create(name, if (key != null) ENCRYPTED_MIME else ZIP_MIME)
+            // Marqué avant de créer le fichier : si le processus est tué pendant l'écriture, le passage suivant le
+            // supprimera au lieu de le prendre pour une sauvegarde complète.
+            settings.saveBackupWriting(folderUri, name)
+            target = try {
+                folder.create(name, if (key != null) ENCRYPTED_MIME else ZIP_MIME)
+            } catch (e: Throwable) {
+                withContext(NonCancellable) { settings.clearBackupWriting() }
+                throw e
+            }
             renameAtEnd = false
         }
         try {
@@ -151,23 +198,27 @@ class AutoBackup(
             }
             if (renameAtEnd) target = folder.rename(target, name)
             if (folder.list().none { it.name == name }) throw BackupFolderException("sauvegarde écrite mais introuvable dans le dossier")
+            if (!renameAtEnd) settings.clearBackupWriting()
             return name
         } catch (e: Throwable) {
-            // Rien ne doit rester qui ressemble à une sauvegarde : ni .partial, ni .zip incomplet.
-            withContext(NonCancellable) { folder.delete(target) }
+            // Rien ne doit rester qui ressemble à une sauvegarde : ni .partial, ni .zip incomplet. La marque n'est
+            // effacée que si le fichier a bien été supprimé ; sinon le passage suivant réessaiera.
+            withContext(NonCancellable) {
+                if (folder.delete(target) && !renameAtEnd) settings.clearBackupWriting()
+            }
             throw e
         }
     }
 
     /** Garde les [BackupNaming.KEEP] dernières sauvegardes et supprime les .partial abandonnés. Les échecs sont sans gravité. */
-    private fun rotate(folder: BackupFolder, protect: String) {
+    private fun rotate(folder: BackupFolder, protect: String, incomplete: String?) {
         val entries = try {
             folder.list()
         } catch (e: Exception) {
             return
         }
         val names = entries.map { it.name }
-        val doomed = (backupsToDelete(names, BackupNaming.KEEP, protect) + stalePartials(names)).toSet()
+        val doomed = (backupsToDelete(names, BackupNaming.KEEP, protect, incomplete) + stalePartials(names)).toSet()
         entries.filter { it.name in doomed }.forEach { folder.delete(it.uri) }
     }
 
@@ -201,6 +252,15 @@ class AutoBackup(
         workManager.enqueueUniquePeriodicWork(WORK_DAILY, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
+    /**
+     * Sauvegarde arrêtée par WorkManager pour une autre raison qu'une nouvelle demande ou une désactivation
+     * (contrainte perdue, délai dépassé, système…) : l'échec est enregistré pour l'écran Appareils.
+     */
+    suspend fun recordInterrupted(message: String) {
+        val folderUri = settings.flow.first().backup.folderUri ?: return
+        settings.saveBackupError(folderUri, now(), message)
+    }
+
     fun cancelAll() {
         workManager.cancelUniqueWork(WORK_NOW)
         workManager.cancelUniqueWork(WORK_DAILY)
@@ -220,6 +280,8 @@ class AutoBackup(
         const val ZIP_MIME = "application/zip"
         const val ENCRYPTED_MIME = "application/octet-stream"
         const val BUFFER_SIZE = 64 * 1024
+        const val DEMO_MODE_MESSAGE =
+            "désactivée pendant la démo, pour ne pas remplacer tes vraies sauvegardes : « Tout effacer » pour la reprendre"
         val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
         val batteryNotLow: Constraints = Constraints.Builder().setRequiresBatteryNotLow(true).build()
 

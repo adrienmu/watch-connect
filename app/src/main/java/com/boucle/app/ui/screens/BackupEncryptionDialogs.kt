@@ -222,8 +222,9 @@ internal fun ImportPassphraseDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Saisis la phrase de passe avec laquelle elle a été chiffrée. Ses données s'ajoutent ensuite à " +
-                        "celles du téléphone, sans doublon ; le profil, le bracelet et les dates de synchronisation ne " +
+                    "Saisis la phrase de passe avec laquelle elle a été chiffrée. Seules les données absentes de ce " +
+                        "téléphone sont ensuite ajoutées, celles déjà présentes sont conservées telles quelles ; le " +
+                        "profil, le bracelet et les dates de synchronisation ne " +
                         "sont repris que s'ils ne sont pas déjà renseignés ici.",
                     style = BoucleType.body,
                 )

@@ -268,9 +268,9 @@ fun DevicesScreen(
     } else if (state.importPending) {
         DevicesConfirmDialog(
             title = "Importer cette sauvegarde ?",
-            text = "Les données de la sauvegarde s'ajoutent à celles du téléphone. Un jour, une nuit ou une séance " +
-                "déjà présents ici sont remplacés par leur version de la sauvegarde ; le reste n'est pas touché, " +
-                "et réimporter le même fichier ne crée pas de doublon.\n\n" +
+            text = "Seules les données absentes de ce téléphone sont ajoutées. Un jour, une nuit ou une séance " +
+                "déjà présents ici sont conservés tels quels, jamais remplacés par la sauvegarde (ils peuvent " +
+                "être plus récents) ; réimporter le même fichier ne change donc rien.\n\n" +
                 "Le profil, le bracelet et les dates de synchronisation ne sont repris que s'ils ne sont pas " +
                 "déjà renseignés sur ce téléphone.",
             confirmLabel = "Importer",
