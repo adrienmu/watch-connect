@@ -19,11 +19,13 @@ import androidx.room.RoomDatabase
         TrainingExerciseEntity::class,
         ExternalMeasurementEntity::class,
         TrainingRouteEntity::class,
+        ActivityEditEntity::class,
     ],
-    version = 3,
+    version = 4,
     // v2 : table des mesures Health Connect ; les données du bracelet sont conservées.
     // v3 : tracés GPS des séances.
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+    // v4 : corrections des séances (nom, sport, terrain, rognage, suppression).
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
 )
 abstract class BoucleDatabase : RoomDatabase() {
     abstract fun healthDao(): HealthDao

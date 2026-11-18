@@ -17,4 +17,16 @@ enum class Destination(val isTab: Boolean) {
     Goals(false),
     /** Détail d'une séance (carte du tracé GPS, allure, FC, altitude). */
     ActivityDetail(false),
+    /** Nouvelle activité : choix du sport et état des capteurs avant le départ. */
+    ActivityStart(false),
+    /** Explication avant la demande d'accès à la position. */
+    ActivityPermission(false),
+    /** Activité en cours d'enregistrement. */
+    ActivityRecording(false),
+    /** Résumé de fin de séance, avant l'enregistrement. */
+    ActivitySummary(false),
+    /** Activité détectée par le bracelet, à confirmer. */
+    ActivityDetected(false),
+    /** Modification d'une séance (nom, sport, terrain, rognage, notes, suppression). */
+    ActivityEdit(false),
 }

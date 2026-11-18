@@ -3,6 +3,9 @@ package com.boucle.app.ui
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.content.pm.PackageManager
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -62,7 +65,15 @@ import com.boucle.app.ui.components.LocalScreenAnimationScope
 import com.boucle.app.ui.components.LocalSharedTransitionScope
 import com.boucle.app.ui.components.rememberHaptics
 import com.boucle.app.ui.navigation.Destination
+import com.boucle.app.domain.Sport
+import com.boucle.app.tracking.RecordingPhase
 import com.boucle.app.ui.screens.ActivityDetailScreen
+import com.boucle.app.ui.screens.ActivityDetectedScreen
+import com.boucle.app.ui.screens.ActivityEditScreen
+import com.boucle.app.ui.screens.ActivityPermissionScreen
+import com.boucle.app.ui.screens.ActivityRecordingScreen
+import com.boucle.app.ui.screens.ActivityStartScreen
+import com.boucle.app.ui.screens.ActivitySummaryScreen
 import com.boucle.app.ui.screens.ActivityScreen
 import com.boucle.app.ui.screens.BodyScreen
 import com.boucle.app.ui.screens.DevicesScreen
@@ -87,6 +98,14 @@ import kotlinx.coroutines.CancellationException
 private val bluetoothPermissions = arrayOf(
     Manifest.permission.BLUETOOTH_SCAN,
     Manifest.permission.BLUETOOTH_CONNECT,
+)
+
+/** Position pendant une activité, notification de l'enregistrement, pas comptés par le téléphone. */
+private val recordingPermissions = arrayOf(
+    Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.ACCESS_COARSE_LOCATION,
+    Manifest.permission.POST_NOTIFICATIONS,
+    Manifest.permission.ACTIVITY_RECOGNITION,
 )
 
 private fun Context.hasBluetoothPermissions(): Boolean = bluetoothPermissions.all {
@@ -137,9 +156,12 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
         PermissionController.createRequestPermissionResultContract(),
     ) { granted -> viewModel.onHealthConnectPermissionsResult(granted) }
     // Au retour dans l'app (installation de Health Connect, autorisations changées dans les réglages).
+    var locationGranted by remember { mutableStateOf(viewModel.hasLocationPermission()) }
     LifecycleResumeEffect(Unit) {
         viewModel.refreshHealthConnect()
         viewModel.refreshBackupFolder()
+        // La position a pu être autorisée dans les réglages du téléphone.
+        locationGranted = viewModel.hasLocationPermission()
         onPauseOrDispose { }
     }
 
@@ -171,6 +193,40 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
         }
     }
     val sessionDetail by viewModel.sessionDetail.collectAsStateWithLifecycle()
+    val recording by viewModel.recording.collectAsStateWithLifecycle()
+    val finishedRecording by viewModel.finishedRecording.collectAsStateWithLifecycle()
+    val gpsPreview by viewModel.gpsPreview.collectAsStateWithLifecycle()
+    val activityHome by viewModel.activityHome.collectAsStateWithLifecycle()
+    val activityEdit by viewModel.activityEdit.collectAsStateWithLifecycle()
+
+    // Lancer une activité : sport choisi, puis demande de position si elle n'est pas encore accordée.
+    var pendingSport by rememberSaveable { mutableStateOf(Sport.RUN.name) }
+    var locationDenied by rememberSaveable { mutableStateOf(false) }
+    fun beginRecording(sport: Sport) {
+        viewModel.startRecording(sport, deviceState.profile)
+        stack = listOf(Destination.Activity, Destination.ActivityRecording)
+    }
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        locationGranted = viewModel.hasLocationPermission()
+        locationDenied = !locationGranted
+        if (locationGranted) beginRecording(Sport.named(pendingSport) ?: Sport.RUN)
+    }
+    fun startActivity(sport: Sport) {
+        pendingSport = sport.name
+        if (viewModel.hasLocationPermission()) beginRecording(sport) else navigate(Destination.ActivityPermission)
+    }
+    // « Terminer » mène au résumé ; un écran d'activité resté ouvert sans activité (app relancée) se referme.
+    LaunchedEffect(recording.phase, stack.last()) {
+        val last = stack.last()
+        when {
+            recording.phase == RecordingPhase.FINISHED && last != Destination.ActivitySummary ->
+                stack = listOf(Destination.Activity, Destination.ActivitySummary)
+            recording.phase == RecordingPhase.IDLE && (last == Destination.ActivityRecording || last == Destination.ActivitySummary) ->
+                stack = listOf(Destination.Activity)
+        }
+    }
 
     // Séance affichée par le détail d'activité (gardée à la rotation et à la recréation de l'activité).
     var detailPath by rememberSaveable { mutableStateOf<String?>(null) }
@@ -352,6 +408,95 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             onEditGoals = { navigate(Destination.Goals) },
                             onNavigate = ::navigate,
                             onOpenSession = ::openSession,
+                            home = activityHome,
+                            recording = recording,
+                            bandConnected = deviceState.link.connection == Connection.CONNECTED,
+                            onStartActivity = { sport ->
+                                pendingSport = sport.name
+                                navigate(Destination.ActivityStart)
+                            },
+                            onOpenRecording = { navigate(Destination.ActivityRecording) },
+                            onReviewDetected = { navigate(Destination.ActivityDetected) },
+                            onDismissDetected = viewModel::dismissDetected,
+                            modifier = screenModifier,
+                        )
+                        Destination.ActivityStart -> ActivityStartScreen(
+                            initialSport = Sport.named(pendingSport) ?: Sport.RUN,
+                            preview = gpsPreview,
+                            locationGranted = locationGranted,
+                            gpsEnabled = viewModel.gpsEnabled(),
+                            liveHeartRate = deviceState.link.liveHr,
+                            bandConnected = deviceState.link.connection == Connection.CONNECTED,
+                            hasBarometer = viewModel.hasBarometer,
+                            onEnter = viewModel::startGpsPreview,
+                            onLeave = viewModel::stopGpsPreview,
+                            onStart = ::startActivity,
+                            onBack = ::back,
+                            modifier = screenModifier,
+                        )
+                        Destination.ActivityPermission -> ActivityPermissionScreen(
+                            denied = locationDenied,
+                            onAllow = { locationLauncher.launch(recordingPermissions) },
+                            onOpenSettings = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                                    )
+                                }
+                            },
+                            onBack = ::back,
+                            modifier = screenModifier,
+                        )
+                        Destination.ActivityRecording -> ActivityRecordingScreen(
+                            state = recording,
+                            weightKg = deviceState.profile?.weightKg,
+                            track = viewModel::recordingTrack,
+                            onPause = viewModel::pauseRecording,
+                            onResume = viewModel::resumeRecording,
+                            onFinish = viewModel::finishRecording,
+                            onBack = ::back,
+                            modifier = screenModifier,
+                        )
+                        Destination.ActivitySummary -> {
+                            val activity = finishedRecording
+                            if (activity == null) {
+                                Box(screenModifier)
+                            } else {
+                                ActivitySummaryScreen(
+                                    activity = activity,
+                                    bandConnected = deviceState.link.connection == Connection.CONNECTED,
+                                    onSave = { terrain, feel ->
+                                        viewModel.saveRecording(terrain, feel) { path ->
+                                            detailPath = path
+                                            viewModel.openSession(path)
+                                            stack = listOf(Destination.Activity, Destination.ActivityDetail)
+                                        }
+                                    },
+                                    onDiscard = {
+                                        viewModel.discardRecording()
+                                        stack = listOf(Destination.Activity)
+                                    },
+                                    modifier = screenModifier,
+                                )
+                            }
+                        }
+                        Destination.ActivityDetected -> ActivityDetectedScreen(
+                            activity = activityHome.detected,
+                            detectionEnabled = activityHome.detectionEnabled,
+                            onConfirm = { activity, sport -> viewModel.confirmDetected(activity, sport) { stack = listOf(Destination.Activity) } },
+                            onDismiss = { activity ->
+                                viewModel.dismissDetected(activity)
+                                back()
+                            },
+                            onToggleDetection = viewModel::setActivityDetection,
+                            onBack = ::back,
+                            modifier = screenModifier,
+                        )
+                        Destination.ActivityEdit -> ActivityEditScreen(
+                            state = activityEdit,
+                            onSave = { form -> activityEdit.path?.let { path -> viewModel.saveActivityEdit(path, form) { back() } } },
+                            onDelete = { activityEdit.path?.let { path -> viewModel.deleteSession(path) { stack = listOf(Destination.Activity) } } },
+                            onBack = ::back,
                             modifier = screenModifier,
                         )
                         Destination.ActivityDetail -> ActivityDetailScreen(
@@ -369,6 +514,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             } else {
                                 null
                             },
+                            onEdit = { navigate(Destination.ActivityEdit) },
                             modifier = screenModifier,
                         )
                         Destination.Devices -> DevicesScreen(
@@ -443,6 +589,8 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
 
 /** Écran où mène le retour : l'écran précédent, sinon l'onglet Aujourd'hui ; [stack] lui-même s'il n'y a pas de retour. */
 private fun backTarget(stack: List<Destination>): List<Destination> = when {
+    // Le résumé de fin de séance se quitte en enregistrant ou en supprimant, pas par le geste retour.
+    stack.last() == Destination.ActivitySummary -> stack
     stack.size > 1 -> stack.dropLast(1)
     stack.first() != Destination.Today -> listOf(Destination.Today)
     else -> stack

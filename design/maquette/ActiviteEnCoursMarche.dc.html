@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Activité en cours — marche</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght,ROND@6..144,25..151,1..1000,0..100&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-variation-settings:'ROND' 100}
+button{font:inherit;font-variation-settings:inherit;color:inherit;cursor:pointer}
+@keyframes halo{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.8);opacity:0}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; overflow: hidden; background: #FBF8FF; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif">
+<dc-import name="ActiviteEnCours" sport="marche" hint-size="390px,844px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

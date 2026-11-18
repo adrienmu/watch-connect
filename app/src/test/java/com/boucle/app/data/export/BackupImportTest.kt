@@ -4,6 +4,7 @@ import com.boucle.app.data.AppSettings
 import com.boucle.app.data.RestoredSettings
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
+import com.boucle.app.data.db.ActivityEditEntity
 import com.boucle.app.data.db.ActivitySamplesEntity
 import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.DateSteps
@@ -192,6 +193,12 @@ class BackupImportTest {
     )
 
     private fun sampleDao() = FakeDao().apply {
+        edits += ActivityEditEntity(
+            sessionPath = "/U/0/20261116/E/070000", name = "Sortie « longue »", sport = "RUN", terrain = "TRAIL", feel = 3,
+            notes = "Chaussures neuves\nvent de face", trimStartSec = 30, trimEndSec = 45, trimmedDurationSec = 2700,
+            trimmedDistanceMeters = 8123.5f,
+        )
+        edits += ActivityEditEntity(sessionPath = "detected:2026-11-16T12:41", deleted = true)
         daily += DailyActivityEntity(
             "2026-11-16", 12034, 450, 120, 1650, 9123.5f, 1.0f, 0.875f, 3600, 1800, 900, 300, 28000, 60,
             "BALANCED", "RECOVERED",
@@ -265,6 +272,7 @@ class BackupImportTest {
         assertEquals(source.recharge, sink.recharge)
         assertEquals(source.skin, sink.skin)
         assertEquals(source.measurements, sink.measurements)
+        assertEquals(source.edits.sortedBy { it.sessionPath }, sink.edits)
         assertEquals(source.routes.sortedBy { it.sessionPath }, sink.routes.sortedBy { it.sessionPath })
         assertEquals(source.sessions.map(::comparable).sortedBy { it.first.path }, sink.sessions.map(::comparable).sortedBy { it.first.path })
         assertEquals(
@@ -488,6 +496,7 @@ private open class CollectingSink : BackupSink {
     val exercises = mutableListOf<TrainingExerciseEntity>()
     val routes = mutableListOf<TrainingRouteEntity>()
     val measurements = mutableListOf<ExternalMeasurementEntity>()
+    val edits = mutableListOf<ActivityEditEntity>()
 
     override suspend fun dailyActivity(row: DailyActivityEntity) { daily += row }
     override suspend fun activitySamples(row: ActivitySamplesEntity) { samples += row }
@@ -500,6 +509,7 @@ private open class CollectingSink : BackupSink {
     override suspend fun trainingExercise(row: TrainingExerciseEntity) { exercises += row }
     override suspend fun trainingRoute(row: TrainingRouteEntity) { routes += row }
     override suspend fun externalMeasurement(row: ExternalMeasurementEntity) { measurements += row }
+    override suspend fun activityEdit(row: ActivityEditEntity) { edits += row }
 }
 
 /** Base en mémoire : seules les requêtes de l'export sont implémentées. */
@@ -528,6 +538,17 @@ private class FakeDao : CollectingSink(), HealthDao {
     override suspend fun insertTrainingRoutesIfAbsent(items: List<TrainingRouteEntity>) = insertIgnore(routes, items) { it.sessionPath }
     override suspend fun insertExternalMeasurementsIfAbsent(items: List<ExternalMeasurementEntity>) =
         insertIgnore(measurements, items) { it.id }
+    override suspend fun insertActivityEditsIfAbsent(items: List<ActivityEditEntity>) = insertIgnore(edits, items) { it.sessionPath }
+    override suspend fun upsertActivityEdits(items: List<ActivityEditEntity>) { edits += items }
+    override suspend fun allActivityEdits() = edits.sortedBy { it.sessionPath }
+    override fun activityEdits(): Flow<List<ActivityEditEntity>> = unused()
+    override suspend fun activityEditNow(path: String): ActivityEditEntity? = unused()
+    override fun recentTrainingSessions(limit: Int): Flow<List<TrainingSessionEntity>> = unused()
+    override fun routedSessionPaths(): Flow<List<String>> = unused()
+    override suspend fun deleteActivityEdit(path: String): Unit = unused()
+    override suspend fun deleteTrainingSession(path: String): Unit = unused()
+    override suspend fun deleteTrainingRoute(path: String): Unit = unused()
+    override suspend fun deleteTrainingExercises(path: String): Unit = unused()
     override suspend fun hasTrainingSession(path: String) = sessions.any { it.path == path }
 
     override suspend fun upsertDailyActivity(items: List<DailyActivityEntity>) { daily += items }

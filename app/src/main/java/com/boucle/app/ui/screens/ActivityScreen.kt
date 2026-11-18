@@ -31,7 +31,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.domain.DetectedActivity
+import com.boucle.app.domain.Sport
 import com.boucle.app.domain.Vo2MaxEstimate
+import com.boucle.app.tracking.RecordingState
+import com.boucle.app.ui.ActivityHomeUiState
 import com.boucle.app.domain.StepHistory
 import com.boucle.app.ui.DayUiState
 import com.boucle.app.ui.components.AnimatedNumber
@@ -65,7 +69,7 @@ import kotlin.math.roundToInt
 private val headerDate = DateTimeFormatter.ofPattern("EEEE d MMM", Locale.FRENCH)
 
 /**
- * Onglet Forme : historique des pas (semaine ou mois, jusqu'à la première mesure), dépense, objectif d'activité,
+ * Onglet Forme : lancement d'une activité, activité détectée et activités récentes, puis historique des pas (semaine ou mois, jusqu'à la première mesure), dépense, objectif d'activité,
  * séances du jour et VO2max.
  */
 @Composable
@@ -76,6 +80,13 @@ fun ActivityScreen(
     onEditGoals: () -> Unit,
     onNavigate: (Destination) -> Unit,
     onOpenSession: (String) -> Unit,
+    home: ActivityHomeUiState,
+    recording: RecordingState,
+    bandConnected: Boolean,
+    onStartActivity: (Sport) -> Unit,
+    onOpenRecording: () -> Unit,
+    onReviewDetected: () -> Unit,
+    onDismissDetected: (DetectedActivity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.verticalScroll(rememberScrollState())) {
@@ -94,7 +105,17 @@ fun ActivityScreen(
             Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            var index = 1
+            ActivityHomeSection(
+                home = home,
+                recording = recording,
+                bandConnected = bandConnected,
+                onStart = onStartActivity,
+                onOpenRecording = onOpenRecording,
+                onReviewDetected = onReviewDetected,
+                onDismissDetected = onDismissDetected,
+                onOpenSession = onOpenSession,
+            )
+            var index = 4
             val activity = state.activity
             StepsHistoryTile(
                 selected = state.date,
@@ -117,7 +138,8 @@ fun ActivityScreen(
                 EnergyTiles(activity, Modifier.staggeredEntrance(index++))
                 if (activity.hasActivityGoal()) ActivityGoalCard(activity, Modifier.staggeredEntrance(index++))
             }
-            state.sessions.forEach { session ->
+            // Les séances d'aujourd'hui sont déjà dans « Activités récentes » : la carte détaillée sert aux jours passés.
+            if (state.date != LocalDate.now()) state.sessions.forEach { session ->
                 SessionCard(session, onClick = { onOpenSession(session.path) }, modifier = Modifier.staggeredEntrance(index++))
             }
             state.vo2Max?.let { vo2 ->
@@ -248,7 +270,7 @@ private fun SessionCard(session: TrainingSessionEntity, onClick: () -> Unit, mod
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             IconBadge(
-                BoucleIcons.Pulse,
+                sportIcon(Sport.of(session.sportId, session.name)),
                 container = MetricPalette.Activity.container,
                 content = MetricPalette.Activity.onContainer,
                 shape = BadgeShape.Cookie,

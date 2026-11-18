@@ -24,7 +24,12 @@ enum class RouteStatus {
 }
 
 /** Origine des points d'un tracé. */
-enum class RouteSource { BAND, HEALTH_CONNECT }
+enum class RouteSource {
+    BAND,
+    HEALTH_CONNECT,
+    /** GPS du téléphone, activité lancée depuis l'app. */
+    PHONE,
+}
 
 /** Point GPS horodaté, avec la FC mesurée à cet instant quand on la connaît. */
 data class RoutePoint(

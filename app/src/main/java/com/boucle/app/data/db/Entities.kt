@@ -170,3 +170,29 @@ data class TrainingRouteEntity(
     /** Points encodés par [com.boucle.app.domain.RouteCodec] ; vide tant que le tracé n'est pas autorisé. */
     val points: String,
 )
+
+/**
+ * Corrections apportées par l'utilisateur à une séance : elles vivent à part de [TrainingSessionEntity], qu'une
+ * synchronisation du bracelet réécrit en entier. Sert aussi à retenir une séance supprimée ou une activité détectée
+ * écartée ([deleted]), pour qu'elle ne revienne pas.
+ */
+@Entity(tableName = "activity_edit")
+data class ActivityEditEntity(
+    /** Chemin de la séance ([TrainingSessionEntity.path]) ou d'une activité détectée. */
+    @PrimaryKey val sessionPath: String,
+    val name: String? = null,
+    /** [com.boucle.app.domain.Sport] choisi : WALK, RUN, BIKE. */
+    val sport: String? = null,
+    /** [com.boucle.app.domain.Terrain] d'une course : ROAD, TRAIL, ULTRA. */
+    val terrain: String? = null,
+    /** Ressenti, de 0 (facile) à 4 (à fond). */
+    val feel: Int? = null,
+    val notes: String? = null,
+    /** Rognage : secondes retirées au début et à la fin du tracé. */
+    val trimStartSec: Int? = null,
+    val trimEndSec: Int? = null,
+    /** Durée et distance du tracé rogné, calculées à l'enregistrement de la modification. */
+    val trimmedDurationSec: Int? = null,
+    val trimmedDistanceMeters: Float? = null,
+    val deleted: Boolean = false,
+)

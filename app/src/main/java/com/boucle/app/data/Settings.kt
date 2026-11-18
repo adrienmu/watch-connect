@@ -53,6 +53,8 @@ data class AppSettings(
     val demoMode: Boolean = false,
     /** Objectifs quotidiens (pas, calories actives) et leurs changements au fil du temps. */
     val goals: GoalHistory = GoalHistory(),
+    /** Proposer une activité quand le bracelet a relevé un effort continu. */
+    val activityDetection: Boolean = true,
 )
 
 /**
@@ -129,6 +131,7 @@ class Settings(private val context: Context) {
             dataVersion = prefs[DATA_VERSION] ?: 0,
             demoMode = prefs[DEMO_MODE] ?: false,
             goals = GoalHistory.decode(prefs[GOAL_HISTORY]),
+            activityDetection = prefs[ACTIVITY_DETECTION] ?: true,
             backup = BackupSettings(
                 folderUri = prefs[BACKUP_FOLDER_URI],
                 folderName = prefs[BACKUP_FOLDER_NAME],
@@ -191,6 +194,10 @@ class Settings(private val context: Context) {
         context.dataStore.edit {
             it[GOAL_HISTORY] = GoalHistory.decode(it[GOAL_HISTORY]).with(goals.coerced(), from).encode()
         }
+    }
+
+    suspend fun setActivityDetection(enabled: Boolean) {
+        context.dataStore.edit { it[ACTIVITY_DETECTION] = enabled }
     }
 
     suspend fun markOnboardingDone() {
@@ -398,5 +405,6 @@ class Settings(private val context: Context) {
         val BACKUP_WRITING_FOLDER = stringPreferencesKey("backup_writing_folder")
         val DEMO_MODE = booleanPreferencesKey("demo_mode")
         val GOAL_HISTORY = stringPreferencesKey("goal_history")
+        val ACTIVITY_DETECTION = booleanPreferencesKey("activity_detection")
     }
 }

@@ -1,8 +1,8 @@
 package com.boucle.app.privacy
 
+import androidx.core.net.toUri
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -48,7 +48,7 @@ class PrivacyPolicyActivity : ComponentActivity() {
 
     private fun openFullPolicy() {
         try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(POLICY_URL)))
+            startActivity(Intent(Intent.ACTION_VIEW, POLICY_URL.toUri()))
         } catch (_: ActivityNotFoundException) {
             // Aucun navigateur : le résumé affiché reste la seule source, rien d'autre à faire.
         }

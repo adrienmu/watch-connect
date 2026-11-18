@@ -6,6 +6,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.time.LocalDateTime
 
 /**
@@ -116,7 +117,7 @@ class SyncEngine(
             if (allOk && !from.isAfter(cleanUntil)) {
                 step("Nettoyage du bracelet (du $from au $cleanUntil)") {
                     api.deleteDeviceDateFolders(deviceId, from, cleanUntil)
-                    (from.datesUntil(cleanUntil.plusDays(1)).count()).toInt()
+                    (ChronoUnit.DAYS.between(from, cleanUntil) + 1).toInt()
                 }
             } else if (!allOk) {
                 log("· Bracelet non nettoyé : une étape a échoué, ses données y restent pour la prochaine fois.")

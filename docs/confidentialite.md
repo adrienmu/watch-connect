@@ -23,10 +23,21 @@ Dernière mise à jour : 18 novembre 2026
 | --- | --- |
 | Bracelet Polar Loop (Bluetooth) | Pas, calories, distance, temps actif et sédentaire ; fréquence cardiaque ; intervalles pouls à pouls (variabilité) ; sommeil et ses phases ; température de la peau ; séances d'entraînement ; niveau de batterie, version du firmware, identifiant et nom du bracelet |
 | Health Connect (lecture seule, uniquement ce que vous autorisez) | Poids, masse grasse, masse maigre, masse osseuse, eau corporelle, saturation en oxygène, variabilité de la fréquence cardiaque, fréquence cardiaque, pas, sommeil, fréquence respiratoire, séances d'exercice, distance, calories actives, tracés GPS des séances (autorisés séance par séance) |
+| GPS du téléphone (uniquement pendant une activité que vous lancez depuis Boucle) | Position, altitude et précision du GPS une fois par seconde ; pression du baromètre pour l'altitude ; pas comptés par le téléphone |
 | Profil que vous saisissez | Sexe, date de naissance, taille, poids, fréquence cardiaque maximale |
 | Réglages | Bracelet associé, dates des dernières synchronisations, passage de l'écran d'accueil, dossier de sauvegarde automatique et résultat de la dernière sauvegarde, clé des sauvegardes chiffrées (elle-même chiffrée, voir plus bas ; jamais la phrase de passe) |
 
 Les données d'activité de Health Connect ne sont lues que depuis l'application Withings, afin de ne pas compter deux fois les pas du téléphone.
+
+## Position pendant une activité
+
+Quand vous lancez une marche, une course ou une sortie vélo depuis Boucle, l'application lit la position du GPS de votre téléphone pour tracer le parcours et calculer la distance, l'allure ou la vitesse, l'altitude et le dénivelé.
+
+- **Seulement pendant l'activité :** la position n'est lue qu'entre « Démarrer » et « Terminer » (et, avant le départ, tant que l'écran « Nouvelle activité » est ouvert, pour afficher la qualité du signal). Boucle ne suit jamais votre position en dehors d'une activité.
+- **Écran éteint :** l'enregistrement continue grâce à un service au premier plan, signalé par une notification permanente tant qu'il tourne.
+- **Stockage :** le tracé est enregistré dans l'espace privé de l'application, comme vos autres données. Il n'est envoyé à aucun serveur.
+- **Pas du téléphone :** pendant une marche, Boucle peut compter vos pas avec le capteur du téléphone (autorisation « Activité physique »). Refuser cette autorisation n'empêche pas l'enregistrement.
+- **Activités détectées :** Boucle peut vous proposer une marche ou une course repérée dans les pas relevés par votre bracelet. Cette détection se fait sur le téléphone, sans position, et se désactive dans l'écran « Activité détectée ».
 
 ## À quoi servent ces données
 
@@ -84,15 +95,16 @@ La permission « Internet » sert à télécharger ces images de carte et, pour 
 
 ## Cartes (tracés GPS)
 
-Quand vous ouvrez la carte d'une séance avec un tracé GPS, Boucle télécharge des images de fond de carte depuis OpenStreetMap (`tile.openstreetmap.org`) et, pour le style « Relief », depuis OpenTopoMap (`tile.opentopomap.org`). Ces services reçoivent votre adresse IP et les coordonnées des carrés de carte demandés, ce qui révèle la zone géographique de la séance. Ils ne reçoivent ni vos mesures de santé, ni le tracé lui-même, qui est dessiné sur votre téléphone, ni aucun identifiant de compte.
+Quand vous ouvrez la carte d'une séance avec un tracé GPS, ou pendant une activité en cours, Boucle télécharge des images de fond de carte depuis OpenStreetMap (`tile.openstreetmap.org`) et, pour le style « Relief », depuis OpenTopoMap (`tile.opentopomap.org`). Ces services reçoivent votre adresse IP et les coordonnées des carrés de carte demandés, ce qui révèle la zone géographique de la séance. Ils ne reçoivent ni vos mesures de santé, ni le tracé lui-même, qui est dessiné sur votre téléphone, ni aucun identifiant de compte.
 
 Les images téléchargées sont gardées en cache sur le téléphone pour limiter ces requêtes. Ces services appliquent leurs propres règles, par exemple la [politique de confidentialité de la fondation OpenStreetMap](https://osmfoundation.org/wiki/Privacy_Policy).
 
 ## Consentement et vos droits
 
-Les données de santé sont des données sensibles. Boucle ne les lit qu'avec votre accord, donné au moment où vous accordez les autorisations Bluetooth et Health Connect. Vous pouvez le retirer à tout moment :
+Les données de santé sont des données sensibles. Boucle ne les lit qu'avec votre accord, donné au moment où vous accordez les autorisations Bluetooth, Health Connect et, pour lancer une activité, la position. Vous pouvez le retirer à tout moment :
 
 - **Bluetooth :** Réglages Android > Applications > Boucle > Autorisations.
+- **Position, activité physique et notifications :** Réglages Android > Applications > Boucle > Autorisations. Sans la position, vous ne pouvez plus lancer d'activité avec tracé depuis Boucle ; le reste de l'application fonctionne.
 - **Health Connect :** Réglages > Health Connect > Autorisations des applications > Boucle.
 - **Récupérer toutes vos données (droit à la portabilité) :** Boucle > Appareils > Exporter mes données. L'application crée une archive ZIP, enregistrée à l'endroit que vous choisissez, qui contient toutes les données qu'elle garde : un fichier JSON structuré (mesures, sommeil, séances, profil, mesures lues dans Health Connect) et un fichier GPX par tracé GPS, importable dans d'autres applications. Une fois exportée, l'archive n'est plus protégée par l'espace privé de l'application : conservez-la en lieu sûr. Cet export n'est pas chiffré. Boucle > Appareils > Importer une sauvegarde relit cette archive, ou une sauvegarde automatique (`.zip`, ou `.boucle` avec sa phrase de passe), pour restaurer vos données : seules les données absentes du téléphone sont ajoutées, celles déjà présentes sont conservées sans être remplacées. L'import et le déchiffrement se font entièrement sur le téléphone, sans aucun envoi.
 - **Supprimer toutes les données de Boucle :** Réglages Android > Applications > Boucle > Stockage > Effacer les données, ou désinstaller l'application.

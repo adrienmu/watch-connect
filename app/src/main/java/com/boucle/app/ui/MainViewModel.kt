@@ -21,6 +21,7 @@ import com.boucle.app.data.export.BackupFormatException
 import com.boucle.app.data.export.DataExporter
 import com.boucle.app.data.export.DataImporter
 import android.net.Uri
+import androidx.core.net.toUri
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.DailyGoals
 import com.boucle.app.domain.StepHistory
@@ -41,6 +42,19 @@ import com.boucle.app.domain.RouteSource
 import com.boucle.app.domain.RouteStats
 import com.boucle.app.domain.RouteStatus
 import com.boucle.app.data.db.TrainingSessionEntity
+import com.boucle.app.data.db.ActivityEditEntity
+import com.boucle.app.data.db.TrainingRouteEntity
+import com.boucle.app.domain.ActivityDetection
+import com.boucle.app.domain.CalorieEstimate
+import com.boucle.app.domain.DetectedActivity
+import com.boucle.app.domain.HrZones
+import com.boucle.app.domain.RoutePoint
+import com.boucle.app.domain.Sport
+import com.boucle.app.domain.Terrain
+import com.boucle.app.tracking.GpsPreview
+import com.boucle.app.tracking.RecordedActivity
+import com.boucle.app.tracking.RecordingState
+import java.time.LocalTime
 import androidx.health.connect.client.records.ExerciseRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
@@ -106,6 +120,10 @@ data class SessionDetailUiState(
     val maxHr: Int? = null,
     val maxHrEstimated: Boolean = false,
     val zones: List<HrZoneTime> = emptyList(),
+    /** Sport et terrain de la séance, corrections de l'utilisateur comprises. */
+    val sport: Sport? = null,
+    val terrain: Terrain? = null,
+    val notes: String? = null,
     val access: RouteAccess = RouteAccess.IDLE,
     /** Vrai une fois la séance lue dans la base. */
     val loaded: Boolean = false,
@@ -210,6 +228,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val importer = DataImporter(database, settings)
     private val autoBackup = app.autoBackup
     private val backupKeys = app.backupKeys
+    private val recorder = app.recorder
 
     private data class Local(
         val scanning: Boolean = false,
@@ -593,12 +612,19 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
 
     private fun sessionDetailFlow(path: String): Flow<SessionDetailUiState> {
         // L'analyse du tracé ne dépend que des points : elle n'est refaite que s'ils changent.
-        val analysis = dao.trainingRoute(path)
-            .distinctUntilChanged()
-            .map { route -> route to route?.takeIf { it.status == RouteStatus.AVAILABLE.name }?.let { RouteAnalysis.analyze(RouteCodec.decode(it.points)) } }
-            .flowOn(Dispatchers.Default)
+        val edit = dao.activityEdits().map { edits -> edits.firstOrNull { it.sessionPath == path } }.distinctUntilChanged()
+        // Le rognage choisi par l'utilisateur s'applique aux points avant l'analyse.
+        val analysis = combine(dao.trainingRoute(path).distinctUntilChanged(), edit) { route, e ->
+            Triple(
+                route,
+                route?.takeIf { it.status == RouteStatus.AVAILABLE.name }
+                    ?.let { RouteAnalysis.analyze(trimRoute(RouteCodec.decode(it.points), e?.trimStartSec, e?.trimEndSec)) },
+                e,
+            )
+        }.flowOn(Dispatchers.Default)
         val profile = settings.flow.map { it.profile }.distinctUntilChanged()
-        return combine(dao.trainingSession(path), analysis, profile, routeAccess) { session, (route, stats), profile, access ->
+        return combine(dao.trainingSession(path), analysis, profile, routeAccess) { raw, (route, stats, e), profile, access ->
+            val session = raw?.takeIf { e?.deleted != true }?.withEdit(e)
             val date = session?.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: LocalDate.now()
             val maxHr = profile?.maxHr?.takeIf { it > 0 } ?: profile?.let { 220 - it.ageOn(date) }
             SessionDetailUiState(
@@ -610,9 +636,285 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 maxHr = maxHr,
                 maxHrEstimated = profile?.maxHr == null,
                 zones = if (stats != null && stats.hasHeartRate && maxHr != null) RouteAnalysis.hrZones(stats.points, maxHr) else emptyList(),
+                sport = session?.let { Sport.of(it.sportId, it.name) },
+                terrain = Terrain.named(e?.terrain),
+                notes = e?.notes,
                 access = access,
                 loaded = true,
             )
+        }
+    }
+
+    // ----- Activités : lancer, reconnaître, modifier -----
+
+    private val editsByPath: Flow<Map<String, ActivityEditEntity>> =
+        dao.activityEdits().map { edits -> edits.associateBy { it.sessionPath } }.distinctUntilChanged()
+
+    private fun Flow<List<TrainingSessionEntity>>.edited(): Flow<List<TrainingSessionEntity>> =
+        combine(this, editsByPath) { sessions, edits -> applyEdits(sessions, edits) }
+
+    /** Activité en cours (GPS du téléphone), signal avant le départ et activité terminée à enregistrer. */
+    val recording: StateFlow<RecordingState> = recorder.state
+    val gpsPreview: StateFlow<GpsPreview> = recorder.preview
+    val finishedRecording: StateFlow<RecordedActivity?> = recorder.finished
+    val hasBarometer: Boolean get() = recorder.hasBarometer
+
+    fun hasLocationPermission(): Boolean = recorder.hasLocationPermission()
+    fun gpsEnabled(): Boolean = recorder.gpsEnabled()
+    fun startGpsPreview() = recorder.startPreview()
+    fun stopGpsPreview() = recorder.stopPreview()
+    fun recordingTrack(): List<RoutePoint> = recorder.trackPoints()
+    fun pauseRecording() = recorder.pause()
+    fun resumeRecording() = recorder.resume()
+    fun finishRecording() = recorder.finish()
+
+    /** Démarre l'enregistrement ; les zones cardiaques suivent la FC max du [profile] (sinon 220 − âge). */
+    fun startRecording(sport: Sport, profile: UserProfile?) {
+        recorder.start(sport, HrZones.maxHr(profile?.maxHr, profile?.ageOn(LocalDate.now())))
+    }
+
+    /** Supprime l'activité terminée sans l'enregistrer. */
+    fun discardRecording() = recorder.clear()
+
+    /** Enregistre l'activité terminée : séance, tracé GPS, terrain et ressenti. [onSaved] reçoit son chemin. */
+    fun saveRecording(terrain: Terrain?, feel: Int?, onSaved: (String) -> Unit) {
+        val activity = recorder.finished.value ?: return
+        viewModelScope.launch {
+            try {
+                val profile = settings.flow.first().profile
+                val start = Instant.ofEpochMilli(activity.startMs).atZone(ZoneId.systemDefault()).toLocalDateTime().withNano(0)
+                val path = "$PHONE_SESSION_PREFIX${activity.startMs}"
+                val session = TrainingSessionEntity(
+                    path = path,
+                    date = start.toLocalDate().toString(),
+                    startTime = start.toString(),
+                    durationSec = activity.durationSec,
+                    sportId = activity.sport.sportId,
+                    name = defaultSessionName(activity.sport, start.toLocalTime()),
+                    calories = CalorieEstimate.kcal(activity.sport, activity.distanceMeters, activity.durationSec.toDouble(), profile?.weightKg),
+                    distanceMeters = activity.distanceMeters.toFloat(),
+                    averageHr = activity.averageHr,
+                    maxHr = activity.maxHr,
+                    cardioLoad = null,
+                    muscleLoad = null,
+                    hrZoneSec = if (activity.averageHr != null) activity.hrZoneSec.joinToString(",") else "",
+                    exerciseCount = 0,
+                    summaryProto = null,
+                )
+                dao.upsertTrainingSessions(listOf(session))
+                if (activity.points.size >= RouteAnalysis.MIN_POINTS) {
+                    dao.upsertTrainingRoutes(
+                        listOf(
+                            TrainingRouteEntity(
+                                sessionPath = path,
+                                status = RouteStatus.AVAILABLE.name,
+                                source = RouteSource.PHONE.name,
+                                healthConnectId = null,
+                                points = RouteCodec.encode(activity.points),
+                            ),
+                        ),
+                    )
+                }
+                if (terrain != null || feel != null) {
+                    dao.upsertActivityEdits(listOf(ActivityEditEntity(sessionPath = path, terrain = terrain?.name, feel = feel)))
+                }
+                recorder.clear()
+                onDataChanged()
+                onSaved(path)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Enregistrement de la séance impossible", e)
+            }
+        }
+    }
+
+    /** Dernières séances et activité détectée la plus récente, sur aujourd'hui et hier. */
+    val activityHome: StateFlow<ActivityHomeUiState> = run {
+        val today = LocalDate.now()
+        val yesterday = today.minusDays(1)
+        val detected = combine(
+            dao.activitySamplesRange(yesterday.toString(), today.toString()),
+            dao.trainingSessionsRange(yesterday.toString(), today.toString()),
+            editsByPath,
+        ) { samples, sessions, edits ->
+            // Quelques minutes de recul : un effort encore en cours n'est pas proposé avant d'être fini.
+            val limit = LocalDateTime.now().minusMinutes(ActivityDetection.MAX_GAP_MINUTES + 1L)
+            listOf(today, yesterday)
+                .flatMap { day -> detectActivities(day, samples.filter { it.date == day.toString() }, sessions, edits.keys) }
+                .filter { it.start.plusSeconds(it.durationSec.toLong()) <= limit }
+                .maxByOrNull { it.start }
+        }.flowOn(Dispatchers.Default)
+        combine(
+            dao.recentTrainingSessions(RECENT_SESSIONS * 3),
+            editsByPath,
+            detected,
+            settings.flow.map { it.activityDetection }.distinctUntilChanged(),
+        ) { sessions, edits, found, enabled ->
+            ActivityHomeUiState(
+                recent = applyEdits(sessions, edits).take(RECENT_SESSIONS).map { session ->
+                    SessionItem(
+                        session = session,
+                        sport = Sport.of(session.sportId, session.name),
+                        terrain = Terrain.named(edits[session.path]?.terrain),
+                        detected = session.path.startsWith(DetectedActivity.PATH_PREFIX),
+                    )
+                },
+                detected = found.takeIf { enabled },
+                detectionEnabled = enabled,
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActivityHomeUiState())
+    }
+
+    fun setActivityDetection(enabled: Boolean) {
+        viewModelScope.launch { settings.setActivityDetection(enabled) }
+    }
+
+    /** « Ce n'était pas une activité » : la proposition ne reviendra pas. */
+    fun dismissDetected(activity: DetectedActivity) {
+        viewModelScope.launch {
+            dao.upsertActivityEdits(listOf(ActivityEditEntity(sessionPath = activity.path, deleted = true)))
+            onDataChanged()
+        }
+    }
+
+    /** Ajoute l'activité détectée aux séances, avec le sport confirmé ou corrigé par l'utilisateur. */
+    fun confirmDetected(activity: DetectedActivity, sport: Sport, onSaved: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val profile = settings.flow.first().profile
+                val end = activity.start.plusSeconds(activity.durationSec.toLong())
+                val heartRate = heartRateBetween(
+                    dao.hrBlocksOn(activity.start.toLocalDate().toString()),
+                    activity.start.toLocalTime(),
+                    if (end.toLocalDate() == activity.start.toLocalDate()) end.toLocalTime() else LocalTime.MAX,
+                )
+                // À vélo, les pas ne disent rien de la distance.
+                val distance = if (sport == Sport.BIKE) null else ActivityDetection.distanceMeters(activity.steps, sport, profile?.heightCm)
+                dao.upsertTrainingSessions(
+                    listOf(
+                        TrainingSessionEntity(
+                            path = activity.path,
+                            date = activity.start.toLocalDate().toString(),
+                            startTime = activity.start.toString(),
+                            durationSec = activity.durationSec,
+                            sportId = sport.sportId,
+                            name = defaultSessionName(sport, activity.start.toLocalTime()),
+                            calories = distance?.let { CalorieEstimate.kcal(sport, it, activity.durationSec.toDouble(), profile?.weightKg) },
+                            distanceMeters = distance?.toFloat(),
+                            averageHr = heartRate?.first,
+                            maxHr = heartRate?.second,
+                            cardioLoad = null,
+                            muscleLoad = null,
+                            hrZoneSec = "",
+                            exerciseCount = 0,
+                            summaryProto = null,
+                        ),
+                    ),
+                )
+                onDataChanged()
+                onSaved()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Ajout de l'activité impossible", e)
+            }
+        }
+    }
+
+    /** Séance ouverte dans « Modifier l'activité » (la même que le détail). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val activityEdit: StateFlow<ActivityEditUiState> = selectedSession
+        .flatMapLatest { path ->
+            if (path == null) {
+                flowOf(ActivityEditUiState())
+            } else {
+                val route = dao.trainingRoute(path).distinctUntilChanged().map { route ->
+                    val points = route?.takeIf { it.status == RouteStatus.AVAILABLE.name }?.let { RouteCodec.decode(it.points) }.orEmpty()
+                    val stats = RouteAnalysis.analyze(points)
+                    val altitudes = stats?.points?.mapNotNull { it.altitude?.toFloat() }.orEmpty()
+                    val step = maxOf(1, altitudes.size / EDIT_PROFILE_POINTS)
+                    stats?.durationSec?.toInt() to altitudes.filterIndexed { i, _ -> i % step == 0 }
+                }.flowOn(Dispatchers.Default)
+                combine(dao.trainingSession(path), editsByPath, route) { raw, edits, (duration, profile) ->
+                    val edit = edits[path]
+                    val session = raw?.takeIf { edit?.deleted != true }?.withEdit(edit)
+                    ActivityEditUiState(
+                        path = path,
+                        session = session,
+                        edit = edit,
+                        sport = session?.let { Sport.of(it.sportId, it.name) },
+                        routeDurationSec = duration?.takeIf { it > 0 },
+                        profile = profile,
+                    )
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActivityEditUiState())
+
+    /** Enregistre les corrections d'une séance ; un rognage recalcule durée et distance d'après le tracé gardé. */
+    fun saveActivityEdit(path: String, form: ActivityEditForm, onSaved: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val previous = dao.activityEditNow(path)
+                val trimmed = form.trimStartSec > 0 || form.trimEndSec > 0
+                val stats = if (trimmed) {
+                    withContext(Dispatchers.Default) {
+                        dao.trainingRouteNow(path)
+                            ?.takeIf { it.status == RouteStatus.AVAILABLE.name }
+                            ?.let { RouteAnalysis.analyze(trimRoute(RouteCodec.decode(it.points), form.trimStartSec, form.trimEndSec)) }
+                    }
+                } else {
+                    null
+                }
+                dao.upsertActivityEdits(
+                    listOf(
+                        (previous ?: ActivityEditEntity(sessionPath = path)).copy(
+                            name = form.name.trim().takeIf { it.isNotEmpty() },
+                            sport = form.sport?.name,
+                            terrain = form.terrain?.takeIf { form.sport == Sport.RUN }?.name,
+                            notes = form.notes.trim().takeIf { it.isNotEmpty() },
+                            trimStartSec = form.trimStartSec.takeIf { stats != null && it > 0 },
+                            trimEndSec = form.trimEndSec.takeIf { stats != null && it > 0 },
+                            trimmedDurationSec = stats?.durationSec?.toInt(),
+                            trimmedDistanceMeters = stats?.distanceMeters?.toFloat(),
+                            deleted = false,
+                        ),
+                    ),
+                )
+                onDataChanged()
+                onSaved()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Modification impossible", e)
+            }
+        }
+    }
+
+    /**
+     * Supprime une séance. Elle est retirée de la base, et une marque reste pour qu'une prochaine synchronisation
+     * du bracelet ou de Health Connect, ou la détection automatique, ne la ramène pas.
+     */
+    fun deleteSession(path: String, onDeleted: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                dao.deleteTrainingRoute(path)
+                dao.deleteTrainingExercises(path)
+                dao.deleteTrainingSession(path)
+                if (path.startsWith(PHONE_SESSION_PREFIX)) {
+                    // Une séance enregistrée par le téléphone ne peut pas revenir : aucune marque à garder.
+                    dao.deleteActivityEdit(path)
+                } else {
+                    dao.upsertActivityEdits(listOf(ActivityEditEntity(sessionPath = path, deleted = true)))
+                }
+                onDataChanged()
+                onDeleted()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report("Suppression impossible", e)
+            }
         }
     }
 
@@ -994,7 +1296,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 val backup = settings.flow.first().backup
                 val uri = backup.folderUri
                 val accessible = uri == null || withContext(Dispatchers.IO) {
-                    runCatching { BackupFolder.hasPermission(contentResolver, Uri.parse(uri)) }.getOrDefault(false)
+                    runCatching { BackupFolder.hasPermission(contentResolver, uri.toUri()) }.getOrDefault(false)
                 }
                 val keyAvailable = backup.encryption?.let { enc -> withContext(Dispatchers.IO) { backupKeys.canUnlock(enc) } } ?: true
                 local.update { it.copy(backupFolderAccessible = accessible, backupKeyAvailable = keyAvailable) }
@@ -1008,7 +1310,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
 
     private fun releaseFolder(uri: String) {
         // Permission déjà perdue (ou jamais accordée sur ce téléphone) : rien à libérer.
-        runCatching { contentResolver.releasePersistableUriPermission(Uri.parse(uri), BackupFolder.PERSISTABLE_FLAGS) }
+        runCatching { contentResolver.releasePersistableUriPermission(uri.toUri(), BackupFolder.PERSISTABLE_FLAGS) }
     }
 
     /** Les données ont changé hors synchro du bracelet (Health Connect, import, tracé) : à sauvegarder. */
@@ -1108,7 +1410,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             dao.sleep(key),
             dao.nightlyRecharge(key),
             dao.skinTemperature(key),
-            dao.trainingSessions(key),
+            dao.trainingSessions(key).edited(),
         ) { sleep, recharge, temperature, sessions ->
             DayUiState(
                 date = date,
@@ -1174,7 +1476,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         // VO2max : profil (âge, sexe, FC max), courses des 6 dernières semaines, FC nocturne des 2 dernières.
         val vo2Max = combine(
             settings.flow.map { it.profile }.distinctUntilChanged(),
-            dao.trainingSessionsRange(date.minusDays(Vo2MaxEstimation.RUN_WINDOW_DAYS).toString(), key),
+            dao.trainingSessionsRange(date.minusDays(Vo2MaxEstimation.RUN_WINDOW_DAYS).toString(), key).edited(),
             dao.nightlyRechargeRange(date.minusDays(14).toString(), key),
         ) { profile, sessions, recharges ->
             profile ?: return@combine null
@@ -1209,6 +1511,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
 
     companion object {
         private const val SCAN_TIMEOUT_MS = 30_000L
+        /** Séances de la liste « Activités récentes ». */
+        private const val RECENT_SESSIONS = 5
+        private const val EDIT_PROFILE_POINTS = 60
         private const val FIRST_SYNC_DAYS = 14L
         private const val HEALTH_CONNECT_FIRST_SYNC_DAYS = 30L
         /** Attente simulée de l'autorisation d'un tracé de démo, comme le temps de lecture dans Health Connect. */

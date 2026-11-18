@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.room.withTransaction
 import com.boucle.app.data.RestoredSettings
 import com.boucle.app.data.Settings
+import com.boucle.app.data.db.ActivityEditEntity
 import com.boucle.app.data.db.ActivitySamplesEntity
 import com.boucle.app.data.db.BoucleDatabase
 import com.boucle.app.data.db.DailyActivityEntity
@@ -232,6 +233,8 @@ internal open class CountingSink : BackupSink {
     override suspend fun trainingExercise(row: TrainingExerciseEntity) { trainingExercises++ }
     override suspend fun trainingRoute(row: TrainingRouteEntity) { trainingRoutes++ }
     override suspend fun externalMeasurement(row: ExternalMeasurementEntity) { externalMeasurements++ }
+    // Corrections de séances : relues et importées, mais pas comptées dans le résumé montré à l'utilisateur.
+    override suspend fun activityEdit(row: ActivityEditEntity) = Unit
 }
 
 /**
@@ -267,6 +270,7 @@ internal class ImportWriter(private val dao: HealthDao) : CountingSink() {
     private val exercises = Batch(BLOBS, dao::insertTrainingExercisesIfAbsent) { addedExercises += it }
     private val routes = Batch(BLOBS, dao::insertTrainingRoutesIfAbsent) { addedRoutes += it }
     private val measurements = Batch(ROWS, dao::insertExternalMeasurementsIfAbsent) { addedMeasurements += it }
+    private val edits = Batch(ROWS, dao::insertActivityEditsIfAbsent) { }
 
     /** Séances ajoutées par cet import : leurs exercices et tracés sont importés. */
     private val insertedSessions = HashSet<String>()
@@ -287,6 +291,8 @@ internal class ImportWriter(private val dao: HealthDao) : CountingSink() {
     override suspend fun nightlyRecharge(row: NightlyRechargeEntity) { super.nightlyRecharge(row); recharge.add(row) }
     override suspend fun skinTemperature(row: SkinTemperatureEntity) { super.skinTemperature(row); skin.add(row) }
     override suspend fun externalMeasurement(row: ExternalMeasurementEntity) { super.externalMeasurement(row); measurements.add(row) }
+
+    override suspend fun activityEdit(row: ActivityEditEntity) { edits.add(row) }
 
     override suspend fun trainingSession(row: TrainingSessionEntity) {
         super.trainingSession(row)
@@ -323,7 +329,7 @@ internal class ImportWriter(private val dao: HealthDao) : CountingSink() {
     }
 
     suspend fun flush() {
-        listOf(daily, samples, hr, ppiBlocks, nights, recharge, skin, exercises, routes, measurements).forEach { it.flush() }
+        listOf(daily, samples, hr, ppiBlocks, nights, recharge, skin, exercises, routes, measurements, edits).forEach { it.flush() }
     }
 
     private class Batch<T>(
