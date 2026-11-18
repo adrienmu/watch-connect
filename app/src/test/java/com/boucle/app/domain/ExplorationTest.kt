@@ -12,8 +12,8 @@ class ExplorationTest {
 
     private fun point(timeMs: Long, latitude: Double, longitude: Double = 4.8) = RoutePoint(timeMs, latitude, longitude)
 
-    private fun cellOf(level: ExplorationLevel, latitude: Double, longitude: Double): Long {
-        val scale = (1 shl level.zoom).toDouble()
+    private fun cellOf(latitude: Double, longitude: Double): Long {
+        val scale = (1 shl Exploration.CELL_ZOOM).toDouble()
         return Exploration.key((Exploration.mercatorX(longitude) * scale).toInt(), (Exploration.mercatorY(latitude) * scale).toInt())
     }
 
@@ -29,23 +29,21 @@ class ExplorationTest {
         val grid = Exploration.explore(listOf(emptyList()))
         assertTrue(grid.isEmpty)
         assertNull(grid.focus)
-        ExplorationLevel.entries.forEach { assertEquals(0, grid.count(it)) }
+        assertEquals(0, grid.count)
     }
 
     @Test
-    fun singlePointExploresOneSquarePerLevel() {
+    fun singlePointExploresOneSquare() {
         val grid = Exploration.explore(listOf(listOf(point(1L, 45.0))))
-        ExplorationLevel.entries.forEach { level ->
-            assertEquals(listOf(cellOf(level, 45.0, 4.8)), grid.cells(level).toList())
-        }
+        assertEquals(listOf(cellOf(45.0, 4.8)), grid.cells.toList())
     }
 
     @Test
     fun squaresBetweenTwoClosePointsAreExplored() {
-        // 900 m plein nord en deux points : à 45° de latitude un carré « ville » fait ≈ 216 m, donc 5 ou 6 carrés
+        // 900 m plein nord en deux points : à 45° de latitude un carré fait ≈ 216 m, donc 5 ou 6 carrés
         // d'affilée dans la même colonne, sans trou.
         val grid = Exploration.explore(listOf(listOf(point(1L, 45.0), point(2L, 45.0 + north(900.0)))))
-        val cells = grid.cells(ExplorationLevel.City)
+        val cells = grid.cells
         assertTrue("${cells.size} carrés", cells.size in 5..6)
         assertEquals(1, cells.map(Exploration::cellX).distinct().size)
         val rows = cells.map(Exploration::cellY).sorted()
@@ -56,7 +54,7 @@ class ExplorationTest {
     fun distantPointsAreNotJoined() {
         // 5 km entre deux points (GPS coupé) : seuls les deux carrés des extrémités comptent.
         val grid = Exploration.explore(listOf(listOf(point(1L, 45.0), point(2L, 45.0 + north(5_000.0)))))
-        assertEquals(2, grid.count(ExplorationLevel.City))
+        assertEquals(2, grid.count)
     }
 
     @Test
@@ -64,24 +62,14 @@ class ExplorationTest {
         val route = listOf(point(1L, 45.0), point(2L, 45.0 + north(900.0)))
         val once = Exploration.explore(listOf(route))
         val twice = Exploration.explore(listOf(route, route.map { it.copy(timeMs = it.timeMs + 10_000) }))
-        ExplorationLevel.entries.forEach { assertEquals(once.count(it), twice.count(it)) }
+        assertEquals(once.count, twice.count)
     }
 
     @Test
-    fun largerSquaresContainSmallerOnes() {
-        // 20 km vers le nord, un point tous les 100 m.
+    fun longRouteExploresEverySquareOnItsWay() {
+        // 20 km vers le nord, un point tous les 100 m : ≈ 93 carrés de 216 m.
         val route = (0..200).map { point(it.toLong(), 45.0 + north(100.0 * it)) }
-        val grid = Exploration.explore(listOf(route))
-        val city = grid.count(ExplorationLevel.City)
-        val region = grid.count(ExplorationLevel.Region)
-        val country = grid.count(ExplorationLevel.Country)
-        assertTrue(city in 90..96)
-        assertTrue(region in 11..13)
-        assertTrue(country in 2..3)
-        val parents = grid.cells(ExplorationLevel.City)
-            .map { Exploration.key(Exploration.cellX(it) shr 3, Exploration.cellY(it) shr 3) }
-            .toSet()
-        assertEquals(parents, grid.cells(ExplorationLevel.Region).toSet())
+        assertTrue(Exploration.explore(listOf(route)).count in 90..96)
     }
 
     @Test

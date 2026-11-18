@@ -239,27 +239,19 @@
       "y": 10470,
       "w": 390,
       "h": 844,
-      "title": "Carte d'exploration — ville",
+      "title": "Carte d'exploration",
       "is_interactive": true
     },
-    "ExplorationRegion.dc.html": {
+    "ExplorationLarge.dc.html": {
       "x": 470,
       "y": 10470,
       "w": 390,
       "h": 844,
-      "title": "Carte d'exploration — région",
-      "is_interactive": true
-    },
-    "ExplorationFrance.dc.html": {
-      "x": 940,
-      "y": 10470,
-      "w": 390,
-      "h": 844,
-      "title": "Carte d'exploration — France",
+      "title": "Carte d'exploration — vue éloignée",
       "is_interactive": true
     },
     "ExplorationVide.dc.html": {
-      "x": 1410,
+      "x": 940,
       "y": 10470,
       "w": 390,
       "h": 844,
@@ -297,8 +289,7 @@
     "ActiviteDetectee.dc.html",
     "ActiviteModifier.dc.html",
     "Exploration.dc.html",
-    "ExplorationRegion.dc.html",
-    "ExplorationFrance.dc.html",
+    "ExplorationLarge.dc.html",
     "ExplorationVide.dc.html"
   ],
   "notes": {
@@ -381,7 +372,7 @@
       "y": 10170,
       "text": "Carte d'exploration",
       "kind": "title1",
-      "maxW": 1800
+      "maxW": 1330
     },
     "explo_rules": {
       "x": 0,
@@ -389,7 +380,7 @@
       "w": 400,
       "size": "s",
       "fill": "blue",
-      "text": "Carrés explorés\n\n• Un carré = une tuile Web Mercator ; il est exploré dès qu'un tracé GPS le traverse.\n• Trois tailles, selon le zoom de la carte : ville (zoom 17, ≈ 200 m), région (zoom 14, ≈ 1,7 km), France (zoom 11, ≈ 14 km). Un grand carré compte dès qu'un de ses petits carrés est exploré.\n• Toucher une taille dans le panneau y amène la carte ; le bouton cible revient à la dernière activité.\n• Quadrillage des carrés à remplir quand ils font 28 dp ou plus.\n• Entrée : Appareils › Carte d'exploration.\n• Fond de carte : tuiles OpenStreetMap ; fond stylisé dans la maquette. Valeurs fictives."
+      "text": "Carrés explorés\n\n• Une seule taille de carré : une tuile Web Mercator de zoom 17, ≈ 200 m de côté en France. Un carré est exploré dès qu'un tracé GPS le traverse.\n• Le panneau donne le nombre de carrés explorés et de tracés GPS.\n• Vus de loin, les carrés ne descendent pas sous 3 dp : les zones explorées restent visibles à l'échelle d'une région ou du pays.\n• Quadrillage des carrés à remplir quand ils font 28 dp ou plus.\n• Le bouton cible revient à la dernière activité.\n• Entrée : Appareils › Carte d'exploration.\n• Fond de carte : tuiles OpenStreetMap ; fond stylisé dans la maquette. Valeurs fictives."
     }
   },
   "designSystems": []

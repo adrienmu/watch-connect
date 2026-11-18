@@ -10,40 +10,35 @@ import kotlin.math.max
 import kotlin.math.tan
 
 /*
- * Carte d'exploration : le monde est découpé en carrés (les tuiles Web Mercator d'un niveau de zoom) et chaque
- * carré traversé par un tracé GPS est « exploré ». Trois tailles de carré, de la ville à la France : un grand carré
- * est exploré dès qu'un de ses petits carrés l'est. Pur Kotlin, testable sur la JVM.
+ * Carte d'exploration : le monde est découpé en carrés (les tuiles Web Mercator de zoom 17, environ 200 m de côté
+ * en France) et chaque carré traversé par un tracé GPS est « exploré ». Pur Kotlin, testable sur la JVM.
  */
-
-/** Taille des carrés. [zoom] est le niveau de tuile Web Mercator ; [size] le côté d'un carré en France. */
-enum class ExplorationLevel(val zoom: Int, val label: String, val size: String) {
-    City(17, "Ville", "200 m"),
-    Region(14, "Région", "1,7 km"),
-    Country(11, "France", "14 km"),
-}
 
 /** Rectangle en coordonnées Web Mercator normalisées (x et y entre 0 et 1, y vers le sud). */
 data class MercatorBounds(val minX: Double, val minY: Double, val maxX: Double, val maxY: Double)
 
-/** Carrés explorés, par niveau. Un carré est codé par [Exploration.key]. */
+/** Carrés explorés, chacun codé par [Exploration.key]. */
 class ExploredGrid(
-    private val cells: Map<ExplorationLevel, LongArray>,
+    val cells: LongArray,
     /** Zone du tracé le plus récent, pour y ouvrir la carte. */
     val focus: MercatorBounds?,
 ) {
-    fun cells(level: ExplorationLevel): LongArray = cells[level] ?: NONE
+    val count: Int get() = cells.size
 
-    fun count(level: ExplorationLevel): Int = cells(level).size
-
-    val isEmpty: Boolean get() = count(ExplorationLevel.City) == 0
+    val isEmpty: Boolean get() = cells.isEmpty()
 
     companion object {
-        private val NONE = LongArray(0)
-        val Empty = ExploredGrid(emptyMap(), null)
+        val Empty = ExploredGrid(LongArray(0), null)
     }
 }
 
 object Exploration {
+    /** Niveau de tuile Web Mercator des carrés. */
+    const val CELL_ZOOM = 17
+
+    /** Côté d'un carré en France, pour l'affichage. */
+    const val CELL_SIZE = "200 m"
+
     /** Deux points plus éloignés que ça ne sont pas reliés (GPS coupé, pause, trajet en train). */
     const val MAX_GAP_METERS = 1_000.0
 
@@ -62,9 +57,8 @@ object Exploration {
 
     /** Carrés traversés par [routes], chacun étant les points d'une séance. */
     fun explore(routes: List<List<RoutePoint>>): ExploredGrid {
-        val fine = ExplorationLevel.City
-        val scale = (1 shl fine.zoom).toDouble()
-        val last = (1 shl fine.zoom) - 1
+        val scale = (1 shl CELL_ZOOM).toDouble()
+        val last = (1 shl CELL_ZOOM) - 1
         val visited = HashSet<Long>()
         fun mark(x: Double, y: Double) {
             visited += key(floor(x).toInt().coerceIn(0, last), floor(y).toInt().coerceIn(0, last))
@@ -92,14 +86,6 @@ object Exploration {
                 py = y
             }
         }
-        val cells = ExplorationLevel.entries.associateWith { level ->
-            val shift = fine.zoom - level.zoom
-            if (shift == 0) {
-                visited.toLongArray()
-            } else {
-                visited.mapTo(HashSet()) { key(cellX(it) shr shift, cellY(it) shr shift) }.toLongArray()
-            }
-        }
         val focus = latest?.let { points ->
             MercatorBounds(
                 minX = points.minOf { mercatorX(it.longitude) },
@@ -108,6 +94,6 @@ object Exploration {
                 maxY = points.maxOf { mercatorY(it.latitude) },
             )
         }
-        return ExploredGrid(cells, focus)
+        return ExploredGrid(visited.toLongArray(), focus)
     }
 }
