@@ -100,6 +100,8 @@ import com.boucle.app.domain.RouteStatus
 import com.boucle.app.domain.Vo2MaxEstimation
 import com.boucle.app.ui.RouteAccess
 import com.boucle.app.ui.SessionDetailUiState
+import com.boucle.app.ui.PHONE_SESSION_PREFIX
+import com.boucle.app.domain.DetectedActivity
 import com.boucle.app.ui.components.Radii
 import com.boucle.app.ui.components.cookieShape
 import com.boucle.app.ui.components.formatThousands
@@ -150,6 +152,7 @@ fun ActivityDetailScreen(
     onBack: () -> Unit,
     onRequestRoute: () -> Unit,
     onOpenHealthConnect: (() -> Unit)?,
+    onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -215,6 +218,7 @@ fun ActivityDetailScreen(
             DetailTopBar(
                 onBack = onBack,
                 onShare = share,
+                onEdit = onEdit.takeIf { session != null },
                 onOpenHealthConnect = onOpenHealthConnect,
             )
             Column(
@@ -343,7 +347,7 @@ fun ActivityDetailScreen(
 
 /** Barre du haut : retour, titre, partager, plus d'options. */
 @Composable
-private fun DetailTopBar(onBack: () -> Unit, onShare: () -> Unit, onOpenHealthConnect: (() -> Unit)?) {
+private fun DetailTopBar(onBack: () -> Unit, onShare: () -> Unit, onEdit: (() -> Unit)?, onOpenHealthConnect: (() -> Unit)?) {
     var menu by remember { mutableStateOf(false) }
     Row(
         Modifier
@@ -357,6 +361,11 @@ private fun DetailTopBar(onBack: () -> Unit, onShare: () -> Unit, onOpenHealthCo
             Icon(BoucleIcons.ArrowBack, contentDescription = "Retour", tint = RouteColors.OnSurface, modifier = Modifier.size(24.dp))
         }
         Text("Activité", Modifier.weight(1f), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium), color = RouteColors.OnSurface)
+        if (onEdit != null) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(48.dp)) {
+                Icon(BoucleIcons.Edit, contentDescription = "Modifier l'activité", tint = RouteColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))
+            }
+        }
         IconButton(onClick = onShare, modifier = Modifier.size(48.dp)) {
             Icon(BoucleIcons.Share, contentDescription = "Partager", tint = RouteColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))
         }
@@ -416,7 +425,7 @@ private fun DetailHeader(title: String, session: TrainingSessionEntity, state: S
                         .graphicsLayer { rotationZ = rotation?.value ?: 0f }
                         .background(RouteColors.PrimaryContainer, shape),
                 )
-                Icon(sportIcon(session), contentDescription = null, tint = RouteColors.OnPrimaryContainer, modifier = Modifier.size(28.dp))
+                Icon(sportIcon(state.sport), contentDescription = null, tint = RouteColors.OnPrimaryContainer, modifier = Modifier.size(28.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
@@ -428,10 +437,14 @@ private fun DetailHeader(title: String, session: TrainingSessionEntity, state: S
                 if (subtitle.isNotEmpty()) Text(subtitle, style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp), color = RouteColors.OnSurfaceVariant)
             }
         }
+        val fromPhone = session.path.startsWith(PHONE_SESSION_PREFIX)
+        val detected = session.path.startsWith(DetectedActivity.PATH_PREFIX)
         val fromHealthConnect = session.path.startsWith("healthconnect:") || state.routeSource == RouteSource.HEALTH_CONNECT
-        val fromBand = !session.path.startsWith("healthconnect:")
+        val fromBand = !session.path.startsWith("healthconnect:") && !fromPhone
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (fromBand) SourceChip(BoucleIcons.Band, "Bracelet")
+            if (fromPhone) SourceChip(BoucleIcons.Phone, "Téléphone")
+            if (fromBand) SourceChip(BoucleIcons.Band, if (detected) "Détectée" else "Bracelet")
+            state.terrain?.let { SourceChip(BoucleIcons.Mountain, it.label) }
             if (fromHealthConnect) SourceChip(BoucleIcons.Refresh, "Health Connect")
             if (state.routeStatus == RouteStatus.AVAILABLE) SourceChip(BoucleIcons.Pin, "GPS", filled = true)
         }
@@ -920,6 +933,8 @@ private fun AltitudeContent(stats: RouteStats) {
 private fun SourceNote(session: TrainingSessionEntity, state: SessionDetailUiState, modifier: Modifier = Modifier) {
     val fromHealthConnect = session.path.startsWith("healthconnect:")
     val origin = when {
+        session.path.startsWith(PHONE_SESSION_PREFIX) -> "Enregistré par Boucle avec le GPS du téléphone."
+        session.path.startsWith(DetectedActivity.PATH_PREFIX) -> "Activité détectée dans les pas du bracelet, sans tracé GPS."
         fromHealthConnect -> "Enregistré par la montre, synchronisé via Health Connect."
         state.routeSource == RouteSource.HEALTH_CONNECT -> "Enregistré par le bracelet, synchronisé via Health Connect."
         else -> "Enregistré par le bracelet, synchronisé en Bluetooth."
@@ -943,15 +958,6 @@ private fun hoursOf(session: TrainingSessionEntity): String? {
     val start = session.startTime?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() } ?: return null
     val end = session.durationSec?.let { start.plusSeconds(it.toLong()) } ?: return start.format(clockFormat)
     return "${start.format(clockFormat)} – ${end.format(clockFormat)}"
-}
-
-private fun sportIcon(session: TrainingSessionEntity): ImageVector {
-    val name = session.name.orEmpty().lowercase(Locale.FRENCH)
-    return when {
-        session.sportId == Vo2MaxEstimation.RUNNING_SPORT_ID || "course" in name || "run" in name -> BoucleIcons.Run
-        "vélo" in name || "velo" in name || "cycl" in name -> BoucleIcons.Bike
-        else -> BoucleIcons.Pulse
-    }
 }
 
 /** Texte partagé : titre, date, distance, durée, allure, FC et dénivelé. */

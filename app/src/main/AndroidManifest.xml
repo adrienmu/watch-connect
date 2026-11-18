@@ -10,6 +10,16 @@
     <!-- Aussi pour les tuiles OpenStreetMap du fond de carte. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Activité lancée depuis l'app : position du téléphone pendant l'enregistrement seulement (jamais en
+         arrière-plan sans activité en cours), service de premier plan et sa notification. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Pas comptés par le téléphone pendant une marche. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <!-- Health Connect, en lecture seule : balance (poids, composition) et montre (SpO2, VFC) Withings. -->
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
@@ -57,6 +67,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Garde le GPS actif écran éteint pendant une activité. -->
+        <service
+            android:name=".tracking.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <!-- Android 13 : Health Connect ouvre cet écran pour expliquer l'usage des données. -->
         <activity

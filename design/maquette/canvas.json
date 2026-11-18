@@ -161,6 +161,78 @@
       "h": 844,
       "title": "Objectifs quotidiens",
       "is_interactive": true
+    },
+    "ActiviteLancer.dc.html": {
+      "x": 0,
+      "y": 7430,
+      "w": 390,
+      "h": 1000,
+      "title": "Forme — lancer et retrouver ses activités",
+      "is_interactive": true
+    },
+    "ActiviteChoix.dc.html": {
+      "x": 470,
+      "y": 7430,
+      "w": 390,
+      "h": 844,
+      "title": "Nouvelle activité — choix du sport",
+      "is_interactive": true
+    },
+    "ActiviteAutorisation.dc.html": {
+      "x": 940,
+      "y": 7430,
+      "w": 390,
+      "h": 844,
+      "title": "Autorisation de position",
+      "is_interactive": true
+    },
+    "ActiviteEnCours.dc.html": {
+      "x": 1410,
+      "y": 7430,
+      "w": 390,
+      "h": 844,
+      "title": "En cours — course à pied",
+      "is_interactive": true
+    },
+    "ActiviteEnCoursVelo.dc.html": {
+      "x": 1880,
+      "y": 7430,
+      "w": 390,
+      "h": 844,
+      "title": "En cours — vélo",
+      "is_interactive": true
+    },
+    "ActiviteEnCoursMarche.dc.html": {
+      "x": 2350,
+      "y": 7430,
+      "w": 390,
+      "h": 844,
+      "title": "En cours — marche",
+      "is_interactive": true
+    },
+    "ActiviteResume.dc.html": {
+      "x": 0,
+      "y": 8850,
+      "w": 390,
+      "h": 1200,
+      "title": "Fin de séance — résumé",
+      "is_interactive": true
+    },
+    "ActiviteDetectee.dc.html": {
+      "x": 470,
+      "y": 8850,
+      "w": 390,
+      "h": 900,
+      "title": "Activité détectée par le bracelet",
+      "is_interactive": true
+    },
+    "ActiviteModifier.dc.html": {
+      "x": 940,
+      "y": 8850,
+      "w": 390,
+      "h": 1080,
+      "title": "Modifier une activité",
+      "is_interactive": true
     }
   },
   "order": [
@@ -182,7 +254,16 @@
     "ActiviteGPSFrequence.dc.html",
     "ActiviteGPSAltitude.dc.html",
     "ActiviteMois.dc.html",
-    "Objectifs.dc.html"
+    "Objectifs.dc.html",
+    "ActiviteLancer.dc.html",
+    "ActiviteChoix.dc.html",
+    "ActiviteAutorisation.dc.html",
+    "ActiviteEnCours.dc.html",
+    "ActiviteEnCoursVelo.dc.html",
+    "ActiviteEnCoursMarche.dc.html",
+    "ActiviteResume.dc.html",
+    "ActiviteDetectee.dc.html",
+    "ActiviteModifier.dc.html"
   ],
   "notes": {
     "t1": {
@@ -244,6 +325,20 @@
       "text": "Historique des pas et objectifs",
       "kind": "title1",
       "maxW": 2270
+    },
+    "t5": {
+      "x": 0,
+      "y": 7130,
+      "text": "Lancer une activité",
+      "kind": "title1",
+      "maxW": 2740
+    },
+    "t6": {
+      "x": 0,
+      "y": 8550,
+      "text": "Reconnaître et modifier une activité",
+      "kind": "title1",
+      "maxW": 1330
     }
   },
   "designSystems": []

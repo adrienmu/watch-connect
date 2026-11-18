@@ -2,6 +2,7 @@ package com.boucle.app.data.export
 
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
+import com.boucle.app.data.db.ActivityEditEntity
 import com.boucle.app.data.db.ActivitySamplesEntity
 import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.ExternalMeasurementEntity
@@ -52,6 +53,7 @@ interface BackupSink {
     suspend fun trainingExercise(row: TrainingExerciseEntity)
     suspend fun trainingRoute(row: TrainingRouteEntity)
     suspend fun externalMeasurement(row: ExternalMeasurementEntity)
+    suspend fun activityEdit(row: ActivityEditEntity)
 }
 
 /**
@@ -136,7 +138,7 @@ object BackupReader {
 
     private val SECTIONS = setOf(
         "dailyActivity", "activitySamples", "heartRate", "ppi", "sleep", "nightlyRecharge", "skinTemperature",
-        "trainingSessions", "externalMeasurements", "unlinkedRoutes", "unlinkedExercises",
+        "trainingSessions", "externalMeasurements", "activityEdits", "unlinkedRoutes", "unlinkedExercises",
     )
 
     private fun checkVersion(value: Any?): Int {
@@ -197,6 +199,21 @@ object BackupReader {
                         date = f.date("date"),
                         value = f.double("value"),
                         source = f.string("sourceApp"),
+                    ),
+                )
+                "activityEdits" -> sink.activityEdit(
+                    ActivityEditEntity(
+                        sessionPath = f.string("sessionId"),
+                        name = f.stringOrNull("name"),
+                        sport = f.stringOrNull("sport"),
+                        terrain = f.stringOrNull("terrain"),
+                        feel = f.intOrNull("feel"),
+                        notes = f.stringOrNull("notes"),
+                        trimStartSec = f.intOrNull("trimStartSec"),
+                        trimEndSec = f.intOrNull("trimEndSec"),
+                        trimmedDurationSec = f.intOrNull("trimmedDurationSec"),
+                        trimmedDistanceMeters = f.floatOrNull("trimmedDistanceMeters"),
+                        deleted = f.booleanOrNull("deleted") ?: false,
                     ),
                 )
                 "unlinkedRoutes" -> sink.trainingRoute(route(f, f.string("sessionId")))

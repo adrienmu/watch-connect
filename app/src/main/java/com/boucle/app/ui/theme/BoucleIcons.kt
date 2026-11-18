@@ -78,6 +78,10 @@ object BoucleIcons {
     val Close = stroke("Close", "M6 6l12 12M18 6L6 18", width = 2.2f)
     val Layers = stroke("Layers", "M12 3l9 5-9 5-9-5 9-5z", "M3 13l9 5 9-5")
     val Play = stroke("Play", filled = listOf("M8 5v14l11-7z"))
+    val Pause = stroke("Pause", filled = listOf("M7.5 5h1a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 8.5 19h-1A1.5 1.5 0 0 1 6 17.5v-11A1.5 1.5 0 0 1 7.5 5z", "M15.5 5h1A1.5 1.5 0 0 1 18 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5v-11A1.5 1.5 0 0 1 15.5 5z"))
+    val Stop = stroke("Stop", filled = listOf("M8 5h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z"))
+    val Trash = stroke("Trash", "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13")
+    val Phone = stroke("Phone", "M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M11 18h2")
     val Recenter = stroke(
         "Recenter",
         "M19 12a7 7 0 1 1-14 0a7 7 0 1 1 14 0z",

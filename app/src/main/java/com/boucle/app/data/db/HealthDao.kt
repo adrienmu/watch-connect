@@ -23,6 +23,7 @@ interface HealthDao {
     @Upsert suspend fun upsertTrainingExercises(items: List<TrainingExerciseEntity>)
     @Upsert suspend fun upsertExternalMeasurements(items: List<ExternalMeasurementEntity>)
     @Upsert suspend fun upsertTrainingRoutes(items: List<TrainingRouteEntity>)
+    @Upsert suspend fun upsertActivityEdits(items: List<ActivityEditEntity>)
 
     // Import d'une sauvegarde : seules les lignes dont la clé est absente sont ajoutées, une ligne déjà présente
     // (plus récente, synchronisée depuis la sauvegarde) n'est jamais remplacée. Le résultat donne, pour chaque
@@ -61,6 +62,41 @@ interface HealthDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertExternalMeasurementsIfAbsent(items: List<ExternalMeasurementEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertActivityEditsIfAbsent(items: List<ActivityEditEntity>): List<Long>
+
+    @Query("SELECT * FROM activity_edit")
+    fun activityEdits(): Flow<List<ActivityEditEntity>>
+
+    @Query("SELECT * FROM activity_edit WHERE sessionPath = :path")
+    suspend fun activityEditNow(path: String): ActivityEditEntity?
+
+    @Query("SELECT * FROM activity_edit ORDER BY sessionPath")
+    suspend fun allActivityEdits(): List<ActivityEditEntity>
+
+    /** Dernières séances, les plus récentes d'abord (les séances supprimées sont écartées par l'appelant). */
+    @Query(
+        "SELECT path, date, startTime, durationSec, sportId, name, calories, distanceMeters, " +
+            "averageHr, maxHr, cardioLoad, muscleLoad, hrZoneSec, exerciseCount, NULL AS summaryProto " +
+            "FROM training_session ORDER BY date DESC, startTime DESC LIMIT :limit",
+    )
+    fun recentTrainingSessions(limit: Int): Flow<List<TrainingSessionEntity>>
+
+    @Query("SELECT sessionPath FROM training_route WHERE status = 'AVAILABLE'")
+    fun routedSessionPaths(): Flow<List<String>>
+
+    @Query("DELETE FROM activity_edit WHERE sessionPath = :path")
+    suspend fun deleteActivityEdit(path: String)
+
+    @Query("DELETE FROM training_session WHERE path = :path")
+    suspend fun deleteTrainingSession(path: String)
+
+    @Query("DELETE FROM training_route WHERE sessionPath = :path")
+    suspend fun deleteTrainingRoute(path: String)
+
+    @Query("DELETE FROM training_exercise WHERE sessionPath = :path")
+    suspend fun deleteTrainingExercises(path: String)
 
     @Query("SELECT EXISTS(SELECT 1 FROM training_session WHERE path = :path)")
     suspend fun hasTrainingSession(path: String): Boolean
@@ -154,7 +190,8 @@ interface HealthDao {
             "EXISTS(SELECT 1 FROM training_session) OR " +
             "EXISTS(SELECT 1 FROM training_exercise) OR " +
             "EXISTS(SELECT 1 FROM external_measurement) OR " +
-            "EXISTS(SELECT 1 FROM training_route)",
+            "EXISTS(SELECT 1 FROM training_route) OR " +
+            "EXISTS(SELECT 1 FROM activity_edit)",
     )
     suspend fun hasAnyData(): Boolean
 

@@ -58,6 +58,7 @@ class DataExporter(private val dao: HealthDao) {
         writeSkinTemperature(json)
         writeTrainingSessions(json, sessions, routes, gpxFiles)
         writeExternalMeasurements(json)
+        writeActivityEdits(json)
         writeUnlinked(json, routes, sessions)
         json.endObject()
         json.flush()
@@ -288,6 +289,27 @@ class DataExporter(private val dao: HealthDao) {
         json.endArray()
     }
 
+    /** Corrections des séances (nom, sport, terrain, rognage, suppression) et activités détectées écartées. */
+    private suspend fun writeActivityEdits(json: JsonStream) {
+        json.name("activityEdits").beginArray()
+        dao.allActivityEdits().forEach {
+            json.beginObject()
+                .field("sessionId", it.sessionPath)
+                .field("name", it.name)
+                .field("sport", it.sport)
+                .field("terrain", it.terrain)
+                .field("feel", it.feel)
+                .field("notes", it.notes)
+                .field("trimStartSec", it.trimStartSec)
+                .field("trimEndSec", it.trimEndSec)
+                .field("trimmedDurationSec", it.trimmedDurationSec)
+                .field("trimmedDistanceMeters", it.trimmedDistanceMeters)
+                .field("deleted", it.deleted)
+                .endObject()
+        }
+        json.endArray()
+    }
+
     private fun writeExercise(json: JsonStream, e: TrainingExerciseEntity, withSession: Boolean = false) {
         json.beginObject()
         if (withSession) json.field("sessionId", e.sessionPath)
@@ -423,6 +445,8 @@ class DataExporter(private val dao: HealthDao) {
                                                    (les champs *ProtoBase64 sont les messages bruts du
                                                    bracelet, au format protobuf Polar, encodés en base64)
                 externalMeasurements               mesures lues dans Health Connect (poids, SpO2…)
+                activityEdits                      corrections des séances (nom, sport, terrain, rognage)
+                                                   et séances supprimées (deleted)
                 unlinkedRoutes, unlinkedExercises  tracés et exercices sans séance correspondante (rares)
               Les unités sont dans le nom des champs (Sec = secondes, Ms = millisecondes, Meters = mètres,
               C ou celsius = degrés Celsius). Les dates sont au format ISO 8601 ; les heures sans fuseau

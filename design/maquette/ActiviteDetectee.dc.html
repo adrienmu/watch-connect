@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Activité détectée par le bracelet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght,ROND@6..144,25..151,1..1000,0..100&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-variation-settings:'ROND' 100}
+button{font:inherit;font-variation-settings:inherit;color:inherit;cursor:pointer}
+a{color:#0B5D4B}a:hover{color:#083F33}
+</style>
+</helmet>
+<div style="width: 390px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Google Sans Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 8px">
+<a href="ActiviteLancer.dc.html" aria-label="Retour" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; color: #16201B; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<h1 style="margin: 0; font-size: 26px; font-weight: 700">Activité détectée</h1>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 0; flex-grow: 1">
+
+<section style="display: flex; flex-direction: column; gap: 16px; background: #0B5D4B; color: #FFFFFF; border-radius: 44px; padding: 22px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 600; color: #A9F0D6">Aujourd'hui · 12:41 – 13:09</span>
+<h2 style="margin: 0; font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -1px">{{headline}}</h2>
+</div>
+<div role="img" aria-label="Pas par minute entre 12:30 et 13:20, avec un palier soutenu de 12:41 à 13:09" style="display: flex; align-items: flex-end; gap: 3px; height: 72px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="25">
+<span style="flex: 1 1 0; height: {{b.h}}px; border-radius: 4px; background: {{b.bg}}"></span>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+<div style="background: #083F33; border-radius: 20px 6px 6px 20px; padding: 12px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 500; color: #A9F0D6">Durée</span><span style="font-size: 17px; font-weight: 700">28 min</span></div>
+<div style="background: #083F33; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 500; color: #A9F0D6">Cadence</span><span style="font-size: 17px; font-weight: 700">101 pas/min</span></div>
+<div style="background: #083F33; border-radius: 6px 20px 20px 6px; padding: 12px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 500; color: #A9F0D6">Pas</span><span style="font-size: 17px; font-weight: 700">2 840</span></div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; border-radius: 28px; background: #FFFFFF">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-size: 20px; font-weight: 700">C'était bien ça ?</h2>
+<span style="font-size: 14px; line-height: 1.4; color: #55635B">Le bracelet a relevé des pas réguliers pendant au moins 10 minutes. Corrige le sport si besoin.</span>
+</div>
+<div role="group" aria-label="Sport" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{sports}}" as="s" hint-placeholder-count="3">
+<button onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="height: 56px; border: 0; border-radius: {{s.radius}}; background: {{s.bg}}; color: {{s.fg}}; font-size: 16px; font-weight: 700">{{s.label}}</button>
+</sc-for>
+</div>
+</section>
+
+<div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; background: #CFE9DF; color: #0A3D31; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.500-6-11a6 6 0 0 1 12 0c0 5.500-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700">Sans tracé GPS</span><span style="font-size: 13px; line-height: 1.4; color: #55635B">La distance est estimée à partir des pas. Lance l'activité depuis Boucle pour avoir la carte.</span></span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
+<span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1"><span style="font-size: 16px; font-weight: 700">Détection automatique</span><span style="font-size: 13px; line-height: 1.4; color: #55635B">Proposer une activité après 10 min d'effort continu</span></span>
+<button role="switch" aria-checked="{{auto}}" aria-label="Détection automatique" onClick="{{toggleAuto}}" style="position: relative; width: 56px; height: 44px; flex-shrink: 0; border: 0; background: transparent; padding: 0">
+<span style="position: absolute; left: 2px; top: 6px; width: 52px; height: 32px; border-radius: 16px; background: {{swBg}}"></span>
+<span style="position: absolute; top: 10px; left: {{swLeft}}px; width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; transition: left 200ms"></span>
+</button>
+</div>
+
+</main>
+
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 20px">
+<a href="ActiviteLancer.dc.html" style="height: 64px; border-radius: 32px; background: #0B5D4B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; text-decoration: none">{{cta}}</a>
+<a href="ActiviteLancer.dc.html" style="height: 48px; border-radius: 24px; color: #0B5D4B; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; text-decoration: none">Ce n'était pas une activité</a>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var st = this.state || {};
+var sport = st.sport || 'Marche';
+var auto = st.auto === undefined ? true : st.auto;
+var raw = [8, 12, 6, 14, 10, 58, 64, 61, 66, 63, 68, 62, 60, 65, 67, 64, 61, 66, 63, 59, 16, 9, 12, 7, 10];
+var radii = { Marche: '28px 8px 8px 28px', Course: '8px', 'Vélo': '8px 28px 28px 8px' };
+var heads = { Marche: 'On dirait une marche', Course: 'Plutôt une course', 'Vélo': 'Plutôt du vélo' };
+var ctas = { Marche: 'Ajouter cette marche', Course: 'Ajouter cette course', 'Vélo': 'Ajouter cette sortie vélo' };
+return {
+headline: heads[sport],
+cta: ctas[sport],
+bars: raw.map(function (v) { return { h: v, bg: v > 40 ? '#A9F0D6' : '#1F6E5C' }; }),
+sports: ['Marche', 'Course', 'Vélo'].map(function (l) {
+var on = l === sport;
+return { label: l, on: on, radius: radii[l], bg: on ? '#0B5D4B' : '#F2F5F1', fg: on ? '#FFFFFF' : '#16201B', pick: function () { self.setState({ sport: l }); } };
+}),
+auto: auto,
+swBg: auto ? '#0B5D4B' : '#7B8A81',
+swLeft: auto ? 26 : 6,
+toggleAuto: function () { self.setState({ auto: !auto }); }
+};
+}
+}
+</script>
+</body>
+</html>

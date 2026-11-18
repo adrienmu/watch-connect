@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Modifier une activité</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght,ROND@6..144,25..151,1..1000,0..100&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-variation-settings:'ROND' 100}
+button,input,textarea{font:inherit;font-variation-settings:inherit;color:inherit}
+button{cursor:pointer}
+a{color:#4355B9}a:hover{color:#2A3A9E}
+</style>
+</helmet>
+<div style="width: 390px; height: 1080px; box-sizing: border-box; display: flex; flex-direction: column; background: #FBF8FF; color: #1B1B21; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif">
+
+<header style="height: 64px; flex-shrink: 0; box-sizing: border-box; padding: 0 12px 0 4px; display: flex; align-items: center; gap: 4px">
+<a href="ActiviteLancer.dc.html" aria-label="Annuler" style="width: 48px; height: 48px; border-radius: 24px; color: #1B1B21; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+<span style="flex-grow: 1; font-size: 16px; font-weight: 500">Modifier l'activité</span>
+<a href="ActiviteLancer.dc.html" style="height: 44px; padding: 0 20px; border-radius: 22px; background: #4355B9; color: #FFFFFF; display: flex; align-items: center; font-size: 15px; font-weight: 600; text-decoration: none">Enregistrer</a>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 20px; padding: 8px 16px 20px; flex-grow: 1">
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="nom" style="padding: 0 4px; font-size: 13px; font-weight: 600; color: #46464F">Nom</label>
+<input id="nom" type="text" defaultValue="Course du matin" style="height: 56px; box-sizing: border-box; border: 1px solid #C7C5D0; border-radius: 16px; background: #FFFFFF; padding: 0 16px; font-size: 18px; font-weight: 700; outline-color: #4355B9">
+</div>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; padding: 0 4px; font-size: 16px; font-weight: 700">Sport</h2>
+<div role="group" aria-label="Sport" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{sports}}" as="s" hint-placeholder-count="3">
+<button onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="height: 88px; border: 0; border-radius: {{s.radius}}; background: {{s.bg}}; color: {{s.fg}}; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="{{s.fill}}" stroke="{{s.stroke}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.icon}}"></path></svg>
+<span style="font-size: 16px; font-weight: 700">{{s.label}}</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: #F4F2FA">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46464F" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.500v.500"></path></svg>
+<span style="font-size: 13px; line-height: 18px; color: #46464F">{{sportNote}}</span>
+</div>
+</section>
+
+<sc-if value="{{isRun}}" hint-placeholder-val="{{true}}">
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; padding: 0 4px; font-size: 16px; font-weight: 700">Terrain</h2>
+<div role="group" aria-label="Terrain" style="display: flex; gap: 4px; padding: 4px; border-radius: 28px; background: #E8E7EF">
+<sc-for list="{{terrains}}" as="t" hint-placeholder-count="3">
+<button onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 24px; background: {{t.bg}}; color: {{t.fg}}; font-size: 15px; font-weight: {{t.fw}}">{{t.label}}</button>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 700">Début et fin</h2>
+<span style="font-size: 13px; color: #46464F">46 min 18 s conservées</span>
+</div>
+<div style="padding: 16px; border-radius: 28px; background: #F4F2FA; display: flex; flex-direction: column; gap: 12px">
+<div style="position: relative; height: 64px">
+<svg aria-hidden="true" width="326" height="64" viewBox="0 0 326 64" preserveAspectRatio="none" style="position: absolute; left: 0; top: 0; width: 100%; height: 64px"><path d="M0 64L0 46C24 44 36 30 60 28S96 40 120 34S150 10 176 12S214 30 238 26S276 38 300 42L326 44L326 64Z" fill="#A8D5A2"></path><path d="M0 46C24 44 36 30 60 28S96 40 120 34S150 10 176 12S214 30 238 26S276 38 300 42L326 44" fill="none" stroke="#1E5A2C" stroke-width="2"></path></svg>
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 22px; height: 64px; background: rgba(244,242,250,.8)"></span>
+<span aria-hidden="true" style="position: absolute; right: 0; top: 0; width: 34px; height: 64px; background: rgba(244,242,250,.8)"></span>
+<button aria-label="Déplacer le début" style="position: absolute; left: 0; top: -4px; width: 44px; height: 72px; border: 0; background: transparent; padding: 0; display: flex; justify-content: center"><span style="width: 6px; height: 72px; border-radius: 3px; background: #4355B9"></span></button>
+<button aria-label="Déplacer la fin" style="position: absolute; right: 12px; top: -4px; width: 44px; height: 72px; border: 0; background: transparent; padding: 0; display: flex; justify-content: center"><span style="width: 6px; height: 72px; border-radius: 3px; background: #4355B9"></span></button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button style="height: 56px; border: 0; border-radius: 16px; background: #FFFFFF; padding: 0 14px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px"><span style="font-size: 12px; color: #46464F">Début</span><span style="font-size: 16px; font-weight: 700">07:12</span></button>
+<button style="height: 56px; border: 0; border-radius: 16px; background: #FFFFFF; padding: 0 14px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px"><span style="font-size: 12px; color: #46464F">Fin</span><span style="font-size: 16px; font-weight: 700">07:58</span></button>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="notes" style="padding: 0 4px; font-size: 13px; font-weight: 600; color: #46464F">Notes</label>
+<textarea id="notes" rows="3" placeholder="Sensations, chaussures, parcours…" style="box-sizing: border-box; border: 1px solid #C7C5D0; border-radius: 16px; background: #FFFFFF; padding: 14px 16px; font-size: 15px; line-height: 1.4; resize: none; outline-color: #4355B9"></textarea>
+</div>
+
+<button style="margin-top: auto; height: 56px; border: 0; border-radius: 28px; background: #F9DEDC; color: #8C1D18; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Supprimer l'activité</button>
+
+</main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var st = this.state || {};
+var cur = st.sport || 'course';
+var terrain = st.terrain || 'Trail';
+var defs = [
+{ id: 'marche', label: 'Marche', filled: true, radius: '28px 8px 8px 28px', icon: 'M8.5 4a3 5 0 1 1 0 10a3 5 0 1 1 0-10zM15.5 10a3 5 0 1 1 0 10a3 5 0 1 1 0-10z' },
+{ id: 'course', label: 'Course', filled: false, radius: '8px', icon: 'M17 4a2 2 0 1 1-4 0a2 2 0 1 1 4 0zM8 21l3-6 3 2v5M6 11l3-3h4l2 4 3 1M11 15l1-6' },
+{ id: 'velo', label: 'Vélo', filled: false, radius: '8px 28px 28px 8px', icon: 'M9 17a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM22 17a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM5.5 17l3.5-7h6l3.5 7M9 10l3 7 3-7M13 6h3' }
+];
+var notes = {
+marche: 'En marche, l’allure est mise en avant. Cette séance ne compte pas pour la VO2max estimée.',
+course: 'Le tracé, la fréquence cardiaque et le dénivelé ne changent pas. Une course compte pour la VO2max estimée.',
+velo: 'À vélo, l’allure se lit comme une vitesse. Cette séance ne compte pas pour la VO2max estimée.'
+};
+return {
+sports: defs.map(function (d) {
+var on = d.id === cur;
+var fg = on ? '#FFFFFF' : '#1B1B21';
+return { label: d.label, icon: d.icon, radius: d.radius, on: on, bg: on ? '#4355B9' : '#E8E7EF', fg: fg, fill: d.filled ? fg : 'none', stroke: d.filled ? 'none' : fg, pick: function () { self.setState({ sport: d.id }); } };
+}),
+sportNote: notes[cur],
+isRun: cur === 'course',
+terrains: ['Route', 'Trail', 'Ultra-trail'].map(function (l) {
+var on = l === terrain;
+return { label: l, on: on, bg: on ? '#4355B9' : 'transparent', fg: on ? '#FFFFFF' : '#1B1B21', fw: on ? 700 : 600, pick: function () { self.setState({ terrain: l }); } };
+})
+};
+}
+}
+</script>
+</body>
+</html>

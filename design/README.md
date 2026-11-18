@@ -24,6 +24,13 @@ sur le canevas. L'app doit rester fidèle à ces écrans.
 | Première ouverture | `Bienvenue.dc.html` | `WelcomeScreen` |
 | Détail d'activité (carte GPS, onglets Allure / Fréq. card. / Altitude) | `ActiviteGPS.dc.html`, `ActiviteGPSFrequence.dc.html`, `ActiviteGPSAltitude.dc.html` | `ActivityDetailScreen` |
 | Carte plein écran | `ActiviteGPSPleinEcran.dc.html` | `RouteFullScreen` |
+| Forme : lancer une activité, activité détectée, activités récentes | `ActiviteLancer.dc.html` | `ActivityScreen` (`ActivityHomeSection`) |
+| Nouvelle activité (choix du sport, capteurs) | `ActiviteChoix.dc.html` | `ActivityStartScreen` |
+| Autorisation de position | `ActiviteAutorisation.dc.html` | `ActivityPermissionScreen` |
+| Activité en cours (course, vélo, marche) | `ActiviteEnCours.dc.html`, `ActiviteEnCoursVelo.dc.html`, `ActiviteEnCoursMarche.dc.html` | `ActivityRecordingScreen` |
+| Fin de séance | `ActiviteResume.dc.html` | `ActivitySummaryScreen` |
+| Activité détectée par le bracelet | `ActiviteDetectee.dc.html` | `ActivityDetectedScreen` |
+| Modifier une activité | `ActiviteModifier.dc.html` | `ActivityEditScreen` |
 | Tracé à autoriser, activité sans GPS | `ActiviteSansGPS.dc.html` | `ActivityDetailScreen` (`ConsentMap`) |
 
 Conventions de passage de la maquette au code :
