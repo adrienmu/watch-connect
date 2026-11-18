@@ -1,7 +1,7 @@
 package com.boucle.app.data.backup
 
+import androidx.core.net.toUri
 import android.content.Context
-import android.net.Uri
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -88,7 +88,7 @@ class AutoBackup(
         val saved = settings.flow.first()
         val folderUri = saved.backup.folderUri ?: return BackupOutcome.Skipped(BackupDecision.NOT_CONFIGURED)
         return try {
-            val folder = BackupFolder(context.contentResolver, Uri.parse(folderUri))
+            val folder = BackupFolder(context.contentResolver, folderUri.toUri())
             folder.checkWritable()
             var entries = folder.list()
             // Avant toute décision : une écriture sous le nom final restée marquée a été interrompue.

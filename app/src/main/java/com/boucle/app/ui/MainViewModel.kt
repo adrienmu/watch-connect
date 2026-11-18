@@ -21,6 +21,7 @@ import com.boucle.app.data.export.BackupFormatException
 import com.boucle.app.data.export.DataExporter
 import com.boucle.app.data.export.DataImporter
 import android.net.Uri
+import androidx.core.net.toUri
 import com.boucle.app.domain.BodyBatteryDay
 import com.boucle.app.domain.DailyGoals
 import com.boucle.app.domain.StepHistory
@@ -1295,7 +1296,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 val backup = settings.flow.first().backup
                 val uri = backup.folderUri
                 val accessible = uri == null || withContext(Dispatchers.IO) {
-                    runCatching { BackupFolder.hasPermission(contentResolver, Uri.parse(uri)) }.getOrDefault(false)
+                    runCatching { BackupFolder.hasPermission(contentResolver, uri.toUri()) }.getOrDefault(false)
                 }
                 val keyAvailable = backup.encryption?.let { enc -> withContext(Dispatchers.IO) { backupKeys.canUnlock(enc) } } ?: true
                 local.update { it.copy(backupFolderAccessible = accessible, backupKeyAvailable = keyAvailable) }
@@ -1309,7 +1310,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
 
     private fun releaseFolder(uri: String) {
         // Permission déjà perdue (ou jamais accordée sur ce téléphone) : rien à libérer.
-        runCatching { contentResolver.releasePersistableUriPermission(Uri.parse(uri), BackupFolder.PERSISTABLE_FLAGS) }
+        runCatching { contentResolver.releasePersistableUriPermission(uri.toUri(), BackupFolder.PERSISTABLE_FLAGS) }
     }
 
     /** Les données ont changé hors synchro du bracelet (Health Connect, import, tracé) : à sauvegarder. */

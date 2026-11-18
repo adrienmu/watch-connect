@@ -1,8 +1,8 @@
 package com.boucle.app.healthconnect
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.permission.HealthPermission
@@ -90,7 +90,7 @@ class HealthConnectGateway(private val context: Context) {
     /** Ouvre le Play Store sur Health Connect (Android 13, où ce n'est pas encore une partie du système). */
     fun installIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
         setPackage("com.android.vending")
-        data = Uri.parse("market://details?id=$PROVIDER_PACKAGE&url=healthconnect%3A%2F%2Fonboarding")
+        data = "market://details?id=$PROVIDER_PACKAGE&url=healthconnect%3A%2F%2Fonboarding".toUri()
         putExtra("overlay", true)
         putExtra("callerId", context.packageName)
     }
