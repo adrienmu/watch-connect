@@ -95,7 +95,7 @@ La permission « Internet » sert à télécharger ces images de carte et, pour 
 
 ## Cartes (tracés GPS)
 
-Quand vous ouvrez la carte d'une séance avec un tracé GPS, ou pendant une activité en cours, Boucle télécharge des images de fond de carte depuis OpenStreetMap (`tile.openstreetmap.org`) et, pour le style « Relief », depuis OpenTopoMap (`tile.opentopomap.org`). Ces services reçoivent votre adresse IP et les coordonnées des carrés de carte demandés, ce qui révèle la zone géographique de la séance. Ils ne reçoivent ni vos mesures de santé, ni le tracé lui-même, qui est dessiné sur votre téléphone, ni aucun identifiant de compte.
+Quand vous ouvrez la carte d'une séance avec un tracé GPS ou la carte d'exploration, ou pendant une activité en cours, Boucle télécharge des images de fond de carte depuis OpenStreetMap (`tile.openstreetmap.org`) et, pour le style « Relief », depuis OpenTopoMap (`tile.opentopomap.org`). Ces services reçoivent votre adresse IP et les coordonnées des carrés de carte demandés, ce qui révèle la zone géographique de la séance. Ils ne reçoivent ni vos mesures de santé, ni le tracé lui-même, qui est dessiné sur votre téléphone, ni aucun identifiant de compte.
 
 Les images téléchargées sont gardées en cache sur le téléphone pour limiter ces requêtes. Ces services appliquent leurs propres règles, par exemple la [politique de confidentialité de la fondation OpenStreetMap](https://osmfoundation.org/wiki/Privacy_Policy).
 

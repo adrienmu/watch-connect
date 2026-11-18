@@ -372,12 +372,12 @@ fun MapAttribution(style: MapStyle, modifier: Modifier = Modifier) {
     )
 }
 
-private fun screenToWorld(camera: MapCamera, point: Offset, size: IntSize, tilePx: Float): Pair<Double, Double> {
+internal fun screenToWorld(camera: MapCamera, point: Offset, size: IntSize, tilePx: Float): Pair<Double, Double> {
     val world = tilePx * 2.0.pow(camera.zoom.toDouble())
     return (camera.x + (point.x - size.width / 2.0) / world) to (camera.y + (point.y - size.height / 2.0) / world)
 }
 
-private fun visibleTiles(camera: MapCamera, size: IntSize, tilePx: Float, zoom: Int, style: MapStyle): List<TileKey> {
+internal fun visibleTiles(camera: MapCamera, size: IntSize, tilePx: Float, zoom: Int, style: MapStyle): List<TileKey> {
     val count = 1 shl zoom
     val world = tilePx * 2.0.pow(camera.zoom.toDouble())
     val left = camera.x - size.width / 2.0 / world
@@ -394,7 +394,7 @@ private fun visibleTiles(camera: MapCamera, size: IntSize, tilePx: Float, zoom: 
     }
 }
 
-private fun DrawScope.drawTiles(keys: List<TileKey>, tiles: TileCache, sx: (Double) -> Float, sy: (Double) -> Float, world: Double) {
+internal fun DrawScope.drawTiles(keys: List<TileKey>, tiles: TileCache, sx: (Double) -> Float, sy: (Double) -> Float, world: Double) {
     keys.forEach { key ->
         val count = (1 shl key.zoom).toDouble()
         val left = sx(key.x / count)

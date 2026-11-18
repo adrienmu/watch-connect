@@ -78,6 +78,7 @@ import com.boucle.app.ui.screens.ActivityScreen
 import com.boucle.app.ui.screens.BodyScreen
 import com.boucle.app.ui.screens.DevicesScreen
 import com.boucle.app.ui.screens.EnergyScreen
+import com.boucle.app.ui.screens.ExplorationScreen
 import com.boucle.app.ui.screens.HeartScreen
 import com.boucle.app.ui.screens.PairingScreen
 import com.boucle.app.ui.screens.GoalsScreen
@@ -198,6 +199,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
     val gpsPreview by viewModel.gpsPreview.collectAsStateWithLifecycle()
     val activityHome by viewModel.activityHome.collectAsStateWithLifecycle()
     val activityEdit by viewModel.activityEdit.collectAsStateWithLifecycle()
+    val exploration by viewModel.exploration.collectAsStateWithLifecycle()
 
     // Lancer une activité : sport choisi, puis demande de position si elle n'est pas encore accordée.
     var pendingSport by rememberSaveable { mutableStateOf(Sport.RUN.name) }
@@ -560,6 +562,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             onBack = ::back,
                             modifier = screenModifier,
                         )
+                        Destination.Exploration -> ExplorationScreen(exploration, ::back, screenModifier)
                         Destination.Goals -> {
                             val today = LocalDate.now()
                             val activity = dayState.activity?.takeIf { dayState.date == today }

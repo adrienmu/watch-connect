@@ -47,6 +47,8 @@ import com.boucle.app.data.db.TrainingRouteEntity
 import com.boucle.app.domain.ActivityDetection
 import com.boucle.app.domain.CalorieEstimate
 import com.boucle.app.domain.DetectedActivity
+import com.boucle.app.domain.Exploration
+import com.boucle.app.domain.ExploredGrid
 import com.boucle.app.domain.HrZones
 import com.boucle.app.domain.RoutePoint
 import com.boucle.app.domain.Sport
@@ -126,6 +128,14 @@ data class SessionDetailUiState(
     val notes: String? = null,
     val access: RouteAccess = RouteAccess.IDLE,
     /** Vrai une fois la séance lue dans la base. */
+    val loaded: Boolean = false,
+)
+
+/** Carte d'exploration : carrés traversés par les tracés GPS ; [loaded] passe à vrai une fois les tracés lus. */
+data class ExplorationUiState(
+    val grid: ExploredGrid = ExploredGrid.Empty,
+    /** Nombre de séances avec un tracé. */
+    val routes: Int = 0,
     val loaded: Boolean = false,
 )
 
@@ -765,6 +775,15 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActivityHomeUiState())
     }
+
+    /** Carrés explorés par l'ensemble des tracés (rognés comme dans le détail des séances). */
+    val exploration: StateFlow<ExplorationUiState> = combine(dao.availableTrainingRoutes(), editsByPath) { routes, edits ->
+        val tracks = routes
+            .map { route -> edits[route.sessionPath].let { e -> trimRoute(RouteCodec.decode(route.points), e?.trimStartSec, e?.trimEndSec) } }
+            .filter { it.isNotEmpty() }
+        ExplorationUiState(grid = Exploration.explore(tracks), routes = tracks.size, loaded = true)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExplorationUiState())
 
     fun setActivityDetection(enabled: Boolean) {
         viewModelScope.launch { settings.setActivityDetection(enabled) }

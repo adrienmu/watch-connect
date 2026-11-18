@@ -29,4 +29,6 @@ enum class Destination(val isTab: Boolean) {
     ActivityDetected(false),
     /** Modification d'une séance (nom, sport, terrain, rognage, notes, suppression). */
     ActivityEdit(false),
+    /** Carte d'exploration : les carrés traversés par tous les tracés GPS. */
+    Exploration(false),
 }

@@ -32,6 +32,7 @@ sur le canevas. L'app doit rester fidèle à ces écrans.
 | Activité détectée par le bracelet | `ActiviteDetectee.dc.html` | `ActivityDetectedScreen` |
 | Modifier une activité | `ActiviteModifier.dc.html` | `ActivityEditScreen` |
 | Tracé à autoriser, activité sans GPS | `ActiviteSansGPS.dc.html` | `ActivityDetailScreen` (`ConsentMap`) |
+| Carte d'exploration (vue de près, vue éloignée, aucun tracé) | `Exploration.dc.html`, `ExplorationLarge.dc.html`, `ExplorationVide.dc.html` | `ExplorationScreen` |
 
 Conventions de passage de la maquette au code :
 
