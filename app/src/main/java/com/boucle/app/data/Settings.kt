@@ -1,5 +1,7 @@
 package com.boucle.app.data
 
+import com.boucle.app.domain.DailyGoals
+import com.boucle.app.domain.GoalHistory
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -49,6 +51,8 @@ data class AppSettings(
      * sauvegarde (automatique ou manuelle) ne doit ni copier ni laisser évincer les vraies sauvegardes du dossier.
      */
     val demoMode: Boolean = false,
+    /** Objectifs quotidiens (pas, calories actives) et leurs changements au fil du temps. */
+    val goals: GoalHistory = GoalHistory(),
 )
 
 /**
@@ -124,6 +128,7 @@ class Settings(private val context: Context) {
             onboardingDone = prefs[ONBOARDING_DONE] ?: false,
             dataVersion = prefs[DATA_VERSION] ?: 0,
             demoMode = prefs[DEMO_MODE] ?: false,
+            goals = GoalHistory.decode(prefs[GOAL_HISTORY]),
             backup = BackupSettings(
                 folderUri = prefs[BACKUP_FOLDER_URI],
                 folderName = prefs[BACKUP_FOLDER_NAME],
@@ -178,6 +183,13 @@ class Settings(private val context: Context) {
             it[PROFILE_HEIGHT] = profile.heightCm
             it[PROFILE_WEIGHT] = profile.weightKg
             if (profile.maxHr != null) it[PROFILE_MAX_HR] = profile.maxHr else it.remove(PROFILE_MAX_HR)
+        }
+    }
+
+    /** Règle les objectifs quotidiens à partir du jour [from] ; les jours d'avant gardent les leurs. */
+    suspend fun saveGoals(goals: DailyGoals, from: LocalDate) {
+        context.dataStore.edit {
+            it[GOAL_HISTORY] = GoalHistory.decode(it[GOAL_HISTORY]).with(goals.coerced(), from).encode()
         }
     }
 
@@ -385,5 +397,6 @@ class Settings(private val context: Context) {
         val BACKUP_WRITING_FILE = stringPreferencesKey("backup_writing_file")
         val BACKUP_WRITING_FOLDER = stringPreferencesKey("backup_writing_folder")
         val DEMO_MODE = booleanPreferencesKey("demo_mode")
+        val GOAL_HISTORY = stringPreferencesKey("goal_history")
     }
 }

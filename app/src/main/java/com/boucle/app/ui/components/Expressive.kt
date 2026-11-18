@@ -224,8 +224,25 @@ fun SegmentedBar(
 @Composable
 fun cookieShape(): Shape = MaterialShapes.Cookie12Sided.toShape()
 
-/** Formes des pastilles d'icône de la maquette. */
-enum class BadgeShape { Cookie, Square, Arch, Circle }
+/**
+ * Formes des pastilles d'icône de la maquette. Les « macarons » (formes festonnées de Material 3 Expressive)
+ * distinguent les métriques : [Cookie] le sommeil et les pas, [Clover] la récupération et le corps,
+ * [Sunny] l'énergie et les séries, [Flower] le cœur.
+ */
+enum class BadgeShape { Cookie, Clover, Sunny, Flower, Square, Arch, Circle }
+
+/** Forme Compose d'une pastille. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BadgeShape.toShape(): Shape = when (this) {
+    BadgeShape.Cookie -> cookieShape()
+    BadgeShape.Clover -> MaterialShapes.Clover4Leaf.toShape()
+    BadgeShape.Sunny -> MaterialShapes.Sunny.toShape()
+    BadgeShape.Flower -> MaterialShapes.Cookie6Sided.toShape()
+    BadgeShape.Square -> RoundedCornerShape(14.dp)
+    BadgeShape.Arch -> RoundedCornerShape(topStartPercent = 50, topEndPercent = 50, bottomEndPercent = 27, bottomStartPercent = 27)
+    BadgeShape.Circle -> RoundedCornerShape(percent = 50)
+}
 
 /** Icône posée sur une pastille de couleur (44 dp par défaut). */
 @Composable
@@ -238,12 +255,7 @@ fun IconBadge(
     size: Dp = 44.dp,
     iconSize: Dp = 20.dp,
 ) {
-    val resolved: Shape = when (shape) {
-        BadgeShape.Cookie -> cookieShape()
-        BadgeShape.Square -> RoundedCornerShape(14.dp)
-        BadgeShape.Arch -> RoundedCornerShape(topStartPercent = 50, topEndPercent = 50, bottomEndPercent = 27, bottomStartPercent = 27)
-        BadgeShape.Circle -> RoundedCornerShape(percent = 50)
-    }
+    val resolved = shape.toShape()
     Box(
         modifier
             .size(size)

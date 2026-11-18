@@ -8,59 +8,104 @@
 <body>
 <x-dc>
 <helmet>
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,ROND@6..144,1..1000,0..100&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;font-variation-settings:'ROND' 100}
+button,input,select{font-variation-settings:inherit}
+button{font:inherit;font-variation-settings:inherit;color:inherit;cursor:pointer}
 a{color:#0B5D4B}a:hover{color:#083F33}
 </style>
 </helmet>
-<div style="width: 390px; height: 1040px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Roboto Flex', system-ui, sans-serif">
+<div style="width: 390px; height: 1420px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Google Sans Flex', system-ui, sans-serif">
 
 <header style="display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 8px">
-<h1 style="margin: 0; font-family: 'Roboto Flex', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: -1.2px; line-height: 1">Forme</h1>
-<span style="font-size: 13px; font-weight: 500; color: #55635B">Lundi 16 nov.</span>
+<h1 style="margin: 0; font-family: 'Google Sans Flex', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: -1.2px; line-height: 1">Forme</h1>
+<span style="font-size: 13px; font-weight: 500; color: #55635B">Mercredi 18 nov.</span>
 </header>
 
 <main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 16px">
 
-<section style="display: flex; flex-direction: column; gap: 16px; padding: 28px 24px; border-radius: 48px; background: #CFE9DF; color: #0A3D31">
-<div style="display: flex; align-items: flex-end; justify-content: space-between">
-<div style="display: flex; flex-direction: column; gap: 4px">
-<span style="font-size: 13px; font-weight: 600">Pas · objectif 10 000</span>
-<span style="font-family: 'Roboto Flex', sans-serif; font-size: 88px; font-weight: 800; line-height: 0.85">8 412</span>
+<section style="display: flex; flex-direction: column; gap: 14px; background: #0B5D4B; color: #FFFFFF; border-radius: 44px; padding: 22px">
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" viewBox="0 0 100 100" style="position: absolute; left: 0; top: 0; width: 36px; height: 36px"><path d="{{cookie}}" fill="#A9F0D6"></path></svg>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="#0A3D31" style="position: relative"><ellipse cx="8.5" cy="9" rx="3" ry="5"></ellipse><ellipse cx="15.5" cy="15" rx="3" ry="5"></ellipse></svg>
+</span>
+<span style="flex-grow: 1; font-size: 15px; font-weight: 700; color: #A9F0D6">Pas · objectif 10 000</span>
+<a href="Objectifs.dc.html" aria-label="Régler les objectifs" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 22px; background: #1F6E5C; color: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1zM14.5 6.5l3 3"></path></svg></a>
 </div>
-<span style="padding: 8px 14px; border-radius: 999px; background: #FFFFFF; font-size: 13px; font-weight: 600">84 %</span>
+
+<div style="display: flex; gap: 4px; padding: 4px; border-radius: 26px; background: #083F33">
+<span aria-current="true" style="flex: 1 1 0; height: 44px; border-radius: 22px; background: #A9F0D6; color: #0A3D31; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">Semaine</span>
+<a href="ActiviteMois.dc.html" style="flex: 1 1 0; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; color: #FFFFFF">Mois</a>
 </div>
-<div role="img" aria-label="Pas des 7 derniers jours : de 5 120 dimanche à 12 980 samedi" style="display: flex; gap: 10px; align-items: flex-end; height: 72px">
-<div style="flex: 1; height: 34px; border-radius: 8px; background: #7DBCA8"></div>
-<div style="flex: 1; height: 55px; border-radius: 8px; background: #7DBCA8"></div>
-<div style="flex: 1; height: 62px; border-radius: 8px; background: #7DBCA8"></div>
-<div style="flex: 1; height: 41px; border-radius: 8px; background: #7DBCA8"></div>
-<div style="flex: 1; height: 72px; border-radius: 8px; background: #7DBCA8"></div>
-<div style="flex: 1; height: 28px; border-radius: 8px; background: #7DBCA8"></div>
-<div style="flex: 1; height: 47px; border-radius: 8px; background: #0B5D4B"></div>
+
+<div style="display: flex; align-items: center; gap: 8px">
+<button aria-label="Semaine précédente" onClick="{{prev}}" disabled="{{prevOff}}" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: #1F6E5C; display: flex; align-items: center; justify-content: center; padding: 0; opacity: {{prevOpacity}}">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+<span style="flex-grow: 1; text-align: center; font-size: 16px; font-weight: 700">{{range}}</span>
+<button aria-label="Semaine suivante" onClick="{{next}}" disabled="{{nextOff}}" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: #1F6E5C; display: flex; align-items: center; justify-content: center; padding: 0; opacity: {{nextOpacity}}">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
 </div>
-<div style="display: flex; gap: 10px; font-size: 12px; text-align: center">
-<span style="flex: 1">Mar</span><span style="flex: 1">Mer</span><span style="flex: 1">Jeu</span><span style="flex: 1">Ven</span><span style="flex: 1">Sam</span><span style="flex: 1">Dim</span><span style="flex: 1; font-weight: 600">Lun</span>
+
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 600; color: #A9F0D6">{{kicker}}</span>
+<span style="font-size: 56px; font-weight: 800; line-height: 1; letter-spacing: -1px">{{headline}}</span>
+<span style="font-size: 14px; font-weight: 600; color: #A9F0D6">{{sub}}</span>
 </div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="position: relative; height: 120px; display: flex; align-items: flex-end; gap: 6px">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 80px; border-top: 2px dashed rgba(255,255,255,0.5)"></div>
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<button onClick="{{d.pick}}" disabled="{{d.future}}" aria-label="{{d.aria}}" style="position: relative; flex: 1 1 0; min-width: 0; height: 120px; border: 0; background: transparent; padding: 0; display: flex; align-items: flex-end; justify-content: center">
+<span style="display: block; width: 34px; max-width: 100%; height: {{d.h}}px; border-radius: {{d.radius}}; background: {{d.bg}}; outline: {{d.outline}}; outline-offset: 2px"></span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; gap: 6px; text-align: center">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<span style="flex: 1 1 0; min-width: 0; font-size: 12px; line-height: 1.35; font-weight: {{d.fw}}; color: {{d.fg}}">{{d.letter}}<br>{{d.num}}</span>
+</sc-for>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+<div style="background: #083F33; border-radius: 20px 6px 6px 20px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; font-weight: 500; color: #A9F0D6">Objectif atteint</span>
+<span style="font-size: 17px; font-weight: 700">{{reachedLabel}}</span>
+</div>
+<div style="background: #083F33; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; font-weight: 500; color: #A9F0D6">Moyenne</span>
+<span style="font-size: 17px; font-weight: 700">{{avgLabel}}</span>
+</div>
+<div style="background: #083F33; border-radius: 6px 20px 20px 6px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; font-weight: 500; color: #A9F0D6">Total</span>
+<span style="font-size: 17px; font-weight: 700">{{totalLabel}}</span>
+</div>
+</div>
+
 </section>
 
 <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
 <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
 <span style="font-size: 12px; color: #55635B">Distance</span>
-<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">6,24 km</span>
+<span style="font-family: 'Google Sans Flex', sans-serif; font-size: 26px; font-weight: 700">6,24 km</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
 <span style="font-size: 12px; color: #55635B">Calories</span>
-<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">2 310 kcal</span>
+<span style="font-family: 'Google Sans Flex', sans-serif; font-size: 26px; font-weight: 700">2 310 kcal</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
 <span style="font-size: 12px; color: #55635B">Calories actives</span>
-<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">540 kcal</span>
+<span style="font-family: 'Google Sans Flex', sans-serif; font-size: 26px; font-weight: 700">540 kcal</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF">
 <span style="font-size: 12px; color: #55635B">Métabolisme de base</span>
-<span style="font-family: 'Roboto Flex', sans-serif; font-size: 26px; font-weight: 700">1 770 kcal</span>
+<span style="font-family: 'Google Sans Flex', sans-serif; font-size: 26px; font-weight: 700">1 770 kcal</span>
 </div>
 </section>
 
@@ -96,14 +141,14 @@ a{color:#0B5D4B}a:hover{color:#083F33}
 <span style="padding: 6px 12px; border-radius: 999px; background: #F2F5F1; font-size: 12px; font-weight: 600">Charge cardio 128</span>
 </div>
 <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
-<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #55635B">Distance</span><span style="font-family: 'Roboto Flex', sans-serif; font-size: 17px; font-weight: 600">7,10 km</span></div>
-<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #55635B">FC moy. / max</span><span style="font-family: 'Roboto Flex', sans-serif; font-size: 17px; font-weight: 600">148 / 171</span></div>
-<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #55635B">Calories</span><span style="font-family: 'Roboto Flex', sans-serif; font-size: 17px; font-weight: 600">486 kcal</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #55635B">Distance</span><span style="font-family: 'Google Sans Flex', sans-serif; font-size: 17px; font-weight: 600">7,10 km</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #55635B">FC moy. / max</span><span style="font-family: 'Google Sans Flex', sans-serif; font-size: 17px; font-weight: 600">148 / 171</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #55635B">Calories</span><span style="font-family: 'Google Sans Flex', sans-serif; font-size: 17px; font-weight: 600">486 kcal</span></div>
 </div>
 </section>
 
 <a href="Vo2max.dc.html" style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 24px; background: #FFFFFF; color: #16201B; text-decoration: none">
-<span style="width: 44px; height: 44px; border-radius: 14px; background: #D8EDF4; color: #0B4A60; display: flex; align-items: center; justify-content: center; font-family: 'Roboto Flex', sans-serif; font-size: 16px; font-weight: 700">47</span>
+<span style="width: 44px; height: 44px; border-radius: 14px; background: #D8EDF4; color: #0B4A60; display: flex; align-items: center; justify-content: center; font-family: 'Google Sans Flex', sans-serif; font-size: 16px; font-weight: 700">47</span>
 <span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
 <span style="font-size: 15px; font-weight: 600">VO2max estimée</span>
 <span style="font-size: 13px; color: #55635B">Bon · 47 ml/kg/min</span>
@@ -126,10 +171,108 @@ a{color:#0B5D4B}a:hover{color:#083F33}
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1040}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1420}}'>
 class Component extends DCLogic {
+blob(n, amp) {
+var p = [];
+for (var i = 0; i <= 180; i++) {
+var t = i / 180 * Math.PI * 2;
+var r = 48 * (1 - amp + amp * Math.cos(n * t));
+p.push((i ? 'L' : 'M') + (50 + r * Math.sin(t)).toFixed(2) + ' ' + (50 - r * Math.cos(t)).toFixed(2));
+}
+return p.join(' ') + ' Z';
+}
+stepsFor(d) {
+var key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+var fixed = { '2026-10-16': 11240, '2026-10-17': 6930, '2026-10-18': 8412 };
+if (fixed[key]) return fixed[key];
+var k = d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
+var x = Math.sin(k * 12.9898) * 43758.5453;
+x = x - Math.floor(x);
+var dow = d.getDay();
+var base = dow === 0 ? 4800 : (dow === 6 ? 8600 : 6400);
+return Math.round((base + x * 7200) / 10) * 10;
+}
+fmt(n) {
+return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
 renderVals() {
-return {};
+var GOAL = 10000, MAXW = 26;
+var today = new Date(2026, 10, 18);
+var offset = (this.state && this.state.offset) || 0;
+var months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+var longDays = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+var letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+var monday = new Date(today);
+monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) - 7 * offset);
+var todayIdx = offset === 0 ? (today.getDay() + 6) % 7 : -1;
+var stored = this.state ? this.state.sel : undefined;
+var sel = stored === undefined ? todayIdx : stored;
+var self = this;
+var total = 0, elapsed = 0, reached = 0;
+var days = [];
+for (var i = 0; i < 7; i++) {
+(function (i) {
+var date = new Date(monday);
+date.setDate(monday.getDate() + i);
+var future = date > today;
+var steps = future ? 0 : self.stepsFor(date);
+var ok = steps >= GOAL;
+if (!future) { total += steps; elapsed++; if (ok) reached++; }
+var selected = i === sel && !future;
+days.push({
+letter: letters[i],
+num: date.getDate(),
+future: future,
+steps: steps,
+date: date,
+h: future ? 6 : Math.max(10, Math.round(Math.min(steps, 15000) / 15000 * 120)),
+radius: future ? '3px' : '12px 12px 6px 6px',
+bg: future ? '#1F6E5C' : (ok ? '#A9F0D6' : '#5DB59B'),
+outline: selected ? '3px solid #FFFFFF' : '0 solid transparent',
+fw: selected ? 800 : 600,
+fg: selected ? '#FFFFFF' : '#A9F0D6',
+aria: longDays[date.getDay()] + ' ' + date.getDate() + ' ' + months[date.getMonth()] + (future ? ', à venir' : ', ' + self.fmt(steps) + ' pas'),
+pick: function () { self.setState({ sel: selected ? -1 : i }); }
+});
+})(i);
+}
+var sunday = days[6].date;
+var range = monday.getMonth() === sunday.getMonth()
+? monday.getDate() + ' – ' + sunday.getDate() + ' ' + months[sunday.getMonth()]
+: monday.getDate() + ' ' + months[monday.getMonth()] + ' – ' + sunday.getDate() + ' ' + months[sunday.getMonth()];
+var avg = elapsed ? total / elapsed : 0;
+var kicker, headline, sub;
+var picked = sel >= 0 && days[sel] && !days[sel].future ? days[sel] : null;
+if (picked) {
+var pct = Math.round(picked.steps / GOAL * 100);
+kicker = longDays[picked.date.getDay()] + ' ' + picked.date.getDate() + ' ' + months[picked.date.getMonth()];
+headline = this.fmt(picked.steps);
+sub = picked.steps >= GOAL
+? 'Objectif atteint · +' + this.fmt(picked.steps - GOAL) + ' pas'
+: pct + ' % de l’objectif · encore ' + this.fmt(GOAL - picked.steps) + ' pas';
+} else {
+kicker = 'Moyenne de la semaine';
+headline = this.fmt(avg);
+sub = 'pas par jour · touche une barre pour le détail';
+}
+return {
+cookie: this.blob(12, 0.045),
+days: days,
+range: range,
+kicker: kicker,
+headline: headline,
+sub: sub,
+reachedLabel: reached + ' j sur ' + elapsed,
+avgLabel: this.fmt(avg),
+totalLabel: this.fmt(total),
+prevOff: offset >= MAXW,
+prevOpacity: offset >= MAXW ? 0.4 : 1,
+nextOff: offset === 0,
+nextOpacity: offset === 0 ? 0.4 : 1,
+prev: function () { self.setState({ offset: Math.min(MAXW, offset + 1), sel: -1 }); },
+next: function () { self.setState({ offset: Math.max(0, offset - 1), sel: offset - 1 === 0 ? undefined : -1 }); }
+};
 }
 }
 </script>

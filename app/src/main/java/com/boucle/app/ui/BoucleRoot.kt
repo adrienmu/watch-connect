@@ -69,6 +69,7 @@ import com.boucle.app.ui.screens.DevicesScreen
 import com.boucle.app.ui.screens.EnergyScreen
 import com.boucle.app.ui.screens.HeartScreen
 import com.boucle.app.ui.screens.PairingScreen
+import com.boucle.app.ui.screens.GoalsScreen
 import com.boucle.app.ui.screens.ProfileScreen
 import com.boucle.app.ui.screens.RecoveryScreen
 import com.boucle.app.ui.screens.SleepScreen
@@ -79,6 +80,7 @@ import com.boucle.app.ui.theme.BoucleColors
 import com.boucle.app.ui.theme.BoucleIcons
 import com.boucle.app.ui.theme.BoucleType
 import com.polar.sdk.api.model.PolarFirstTimeUseConfig
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 
@@ -156,6 +158,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
 
     val deviceState by viewModel.deviceState.collectAsStateWithLifecycle()
     val dayState by viewModel.dayState.collectAsStateWithLifecycle()
+    val stepHistory by viewModel.stepHistory.collectAsStateWithLifecycle()
 
     // Le sélecteur de dossier s'ouvre une fois l'activation (et sa clé) enregistrée par le ViewModel.
     LaunchedEffect(deviceState.backupFolderPickRequested) {
@@ -332,6 +335,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                     when (target.last()) {
                         Destination.Today -> TodayScreen(
                             state = dayState,
+                            history = stepHistory,
                             lastSyncAt = deviceState.lastSyncAt ?: deviceState.healthConnect.lastSyncAt,
                             refreshing = deviceState.syncing || deviceState.healthConnect.syncing,
                             onSelectDate = viewModel::selectDate,
@@ -341,7 +345,15 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             modifier = screenModifier,
                         )
                         Destination.Sleep -> SleepScreen(dayState, screenModifier)
-                        Destination.Activity -> ActivityScreen(dayState, ::navigate, ::openSession, screenModifier)
+                        Destination.Activity -> ActivityScreen(
+                            state = dayState,
+                            history = stepHistory,
+                            onSelectDate = viewModel::selectDate,
+                            onEditGoals = { navigate(Destination.Goals) },
+                            onNavigate = ::navigate,
+                            onOpenSession = ::openSession,
+                            modifier = screenModifier,
+                        )
                         Destination.ActivityDetail -> ActivityDetailScreen(
                             state = sessionDetail,
                             onBack = ::back,
@@ -402,6 +414,18 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             onBack = ::back,
                             modifier = screenModifier,
                         )
+                        Destination.Goals -> {
+                            val today = LocalDate.now()
+                            val activity = dayState.activity?.takeIf { dayState.date == today }
+                            GoalsScreen(
+                                goals = stepHistory.goals.on(today),
+                                todaySteps = stepHistory.steps[today],
+                                todayActiveCalories = activity?.activityCalories?.let { it + (activity.trainingCalories ?: 0) },
+                                onChange = viewModel::setGoals,
+                                onBack = ::back,
+                                modifier = screenModifier,
+                            )
+                        }
                         Destination.Profile -> ProfileScreen(
                             initial = deviceState.profile.toForm(),
                             saving = deviceState.savingProfile,

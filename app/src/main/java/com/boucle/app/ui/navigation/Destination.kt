@@ -13,6 +13,8 @@ enum class Destination(val isTab: Boolean) {
     Body(false),
     Pairing(false),
     Profile(false),
+    /** Réglage des objectifs quotidiens (pas, calories actives). */
+    Goals(false),
     /** Détail d'une séance (carte du tracé GPS, allure, FC, altitude). */
     ActivityDetail(false),
 }

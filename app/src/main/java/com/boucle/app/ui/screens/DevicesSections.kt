@@ -207,7 +207,7 @@ private fun lastReadLabel(state: HealthConnectUiState): String {
 private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
- * Carte de réglages : configuration du bracelet (bracelet connecté), mode démo, export, import,
+ * Carte de réglages : configuration du bracelet (bracelet connecté), objectifs quotidiens, mode démo, export, import,
  * sauvegarde automatique et effacement des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
@@ -216,6 +216,7 @@ internal fun DevicesSettingsCard(
     connected: Boolean,
     hasSyncedData: Boolean,
     onConfigure: () -> Unit,
+    onGoals: () -> Unit,
     onLoadDemo: () -> Unit,
     exporting: Boolean,
     onExport: () -> Unit,
@@ -242,6 +243,7 @@ internal fun DevicesSettingsCard(
                 },
             )
         }
+        add(SettingsRow("goals") { SettingsLinkRow("Objectifs quotidiens", "Pas et calories actives", onGoals) })
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
         add(SettingsRow("import") { ImportRow(importing, onImport) })

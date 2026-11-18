@@ -201,6 +201,7 @@ fun DevicesScreen(
                 connected = state.link.connection == Connection.CONNECTED,
                 hasSyncedData = state.lastSyncAt != null,
                 onConfigure = { onNavigate(Destination.Profile) },
+                onGoals = { onNavigate(Destination.Goals) },
                 onLoadDemo = onLoadDemo,
                 exporting = state.exporting,
                 onExport = onExportData,
