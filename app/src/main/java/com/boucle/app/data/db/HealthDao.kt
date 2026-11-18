@@ -7,6 +7,9 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
+/** Pas d'un jour (yyyy-MM-dd), lus seuls pour l'historique. */
+data class DateSteps(val date: String, val steps: Int)
+
 @Dao
 interface HealthDao {
     @Upsert suspend fun upsertDailyActivity(items: List<DailyActivityEntity>)
@@ -86,6 +89,10 @@ interface HealthDao {
 
     @Query("SELECT * FROM daily_activity WHERE date BETWEEN :from AND :to ORDER BY date")
     fun dailyActivityRange(from: String, to: String): Flow<List<DailyActivityEntity>>
+
+    /** Pas de chaque jour mesuré, pour l'historique (semaines, mois, séries). */
+    @Query("SELECT date, steps FROM daily_activity WHERE steps IS NOT NULL ORDER BY date")
+    fun dailySteps(): Flow<List<DateSteps>>
 
     @Query("SELECT * FROM activity_samples WHERE date = :date ORDER BY startTime")
     fun activitySamples(date: String): Flow<List<ActivitySamplesEntity>>

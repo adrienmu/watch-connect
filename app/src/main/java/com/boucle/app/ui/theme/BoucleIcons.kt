@@ -97,6 +97,24 @@ object BoucleIcons {
     val Timer = stroke("Timer", "M20 13a8 8 0 1 1-16 0a8 8 0 1 1 16 0z", "M12 9v4l2.5 2M9 2h6")
     val Gauge = stroke("Gauge", "M5 18a8 8 0 1 1 14 0M12 14l4-5")
     val Mountain = stroke("Mountain", "M3 19l6-10 4 6 2-3 6 7z")
+    // Historique des pas et objectifs.
+    val Calendar = stroke(
+        "Calendar",
+        "M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z",
+        "M4 10h16M8 3v4M16 3v4",
+    )
+    val Edit = stroke("Edit", "M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z", "M14.5 6.5l3 3")
+    val Minus = stroke("Minus", "M5 12h14")
+    /** Deux empreintes pleines. */
+    val Steps = stroke(
+        "Steps",
+        filled = listOf("M8.5 4a3 5 0 1 1 0 10a3 5 0 1 1 0-10z", "M15.5 10a3 5 0 1 1 0 10a3 5 0 1 1 0-10z"),
+    )
+    /** Flamme pleine (série de jours à l'objectif). */
+    val Flame = stroke(
+        "Flame",
+        filled = listOf("M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-1.8.8-3 1.8-4 .3 1.5 1 2.3 2 2.6C10.2 9.5 10.5 6 12 3z"),
+    )
     /** Synchronisation Health Connect (deux flèches en cercle). */
     val Refresh = stroke("Refresh", "M4 12a8 8 0 0 1 14-5.3L20 9M20 12a8 8 0 0 1-14 5.3L4 15M20 4v5h-5M4 20v-5h5")
 }

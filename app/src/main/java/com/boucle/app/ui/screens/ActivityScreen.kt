@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.boucle.app.data.db.DailyActivityEntity
 import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.Vo2MaxEstimate
-import com.boucle.app.ui.DaySteps
+import com.boucle.app.domain.StepHistory
 import com.boucle.app.ui.DayUiState
 import com.boucle.app.ui.components.AnimatedNumber
 import com.boucle.app.ui.components.BadgeShape
@@ -55,27 +55,25 @@ import com.boucle.app.ui.theme.BoucleType
 import com.boucle.app.ui.theme.ChartColors
 import com.boucle.app.ui.theme.MetricPalette
 import kotlinx.coroutines.delay
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/**
- * Objectif de pas quotidien. Fixe en attendant un réglage dans le profil : 10 000 pas est le repère
- * le plus courant.
- */
-private const val STEP_GOAL = 10_000
-
-/** Hauteur de la plus haute barre du graphique des 7 jours. */
-private val WEEK_BAR_MAX = 72.dp
-
 private val headerDate = DateTimeFormatter.ofPattern("EEEE d MMM", Locale.FRENCH)
 
-/** Onglet Forme : pas de la semaine, dépense, objectif d'activité, séances du jour et VO2max. */
+/**
+ * Onglet Forme : historique des pas (semaine ou mois, jusqu'à la première mesure), dépense, objectif d'activité,
+ * séances du jour et VO2max.
+ */
 @Composable
 fun ActivityScreen(
     state: DayUiState,
+    history: StepHistory,
+    onSelectDate: (LocalDate) -> Unit,
+    onEditGoals: () -> Unit,
     onNavigate: (Destination) -> Unit,
     onOpenSession: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -98,6 +96,14 @@ fun ActivityScreen(
         ) {
             var index = 1
             val activity = state.activity
+            StepsHistoryTile(
+                selected = state.date,
+                history = history,
+                today = LocalDate.now(),
+                onSelectDate = onSelectDate,
+                onEditGoals = onEditGoals,
+                modifier = Modifier.sharedContainer(SharedKeys.ACTIVITY, Radii.Hero, entranceIndex = index++),
+            )
             if (activity == null) {
                 ActivityEmptyCard(
                     icon = BoucleIcons.Pulse,
@@ -108,7 +114,6 @@ fun ActivityScreen(
                     modifier = Modifier.staggeredEntrance(index++),
                 )
             } else {
-                StepsHero(activity, state.weekSteps, Modifier.sharedContainer(SharedKeys.ACTIVITY, Radii.Hero, entranceIndex = index++))
                 EnergyTiles(activity, Modifier.staggeredEntrance(index++))
                 if (activity.hasActivityGoal()) ActivityGoalCard(activity, Modifier.staggeredEntrance(index++))
             }
@@ -122,83 +127,6 @@ fun ActivityScreen(
                     modifier = Modifier.sharedContainer(SharedKeys.VO2MAX, Radii.Tile, entranceIndex = index),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun StepsHero(activity: DailyActivityEntity, week: List<DaySteps>, modifier: Modifier = Modifier) {
-    val palette = MetricPalette.Activity
-    ExpressiveSurface(
-        color = palette.container,
-        radii = Radii.Hero,
-        contentColor = palette.onContainer,
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Pas · objectif ${formatThousands(STEP_GOAL)}", style = BoucleType.smallStrong)
-                val steps = activity.steps
-                if (steps != null) AnimatedNumber(steps, BoucleType.heroM) else Text("—", style = BoucleType.heroM)
-            }
-            activity.steps?.let { steps ->
-                Box(
-                    Modifier
-                        .background(BoucleColors.Surface, BoucleShapes.pill)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                ) {
-                    AnimatedNumber(steps * 100 / STEP_GOAL, BoucleType.smallStrong, format = { "${formatThousands(it)}${NBSP}%" })
-                }
-            }
-        }
-        if (week.isNotEmpty()) WeekStepsChart(week)
-    }
-}
-
-/** Barres des 7 jours, proportionnelles au meilleur jour ; elles poussent depuis le bas l'une après l'autre. */
-@Composable
-private fun WeekStepsChart(week: List<DaySteps>) {
-    val best = week.maxOf { it.steps ?: 0 }.coerceAtLeast(1)
-    val description = week.joinToString(prefix = "Pas des 7 derniers jours : ") { day ->
-        val name = day.date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.FRENCH)
-        "$name ${day.steps?.let(::formatThousands) ?: "sans donnée"}"
-    }
-    val spec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(WEEK_BAR_MAX)
-            .semantics { contentDescription = description },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        week.forEachIndexed { i, day ->
-            val target = (day.steps ?: 0).toFloat() / best
-            val grow = remember { Animatable(0f) }
-            LaunchedEffect(target) {
-                if (grow.value == 0f) delay(i * 40L)
-                grow.animateTo(target, spec)
-            }
-            val selected = i == week.lastIndex
-            Box(
-                Modifier
-                    .weight(1f)
-                    // Une barre minimale garde visible un jour sans pas.
-                    .height((WEEK_BAR_MAX * grow.value).coerceAtLeast(4.dp))
-                    .background(if (selected) MetricPalette.Activity.accent else ChartColors.Light, RoundedCornerShape(8.dp)),
-            )
-        }
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        week.forEachIndexed { i, day ->
-            Text(
-                ActivityFormat.shortDay(day.date.dayOfWeek),
-                style = if (i == week.lastIndex) BoucleType.captionStrong else BoucleType.caption,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
-            )
         }
     }
 }

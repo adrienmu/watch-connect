@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — Objectifs quotidiens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,ROND@6..144,1..1000,0..100&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font:inherit;font-variation-settings:inherit;color:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 0 16px 16px; background: #F2F5F1; color: #16201B; font-family: 'Google Sans Flex', system-ui, sans-serif; font-variation-settings: 'ROND' 100; display: flex; flex-direction: column; gap: 12px">
+<header style="display: flex; align-items: center; gap: 8px; margin: 0 -4px; padding: 16px 0 0">
+<a href="Appareils.dc.html" aria-label="Retour" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+</a>
+<h1 style="margin: 0; font-size: 26px; font-weight: 700">Objectifs quotidiens</h1>
+</header>
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="background: #CFE9DF; color: #0A3D31; border-radius: 32px 32px 8px 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" viewBox="0 0 100 100" style="position: absolute; left: 0; top: 0; width: 32px; height: 32px"><path d="{{cookie}}" fill="#0B5D4B"></path></svg>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="#FFFFFF" style="position: relative"><ellipse cx="8.5" cy="9" rx="3" ry="5"></ellipse><ellipse cx="15.5" cy="15" rx="3" ry="5"></ellipse></svg>
+</span>
+<span style="font-size: 14px; font-weight: 700">Pas</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<button aria-label="Diminuer l'objectif de pas de 500" onClick="{{stepsDown}}" style="width: 52px; height: 52px; border: 0; border-radius: 26px; background: #FFFFFF; font-size: 28px; font-weight: 700; line-height: 1; padding: 0">−</button>
+<span style="flex-grow: 1; text-align: center; font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -1px">{{stepsLabel}}</span>
+<button aria-label="Augmenter l'objectif de pas de 500" onClick="{{stepsUp}}" style="width: 52px; height: 52px; border: 0; border-radius: 26px; background: #0B5D4B; color: #FFFFFF; font-size: 28px; font-weight: 700; line-height: 1; padding: 0">+</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="height: 8px; border-radius: 4px; background: #A9D6C6"><div style="width: {{stepsPct}}%; height: 8px; border-radius: 4px; background: #0B5D4B"></div></div>
+<span style="font-size: 13px">{{stepsPreview}}</span>
+</div>
+</div>
+
+<div style="background: #FBE6D2; color: #5C2B04; border-radius: 8px 8px 32px 32px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" viewBox="0 0 100 100" style="position: absolute; left: 0; top: 0; width: 32px; height: 32px"><path d="{{burst}}" fill="#B4560F"></path></svg>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="#FFFFFF" style="position: relative"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-1.8.8-3 1.8-4 .3 1.5 1 2.3 2 2.6C10.2 9.5 10.5 6 12 3Z"></path></svg>
+</span>
+<span style="font-size: 14px; font-weight: 700">Calories actives</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<button aria-label="Diminuer l'objectif de calories de 50" onClick="{{kcalDown}}" style="width: 52px; height: 52px; border: 0; border-radius: 26px; background: #FFFFFF; font-size: 28px; font-weight: 700; line-height: 1; padding: 0">−</button>
+<span style="flex-grow: 1; text-align: center; font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -1px">{{kcalLabel}}<span style="font-size: 16px; font-weight: 600; letter-spacing: 0"> kcal</span></span>
+<button aria-label="Augmenter l'objectif de calories de 50" onClick="{{kcalUp}}" style="width: 52px; height: 52px; border: 0; border-radius: 26px; background: #B4560F; color: #FFFFFF; font-size: 28px; font-weight: 700; line-height: 1; padding: 0">+</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="height: 8px; border-radius: 4px; background: #F2CBA6"><div style="width: {{kcalPct}}%; height: 8px; border-radius: 4px; background: #B4560F"></div></div>
+<span style="font-size: 13px">{{kcalPreview}}</span>
+</div>
+</div>
+</div>
+
+<p style="margin: 0; padding: 0 4px; font-size: 13px; line-height: 1.45; color: #55635B">Calories dépensées en bougeant, hors métabolisme de base. Les jauges, les macarons et les séries utilisent ces objectifs à partir d'aujourd'hui ; les jours passés gardent l'objectif qu'ils avaient.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+blob(n, amp) {
+var p = [];
+for (var i = 0; i <= 180; i++) {
+var t = i / 180 * Math.PI * 2;
+var r = 48 * (1 - amp + amp * Math.cos(n * t));
+p.push((i ? 'L' : 'M') + (50 + r * Math.sin(t)).toFixed(2) + ' ' + (50 - r * Math.cos(t)).toFixed(2));
+}
+return p.join(' ') + ' Z';
+}
+fmt(n) {
+return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+renderVals() {
+var s = this.state || {};
+var steps = s.steps || 10000, kcal = s.kcal || 600;
+var doneSteps = 8412, doneKcal = 412;
+var self = this;
+var sp = Math.round(doneSteps / steps * 100), kp = Math.round(doneKcal / kcal * 100);
+return {
+cookie: this.blob(12, 0.045),
+burst: this.blob(8, 0.07),
+stepsLabel: this.fmt(steps),
+kcalLabel: this.fmt(kcal),
+stepsPct: Math.min(100, sp),
+kcalPct: Math.min(100, kp),
+stepsPreview: 'Aujourd’hui : ' + this.fmt(doneSteps) + ' pas, soit ' + sp + ' % de cet objectif',
+kcalPreview: 'Aujourd’hui : ' + doneKcal + ' kcal, soit ' + kp + ' % de cet objectif',
+stepsDown: function () { self.setState({ steps: Math.max(2000, steps - 500) }); },
+stepsUp: function () { self.setState({ steps: Math.min(30000, steps + 500) }); },
+kcalDown: function () { self.setState({ kcal: Math.max(100, kcal - 50) }); },
+kcalUp: function () { self.setState({ kcal: Math.min(2000, kcal + 50) }); }
+};
+}
+}
+</script>
+</body>
+</html>

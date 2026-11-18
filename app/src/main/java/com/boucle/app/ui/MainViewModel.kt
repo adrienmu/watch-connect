@@ -22,6 +22,8 @@ import com.boucle.app.data.export.DataExporter
 import com.boucle.app.data.export.DataImporter
 import android.net.Uri
 import com.boucle.app.domain.BodyBatteryDay
+import com.boucle.app.domain.DailyGoals
+import com.boucle.app.domain.StepHistory
 import com.boucle.app.domain.BodyBatteryInputs
 import com.boucle.app.domain.BodyBatteryModel
 import com.boucle.app.domain.BodyMeasurements
@@ -286,6 +288,18 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     val dayState: StateFlow<DayUiState> = selectedDate
         .flatMapLatest { dayFlow(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState(LocalDate.now()))
+
+    /** Pas de tous les jours mesurés et objectifs en vigueur : semaines, mois et séries de l'historique. */
+    val stepHistory: StateFlow<StepHistory> = combine(
+        dao.dailySteps(),
+        settings.flow.map { it.goals }.distinctUntilChanged(),
+    ) { days, goals ->
+        val steps = days.mapNotNull { day ->
+            runCatching { LocalDate.parse(day.date) }.getOrNull()?.let { it to day.steps }
+        }.toMap()
+        StepHistory(steps, goals)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StepHistory())
 
     private val selectedSession = MutableStateFlow<String?>(null)
     private val routeAccess = MutableStateFlow(RouteAccess.IDLE)
@@ -1014,6 +1028,11 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         local.update { it.copy(message = null) }
     }
 
+    /** Règle les objectifs quotidiens à partir d'aujourd'hui. */
+    fun setGoals(goals: DailyGoals) {
+        viewModelScope.launch { settings.saveGoals(goals, LocalDate.now()) }
+    }
+
     fun previousDay() = selectedDate.update { it.minusDays(1) }
 
     /** Affiche [date] (jamais après aujourd'hui). */
@@ -1084,14 +1103,6 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 ppiIntervalCount = ppiIntervalCount(ppi),
                 hourlyHeartRate = hourlyHeartRate(hr),
             )
-        }
-        val weekStart = date.minusDays(6)
-        val week = dao.dailyActivityRange(weekStart.toString(), key).map { days ->
-            val byDate = days.associateBy { it.date }
-            (0L..6L).map { offset ->
-                val day = weekStart.plusDays(offset)
-                DaySteps(day, byDate[day.toString()]?.steps)
-            }
         }
         val night = combine(
             dao.sleep(key),
@@ -1179,7 +1190,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         // Poids : la dernière pesée peut dater de plusieurs jours, et l'évolution remonte jusqu'à 30 jours avant.
         val body = dao.externalMeasurementsRange(date.minusDays(BodyMeasurements.HISTORY_DAYS).toString(), key)
             .map { BodyReadings(BodyMeasurements.body(it, date), BodyMeasurements.spo2(it, date), weightHistory(it, date.minusDays(30), date)) }
-        return combine(activity, night, scores, vo2Max, combine(body, week) { b, w -> b to w }) { a, n, scores, vo2, (readings, weekSteps) ->
+        return combine(activity, night, scores, vo2Max, body) { a, n, scores, vo2, readings ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
@@ -1192,7 +1203,6 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 body = readings.summary,
                 spo2 = readings.spo2,
                 weightHistory = readings.weights,
-                weekSteps = weekSteps,
             )
         }
     }

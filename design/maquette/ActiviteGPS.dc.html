@@ -9,9 +9,10 @@
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght,ROND@6..144,25..151,1..1000,0..100&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;font-variation-settings:'ROND' 100}
+button,input,select{font-variation-settings:inherit}
 a{color:#4355B9}a:hover{color:#2A3A9E}
 button{font-family:inherit}
 @keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
@@ -29,7 +30,7 @@ button{font-family:inherit}
 @media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important}}
 </style>
 </helmet>
-<div style="position: relative; width: 390px; height: {{rootH}}px; overflow: hidden; background: #FBF8FF; color: #1B1B21; font-family: 'Roboto Flex', Roboto, system-ui, sans-serif;">
+<div style="position: relative; width: 390px; height: {{rootH}}px; overflow: hidden; background: #FBF8FF; color: #1B1B21; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif;">
 <div ref="{{scrollRef}}" style="position: absolute; inset: 0; overflow-y: {{scrollOverflow}}; overflow-x: hidden;">
 <div style="position: relative; padding-bottom: 32px;">
 
@@ -47,7 +48,7 @@ button{font-family:inherit}
 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00105C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; left: 14px; top: 14px;"><circle cx="15" cy="4" r="2"></circle><path d="M8 21l3-6 3 2v5M6 11l3-3h4l2 4 3 1M11 15l1-6"></path></svg>
 </div>
 <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-<h1 style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 750; letter-spacing: -0.4px; font-variation-settings: 'wdth' 110;">Course du matin</h1>
+<h1 style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 750; letter-spacing: -0.4px; font-variation-settings: 'wdth' 110, 'ROND' 100;">Course du matin</h1>
 <span style="font-size: 14px; line-height: 20px; color: #46464F;">Mar. 17 nov. · 07:12 – 07:58</span>
 </div>
 </div>
@@ -62,7 +63,7 @@ button{font-family:inherit}
 
 <div style="position: absolute; z-index: {{ov.z}}; top: {{ov.top}}px; left: {{ov.left}}px; width: {{ov.w}}px; height: {{ov.h}}px; border-radius: {{ov.r}}px; overflow: hidden; background: #ECEEE6; box-shadow: {{ov.shadow}}; transition: top 550ms cubic-bezier(0.38,1.21,0.22,1), left 550ms cubic-bezier(0.38,1.21,0.22,1), width 550ms cubic-bezier(0.38,1.21,0.22,1), height 550ms cubic-bezier(0.38,1.21,0.22,1), border-radius 450ms cubic-bezier(0.2,0,0,1); animation: fadeIn 400ms ease-out both;">
 <div style="position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; transform: {{ov.world}}; transition: transform 550ms cubic-bezier(0.38,1.21,0.22,1);">
-<svg width="390" height="844" viewBox="0 0 390 844" style="position: absolute; left: 0; top: 0; font-family: 'Roboto Flex', Roboto, sans-serif;" role="img" aria-label="Carte du parcours : 8,42 km, départ au sud-ouest, arrivée au nord-est">
+<svg width="390" height="844" viewBox="0 0 390 844" style="position: absolute; left: 0; top: 0; font-family: 'Google Sans Flex', Roboto, sans-serif;" role="img" aria-label="Carte du parcours : 8,42 km, départ au sud-ouest, arrivée au nord-est">
 <defs>
 <linearGradient id="routeGrad" x1="52" y1="0" x2="338" y2="0" gradientUnits="userSpaceOnUse">
 <stop offset="0" style="stop-color: {{grad.c1}}; transition: stop-color 450ms ease;"></stop>
@@ -176,7 +177,7 @@ button{font-family:inherit}
 
 <div style="padding: 24px 16px 0; display: flex; flex-direction: column; gap: 12px;">
 <div style="display: flex; align-items: baseline; gap: 6px; animation: fadeUp 500ms cubic-bezier(0.05,0.7,0.1,1) 600ms both;">
-<span style="font-size: 64px; line-height: 64px; font-weight: 800; letter-spacing: -2px; font-variation-settings: 'wdth' 120;">8,42</span>
+<span style="font-size: 64px; line-height: 64px; font-weight: 800; letter-spacing: -2px; font-variation-settings: 'wdth' 120, 'ROND' 100;">8,42</span>
 <span style="font-size: 22px; font-weight: 600; color: #46464F;">km</span>
 </div>
 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">

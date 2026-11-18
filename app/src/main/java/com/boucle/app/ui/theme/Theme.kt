@@ -9,13 +9,17 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.boucle.app.R
 
 /*
  * Jetons de la maquette officielle (canevas Claude Design « Boucle — écrans de l'app »).
@@ -62,6 +66,11 @@ object ChartColors {
     val RingSteps = Color(0xFFA9F0D6)
     val RingCalories = Color(0xFFFFB877)
     val RingGoal = Color(0xFFC9CDFF)
+
+    // Tuile Pas (bloc vert plein) : jour sous l'objectif, encart sombre, texte secondaire.
+    val StepsBelowGoal = Color(0xFF5DB59B)
+    val StepsInset = Color(0xFF083F33)
+    val StepsMuted = Color(0xFFB9D6CC)
 
     // Stades de sommeil.
     val SleepDeep = Color(0xFF23277A)
@@ -131,7 +140,26 @@ object RouteColors {
     )
 }
 
-private val Sans = FontFamily.Default
+/** Graisses utilisées par les styles de la maquette. */
+private val FONT_WEIGHTS = listOf(400, 500, 600, 700, 800)
+
+/**
+ * Google Sans Flex (police variable, licence OFL : `app/licences/GoogleSansFlex-OFL.txt`), avec l'axe d'arrondi
+ * « ROND » au maximum comme dans la maquette.
+ */
+@OptIn(ExperimentalTextApi::class)
+private val Sans = FontFamily(
+    FONT_WEIGHTS.map { weight ->
+        Font(
+            resId = R.font.google_sans_flex,
+            weight = FontWeight(weight),
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(weight),
+                FontVariation.Setting("ROND", 100f),
+            ),
+        )
+    },
+)
 
 private fun style(size: Int, weight: Int, lineHeight: Float? = null, letterSpacing: TextUnit = TextUnit.Unspecified) = TextStyle(
     fontFamily = Sans,

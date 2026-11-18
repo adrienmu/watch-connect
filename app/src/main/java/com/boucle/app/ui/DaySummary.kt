@@ -41,9 +41,6 @@ data class SleepStats(
     val phases: List<SleepPhase> = emptyList(),
 )
 
-/** Pas d'un jour ; `null` sans donnée d'activité ce jour-là. */
-data class DaySteps(val date: LocalDate, val steps: Int?)
-
 /** Fréquence cardiaque la plus basse et la plus haute d'une heure de la journée (0 à 23). */
 data class HourHeartRate(val hour: Int, val min: Int, val max: Int)
 
@@ -69,8 +66,6 @@ data class DayUiState(
     val vo2Max: Vo2MaxEstimate? = null,
     val body: BodySummary? = null,
     val spo2: Spo2Stats? = null,
-    /** Les 7 jours qui finissent à [date], du plus ancien au plus récent. */
-    val weekSteps: List<DaySteps> = emptyList(),
     /** Plage de FC heure par heure ; les heures sans mesure sont absentes. */
     val hourlyHeartRate: List<HourHeartRate> = emptyList(),
     /** Pesées des 30 jours qui finissent à [date], dans l'ordre. */

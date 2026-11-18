@@ -8,9 +8,10 @@
 <body>
 <x-dc>
 <helmet>
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght,ROND@6..144,25..151,1..1000,0..100&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;font-variation-settings:'ROND' 100}
+button,input,select{font-variation-settings:inherit}
 a{color:#4355B9}a:hover{color:#2A3A9E}
 button{font-family:inherit}
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
@@ -20,7 +21,7 @@ button{font-family:inherit}
 @media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important}}
 </style>
 </helmet>
-<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #FBF8FF; color: #1B1B21; font-family: 'Roboto Flex', Roboto, system-ui, sans-serif;">
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #FBF8FF; color: #1B1B21; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif;">
 
 <header style="height: 64px; box-sizing: border-box; padding: 0 4px; display: flex; align-items: center; gap: 4px;">
 <button aria-label="Retour" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #1B1B21; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
@@ -28,7 +29,7 @@ button{font-family:inherit}
 </header>
 
 <div style="padding: 8px 16px 0; display: flex; flex-direction: column; gap: 4px;">
-<h1 style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 750; letter-spacing: -0.4px; font-variation-settings: 'wdth' 110;">Course du matin</h1>
+<h1 style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 750; letter-spacing: -0.4px; font-variation-settings: 'wdth' 110, 'ROND' 100;">Course du matin</h1>
 <span style="font-size: 14px; color: #46464F;">Mar. 17 nov. · 07:12 – 07:58 · Bracelet</span>
 </div>
 

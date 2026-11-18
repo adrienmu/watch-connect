@@ -6,6 +6,7 @@ import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
 import com.boucle.app.data.db.ActivitySamplesEntity
 import com.boucle.app.data.db.DailyActivityEntity
+import com.boucle.app.data.db.DateSteps
 import com.boucle.app.data.db.ExternalMeasurementEntity
 import com.boucle.app.data.db.HealthDao
 import com.boucle.app.data.db.HrBlockEntity
@@ -570,6 +571,7 @@ private class FakeDao : CollectingSink(), HealthDao {
     override fun externalMeasurementsOfType(type: String, from: String, to: String): Flow<List<ExternalMeasurementEntity>> = unused()
     override fun dailyActivity(date: String): Flow<DailyActivityEntity?> = unused()
     override fun dailyActivityRange(from: String, to: String): Flow<List<DailyActivityEntity>> = unused()
+    override fun dailySteps(): Flow<List<DateSteps>> = unused()
     override fun activitySamples(date: String): Flow<List<ActivitySamplesEntity>> = unused()
     override fun hrBlocks(date: String): Flow<List<HrBlockEntity>> = unused()
     override fun ppiBlocks(date: String): Flow<List<PpiBlockEntity>> = unused()

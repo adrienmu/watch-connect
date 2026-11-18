@@ -61,7 +61,14 @@ import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.Vo2MaxEstimation
 import com.boucle.app.domain.band
 import com.boucle.app.ui.DayUiState
+import com.boucle.app.domain.DailyGoals
+import com.boucle.app.domain.StepDay
+import com.boucle.app.domain.StepHistory
 import com.boucle.app.ui.components.AnimatedNumber
+import com.boucle.app.ui.components.ArcGauge
+import com.boucle.app.ui.components.HalfGauge
+import com.boucle.app.ui.components.LinearGauge
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.boucle.app.ui.components.BadgeShape
 import com.boucle.app.ui.components.ExpressiveSurface
 import com.boucle.app.ui.components.SharedKeys
@@ -84,24 +91,24 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
 
-/** Objectif de pas fixe, en attendant un réglage dans le profil. */
-private const val STEP_GOAL = 10_000
-
-/** Objectif de calories actives fixe (kcal), en attendant un réglage dans le profil. */
-private const val ACTIVE_CALORIE_GOAL = 600
+/** Plage de fréquence cardiaque représentée par la jauge de la tuile Cœur (bpm). */
+private const val HEART_SCALE_MIN = 40f
+private const val HEART_SCALE_MAX = 200f
 
 private val STORED_SYNC = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
 private val HOUR = DateTimeFormatter.ofPattern("HH:mm")
 private val DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM")
 
 /**
- * Onglet Aujourd'hui : choix du jour, bloc héros d'activité avec ses anneaux, grille des quatre
- * métriques clés et liste du poids et de la dernière séance. Tirer vers le bas relance une synchro.
+ * Onglet Aujourd'hui : choix du jour semaine par semaine, tuile Pas (jauge, barres de la semaine, calories
+ * actives et objectif d'activité), grille des quatre métriques clés et liste du poids et de la dernière
+ * séance. Tirer vers le bas relance une synchro.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TodayScreen(
     state: DayUiState,
+    history: StepHistory,
     lastSyncAt: String?,
     refreshing: Boolean,
     onSelectDate: (LocalDate) -> Unit,
@@ -140,9 +147,10 @@ fun TodayScreen(
                 onSyncClick = onSyncClick,
                 modifier = Modifier.staggeredEntrance(0),
             )
-            TodayDaySelector(
+            TodayWeekSelector(
                 selected = state.date,
                 today = today,
+                week = history.week(state.date),
                 onSelect = onSelectDate,
                 modifier = Modifier.staggeredEntrance(1),
             )
@@ -168,7 +176,11 @@ fun TodayScreen(
                         EmptyDayCard(onSyncClick, Modifier.staggeredEntrance(2))
                     } else {
                         ActivityHero(
-                            day,
+                            day = day,
+                            week = history.week(day.date),
+                            goals = history.goals.on(day.date),
+                            streak = history.currentStreak(today),
+                            today = today,
                             onClick = { onNavigate(Destination.Activity) },
                             modifier = Modifier.sharedContainer(SharedKeys.ACTIVITY, Radii.Hero, entranceIndex = 2),
                         )
@@ -231,11 +243,23 @@ private fun TodayHeader(syncLabel: String, refreshing: Boolean, onSyncClick: () 
     }
 }
 
-/** Bloc vert plein : anneaux, pas du jour, calories actives et objectif d'activité. */
+/**
+ * Tuile Pas (bloc vert plein) : jauge en arc de l'objectif de pas, pas du jour, barres de la semaine affichée,
+ * puis calories actives et objectif d'activité en jauges linéaires.
+ */
 @Composable
-private fun ActivityHero(day: DayUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ActivityHero(
+    day: DayUiState,
+    week: List<StepDay>,
+    goals: DailyGoals,
+    streak: Int,
+    today: LocalDate,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val activity = day.activity
     val steps = activity?.steps
+    val stepDay = StepDay(day.date, steps, goals.steps)
     val activeCalories = activity?.activityCalories?.let { it + (activity.trainingCalories ?: 0) }
     val goalRatio = activity?.achievedActivity?.let { achieved ->
         activity.activityGoal?.takeIf { it > 0f }?.let { achieved / it }
@@ -246,51 +270,105 @@ private fun ActivityHero(day: DayUiState, onClick: () -> Unit, modifier: Modifie
         modifier = modifier.fillMaxWidth(),
         contentColor = BoucleColors.OnPrimary,
         onClick = onClick,
-        onClickLabel = "Voir la forme",
-        contentPadding = PaddingValues(24.dp),
+        onClickLabel = "Voir l'historique des pas",
+        contentPadding = PaddingValues(22.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            TodayRings(
-                steps = steps?.let { it.toFloat() / STEP_GOAL },
-                calories = activeCalories?.let { it.toFloat() / ACTIVE_CALORIE_GOAL },
-                activityGoal = goalRatio,
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Pas · objectif ${formatThousands(goals.steps)}",
+                style = BoucleType.bodyStrong.copy(fontWeight = FontWeight.Bold),
+                color = ChartColors.RingSteps,
+                modifier = Modifier.weight(1f),
             )
+            if (streak >= 2) StreakChip(streak)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ArcGauge(
+                fraction = stepDay.fraction,
+                color = ChartColors.RingSteps,
+                trackColor = ChartColors.RingTrack,
+                modifier = Modifier
+                    .size(112.dp)
+                    .clearAndSetSemantics { },
+                strokeWidth = 12.dp,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row {
+                        AnimatedNumber(Math.round(stepDay.fraction * 100), BoucleType.valueL.copy(fontWeight = FontWeight.ExtraBold), Modifier.alignByBaseline())
+                        Text("${SleepFormat.NBSP}%", style = BoucleType.smallStrong, modifier = Modifier.alignByBaseline())
+                    }
+                    Text("de l'objectif", style = BoucleType.caption.copy(fontWeight = FontWeight.SemiBold), color = ChartColors.RingSteps)
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "Pas · sur ${formatThousands(STEP_GOAL)}",
-                    style = BoucleType.body.copy(fontWeight = FontWeight.SemiBold),
-                    color = ChartColors.RingSteps,
-                )
                 if (steps != null) {
                     AnimatedNumber(steps, BoucleType.heroXS)
                 } else {
                     Text("—", style = BoucleType.heroXS)
                 }
-                Spacer(Modifier.height(4.dp))
-                HeroLegend(
-                    color = ChartColors.RingCalories,
-                    text = activeCalories?.let { "${formatThousands(it)}${SleepFormat.NBSP}kcal actives" }
-                        ?: "Calories actives indisponibles",
-                )
-                HeroLegend(
-                    color = ChartColors.RingGoal,
-                    text = goalRatio?.let { "${Math.round(it * 100)}${SleepFormat.NBSP}% de l'objectif" }
-                        ?: "Objectif d'activité indisponible",
+                Text(
+                    when {
+                        steps == null -> "Aucune mesure de pas"
+                        stepDay.reached -> "Objectif atteint"
+                        else -> "Encore ${StepsFormat.steps(goals.steps - steps)}"
+                    },
+                    style = BoucleType.body.copy(fontWeight = FontWeight.SemiBold),
+                    color = ChartColors.RingSteps,
                 )
             }
+        }
+        StepBars(days = week, selected = day.date, today = today, height = 64.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HeroGauge(
+                label = "Calories actives",
+                value = activeCalories?.let { "${formatThousands(it)} / ${formatThousands(goals.activeCalories)}${SleepFormat.NBSP}kcal" } ?: "—",
+                fraction = activeCalories?.let { it.toFloat() / goals.activeCalories },
+                color = ChartColors.RingCalories,
+            )
+            HeroGauge(
+                label = "Objectif d'activité",
+                value = goalRatio?.let { "${Math.round(it * 100)}${SleepFormat.NBSP}%" } ?: "—",
+                fraction = goalRatio,
+                color = ChartColors.RingGoal,
+            )
         }
     }
 }
 
+/** Jauge linéaire de la tuile Pas : libellé à gauche, valeur à droite, barre dessous. */
 @Composable
-private fun HeroLegend(color: Color, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(
-            Modifier
-                .size(8.dp)
-                .background(color, CircleShape),
+private fun HeroGauge(label: String, value: String, fraction: Float?, color: Color) {
+    Column(Modifier.semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row {
+            Text(label, style = BoucleType.smallStrong, modifier = Modifier.weight(1f))
+            Text(value, style = BoucleType.smallStrong)
+        }
+        LinearGauge(fraction ?: 0f, color, ChartColors.RingTrack)
+    }
+}
+
+/** Pastille « Série de N j » : nombre de jours d'affilée à l'objectif de pas. */
+@Composable
+private fun StreakChip(days: Int) {
+    Row(
+        Modifier
+            .height(32.dp)
+            .background(ChartColors.StepsInset, CircleShape)
+            .padding(start = 4.dp, end = 12.dp)
+            .clearAndSetSemantics { contentDescription = "Série de $days jours à l'objectif de pas" },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        IconBadge(
+            BoucleIcons.Flame,
+            ChartColors.RingCalories,
+            MetricPalette.Energy.onContainer,
+            shape = BadgeShape.Sunny,
+            size = 26.dp,
+            iconSize = 14.dp,
         )
-        Text(text, style = BoucleType.smallStrong)
+        Text("Série de $days${SleepFormat.NBSP}j", style = BoucleType.smallStrong.copy(fontWeight = FontWeight.Bold))
     }
 }
 
@@ -312,8 +390,10 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                 label = "Sommeil",
                 icon = BoucleIcons.Moon,
                 colors = MetricPalette.Sleep,
+                shape = BadgeShape.Cookie,
                 radii = Radii.GridTopStart,
                 value = sleepScore?.total,
+                gauge = sleepScore?.total?.let { it / 100f },
                 detail = when {
                     sleepScore != null -> listOfNotNull(SleepFormat.bandLabel(sleepScore.band), asleep).joinToString(" · ")
                     asleep != null -> "$asleep dormies"
@@ -327,8 +407,10 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                 label = "Récupération",
                 icon = BoucleIcons.Shield,
                 colors = MetricPalette.Activity,
+                shape = BadgeShape.Clover,
                 radii = Radii.GridTopEnd,
                 value = recovery?.total,
+                gauge = recovery?.total?.let { it / 100f },
                 detail = recovery?.let { score ->
                     listOfNotNull(score.label, score.rmssdMs?.let { "VFC $it${SleepFormat.NBSP}ms" }).joinToString(" · ")
                 },
@@ -342,20 +424,24 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                 label = "Énergie",
                 icon = BoucleIcons.Bolt,
                 colors = MetricPalette.Energy,
+                shape = BadgeShape.Sunny,
                 radii = Radii.GridBottomStart,
                 value = battery?.current,
+                gauge = battery?.current?.let { it / 100f },
                 detail = battery?.let { it.wake?.let { wake -> "$wake au réveil" } ?: "Niveau actuel" },
                 hint = "Pas assez de mesures",
                 sharedKey = SharedKeys.ENERGY,
                 onClick = { onNavigate(Destination.Energy) },
             )
             MetricTile(
-                label = "Fréquence cardiaque",
+                label = "Cœur",
                 icon = BoucleIcons.Heart,
                 colors = MetricPalette.Heart,
+                shape = BadgeShape.Flower,
                 radii = Radii.GridBottomEnd,
                 value = restingHeartRate,
                 unit = "bpm",
+                range = day.heartRate?.let { it.min.toFloat()..it.max.toFloat() },
                 detail = restingHeartRate?.let { listOfNotNull("Au repos", day.heartRate?.max?.let { "max $it" }).joinToString(" · ") },
                 hint = "Aucune mesure",
                 sharedKey = SharedKeys.HEART,
@@ -366,14 +452,16 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
 }
 
 /**
- * Tuile de la grille. Sans [value], elle garde sa place et affiche « — » avec [hint] en sourdine ;
- * [detail] complète la valeur quand elle existe.
+ * Tuile de la grille : macaron de la métrique, valeur, puis [detail]. Un score sur 100 s'accompagne d'une
+ * demi-jauge ([gauge], de 0 à 1) ; la fréquence cardiaque d'une barre qui situe la plage du jour ([range], en bpm).
+ * Sans [value], la tuile garde sa place et affiche « — » avec [hint] en sourdine.
  */
 @Composable
 private fun RowScope.MetricTile(
     label: String,
     icon: ImageVector,
     colors: MetricColors,
+    shape: BadgeShape,
     radii: Radii,
     value: Int?,
     detail: String?,
@@ -381,7 +469,10 @@ private fun RowScope.MetricTile(
     sharedKey: String,
     onClick: () -> Unit,
     unit: String? = null,
+    gauge: Float? = null,
+    range: ClosedFloatingPointRange<Float>? = null,
 ) {
+    val track = colors.accent.copy(alpha = 0.22f)
     ExpressiveSurface(
         color = colors.container,
         radii = radii,
@@ -396,16 +487,30 @@ private fun RowScope.MetricTile(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            IconBadge(icon, colors.accent, Color.White, shape = shape, size = 32.dp, iconSize = 16.dp)
             Text(label, style = BoucleType.smallStrong)
         }
-        if (value != null) {
-            Row {
+        Row(verticalAlignment = Alignment.Bottom) {
+            if (value != null) {
                 AnimatedNumber(value, BoucleType.tileValue, Modifier.alignByBaseline())
                 unit?.let { Text("${SleepFormat.NBSP}$it", style = BoucleType.bodyStrong, modifier = Modifier.alignByBaseline()) }
+            } else {
+                Text("—", style = BoucleType.tileValue)
             }
-        } else {
-            Text("—", style = BoucleType.tileValue)
+            if (gauge != null) {
+                Spacer(Modifier.weight(1f))
+                HalfGauge(gauge, colors.accent, track, Modifier.clearAndSetSemantics { })
+            }
+        }
+        if (range != null) {
+            val span = HEART_SCALE_MAX - HEART_SCALE_MIN
+            LinearGauge(
+                fraction = (range.endInclusive - HEART_SCALE_MIN) / span,
+                color = colors.accent,
+                trackColor = track,
+                modifier = Modifier.clearAndSetSemantics { },
+                start = (range.start - HEART_SCALE_MIN) / span,
+            )
         }
         val muted = value == null && detail == null
         Text(
@@ -451,7 +556,7 @@ private fun WeightRow(body: BodySummary, date: LocalDate, radii: Radii, onClick:
         onClick = onClick,
         sharedKey = SharedKeys.BODY,
     ) {
-        IconBadge(BoucleIcons.Scale, MetricPalette.Body.container, MetricPalette.Body.onContainer)
+        IconBadge(BoucleIcons.Scale, MetricPalette.Body.container, MetricPalette.Body.onContainer, shape = BadgeShape.Clover)
     }
 }
 

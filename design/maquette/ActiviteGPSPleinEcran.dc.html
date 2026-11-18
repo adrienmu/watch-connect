@@ -8,12 +8,13 @@
 <body>
 <x-dc>
 <helmet>
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght,ROND@6..144,25..151,1..1000,0..100&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;font-variation-settings:'ROND' 100}
+button,input,select{font-variation-settings:inherit}
 </style>
 </helmet>
-<div style="width: 390px; height: 844px; overflow: hidden; background: #FBF8FF; font-family: 'Roboto Flex', Roboto, system-ui, sans-serif;">
+<div style="width: 390px; height: 844px; overflow: hidden; background: #FBF8FF; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif;">
 <dc-import name="ActiviteGPS" start-expanded="{{yes}}" hint-size="390px,844px"></dc-import>
 </div>
 </x-dc>
