@@ -86,6 +86,10 @@ interface HealthDao {
     @Query("SELECT sessionPath FROM training_route WHERE status = 'AVAILABLE'")
     fun routedSessionPaths(): Flow<List<String>>
 
+    /** Tous les tracés lisibles, pour la carte d'exploration. */
+    @Query("SELECT * FROM training_route WHERE status = 'AVAILABLE'")
+    fun availableTrainingRoutes(): Flow<List<TrainingRouteEntity>>
+
     @Query("DELETE FROM activity_edit WHERE sessionPath = :path")
     suspend fun deleteActivityEdit(path: String)
 

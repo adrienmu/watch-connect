@@ -545,6 +545,7 @@ private class FakeDao : CollectingSink(), HealthDao {
     override suspend fun activityEditNow(path: String): ActivityEditEntity? = unused()
     override fun recentTrainingSessions(limit: Int): Flow<List<TrainingSessionEntity>> = unused()
     override fun routedSessionPaths(): Flow<List<String>> = unused()
+    override fun availableTrainingRoutes(): Flow<List<TrainingRouteEntity>> = unused()
     override suspend fun deleteActivityEdit(path: String): Unit = unused()
     override suspend fun deleteTrainingSession(path: String): Unit = unused()
     override suspend fun deleteTrainingRoute(path: String): Unit = unused()
