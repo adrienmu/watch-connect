@@ -5,7 +5,7 @@ permalink: /confidentialite/
 
 # Politique de confidentialité de Boucle
 
-Dernière mise à jour : 17 novembre 2026
+Dernière mise à jour : 18 novembre 2026
 
 **Contact :** adrien.mussio@eurl-baam.fr
 
@@ -15,6 +15,7 @@ Dernière mise à jour : 17 novembre 2026
 - Pas de compte, pas de publicité, pas d'analyse d'audience, pas de pistage.
 - Boucle ne vend ni ne partage vos données avec qui que ce soit.
 - Dans Health Connect, Boucle ne fait que **lire** : elle n'écrit ni ne modifie rien.
+- Les données sont conservées **sur le téléphone uniquement, tant que vous gardez l'application** ; vous pouvez tout effacer à tout moment (voir « Durée de conservation »).
 
 ## Données traitées
 
@@ -33,6 +34,21 @@ Uniquement à afficher vos mesures et à calculer vos scores (sommeil, récupér
 
 L'utilisation par Boucle des informations reçues de Health Connect respecte la [politique relative aux données utilisateur de Google Play](https://support.google.com/googleplay/android-developer/answer/9888076), y compris ses exigences d'utilisation limitée : ces données ne sont ni vendues, ni utilisées pour la publicité, ni transmises à des tiers, et personne chez Boucle ne les consulte.
 
+### Usage de chaque donnée lue dans Health Connect
+
+| Donnée Health Connect | Fonction dans Boucle | Bénéfice pour vous |
+| --- | --- | --- |
+| Poids (Weight) | Écran Corps : dernière pesée, courbe sur 30 jours, évolution sur 7 et 30 jours | Suivre l'évolution de votre poids mesuré par votre balance |
+| Masse grasse (BodyFat) | Écran Corps : carte « Composition corporelle » (pourcentage et barre de répartition) | Voir la part de masse grasse mesurée par votre balance |
+| Masse maigre (LeanBodyMass) | Écran Corps : carte « Composition corporelle » | Suivre votre masse maigre à côté du poids |
+| Masse osseuse (BoneMass) | Écran Corps : carte « Composition corporelle » | Voir la masse osseuse mesurée par votre balance |
+| Eau corporelle (BodyWaterMass) | Écran Corps : carte « Composition corporelle » (masse hydrique) | Suivre votre hydratation mesurée par votre balance |
+| Saturation en oxygène (OxygenSaturation) | Écran Corps : carte « SpO2 · nuit » (moyenne et minimum de la nuit) | Consulter la saturation en oxygène nocturne mesurée par votre montre |
+| Pas (Steps) | Écrans Aujourd'hui et Activité : pas du jour et de la semaine ; calcul du score Énergie | Suivre votre activité quotidienne quand votre montre remplace le bracelet |
+| Distance | Écran Activité : distance du jour et de chaque séance | Connaître la distance parcourue par jour et par séance |
+
+Ces données ne servent à aucune autre fin que ces affichages et calculs, faits sur le téléphone.
+
 ## Où elles sont stockées
 
 Dans l'espace privé de l'application sur votre téléphone (base de données locale et préférences), isolé des autres applications par Android. Elles ne sont envoyées à aucun serveur.
@@ -45,6 +61,15 @@ La sauvegarde Android dans le cloud est désactivée pour Boucle : vos données 
 - **Export manuel**, puis import de l'archive dans Boucle sur le nouveau téléphone (voir plus bas).
 
 Si vous désinstallez l'application ou changez de téléphone sans transfert ni sauvegarde, l'historique stocké dans Boucle est perdu : le bracelet est vidé à chaque synchronisation, le téléphone en garde la seule copie.
+
+## Durée de conservation
+
+- **Données de santé (bracelet et Health Connect), profil et réglages :** conservés dans l'espace privé de l'application, sur votre téléphone, **tant que l'application est installée**, pour vous montrer votre historique et calculer vos tendances. Il n'y a pas de suppression automatique : l'historique n'existe qu'à cet endroit (le bracelet est vidé à chaque synchronisation).
+- **Effacement :** vous pouvez tout supprimer à tout moment (Réglages Android > Applications > Boucle > Stockage > Effacer les données). Désinstaller l'application supprime définitivement toutes ces données du téléphone. Retirer l'accès à Health Connect arrête toute nouvelle lecture ; pour supprimer aussi les mesures déjà lues, effacez les données de l'application.
+- **Sauvegardes automatiques :** les 7 plus récentes sont gardées dans le dossier que vous avez choisi, les plus anciennes sont supprimées par Boucle. Elles restent dans ce dossier, sous votre contrôle, même après désinstallation.
+- **Exports manuels :** conservés là où vous les avez enregistrés, jusqu'à ce que vous les supprimiez.
+- **Images de carte :** gardées en cache sur le téléphone ; Android peut les effacer à tout moment pour libérer de la place.
+- **Côté Boucle :** aucune donnée n'est stockée ni conservée sur un serveur, puisque rien n'est envoyé. Boucle ne conserve donc aucune de vos données en dehors de votre téléphone.
 
 ## Partage et services tiers
 
