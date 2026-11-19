@@ -33,6 +33,7 @@ import com.boucle.app.data.db.ExternalMeasurementEntity
 import com.boucle.app.data.db.HealthDao
 import com.boucle.app.domain.MeasurementType
 import com.boucle.app.domain.RouteStatus
+import com.boucle.app.withings.WithingsExport
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
@@ -125,6 +126,10 @@ class HealthConnectGateway(private val context: Context) {
             )
         }
         dao.upsertExternalMeasurements(measurements)
+        // La même mesure déjà importée de l'archive Withings laisse la place à celle de Health Connect.
+        measurements.mapNotNull { m -> MeasurementType.entries.firstOrNull { it.name == m.type }?.let { WithingsExport.measurementId(it, Instant.parse(m.time).epochSecond) } }
+            .chunked(DELETE_CHUNK)
+            .forEach { dao.deleteExternalMeasurements(it) }
         if (!replaceBand) return measurements.size
 
         val heart = readAll<HeartRateRecord>(granted, since, activityOrigin)
@@ -140,7 +145,7 @@ class HealthConnectGateway(private val context: Context) {
         }
         val hrv = measurements.filter { it.type == MeasurementType.HRV_RMSSD.name }.map { HcValue(Instant.parse(it.time), it.value) }
         val respiration = readAll<RespiratoryRateRecord>(granted, since, activityOrigin).map { HcValue(it.time, it.rate) }
-        val exercises = readAll<ExerciseSessionRecord>(granted, since, activityOrigin).map { record ->
+        val readExercises = readAll<ExerciseSessionRecord>(granted, since, activityOrigin).map { record ->
             val totals = sessionTotals(granted, record.startTime, record.endTime)
             HcExercise(
                 id = record.metadata.id,
@@ -161,6 +166,8 @@ class HealthConnectGateway(private val context: Context) {
         val activity = HealthConnectMapping.activitySamples(steps, zone).filter { keep(it.date) }
         val nights = HealthConnectMapping.nightlyMeasures(sleeps, heart, hrv, respiration)
         val daily = HealthConnectMapping.dailyActivity(dailyTotals(granted, from, LocalDate.now(zone)))
+        // Une séance déjà importée de l'archive Withings (même instant de départ) n'est pas reprise une seconde fois.
+        val exercises = readExercises.filterNot { dao.hasTrainingSession(WithingsExport.sessionPath(it.start.epochSecond)) }
         val training = HealthConnectMapping.trainingSessions(exercises, heart, zone).filter { keep(it.date) }
 
         dao.upsertSleep(sleeps)
@@ -305,6 +312,8 @@ class HealthConnectGateway(private val context: Context) {
         }
 
         const val PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
+        /** Identifiants par suppression, sous la limite de paramètres de SQLite. */
+        private const val DELETE_CHUNK = 500
         /** App Withings (Health Mate), seule source lue pour l'activité, la FC et le sommeil. */
         const val ACTIVITY_SOURCE = "com.withings.wiscale2"
 

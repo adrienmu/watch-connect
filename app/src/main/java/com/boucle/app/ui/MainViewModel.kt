@@ -68,6 +68,7 @@ import androidx.health.connect.client.records.ExerciseRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import com.boucle.app.healthconnect.HealthConnectAvailability
+import com.boucle.app.withings.WithingsImporter
 import com.boucle.app.polar.Connection
 import com.boucle.app.polar.LinkState
 import com.polar.sdk.api.PolarBleApi.PolarBleSdkFeature
@@ -243,6 +244,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     private val contentResolver = app.contentResolver
     private val exporter = DataExporter(dao)
     private val importer = DataImporter(database, settings)
+    private val withingsImporter = WithingsImporter(database, app.cacheDir)
     private val autoBackup = app.autoBackup
     private val backupKeys = app.backupKeys
     private val recorder = app.recorder
@@ -985,6 +987,15 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     fun onImportFilePicked(uri: Uri) {
         if (local.value.importing) return
         viewModelScope.launch {
+            // Archive d'export Withings : elle n'ajoute que ce qui manque, l'import part sans autre confirmation.
+            if (withingsImporter.isWithingsArchive(contentResolver, uri)) {
+                if (local.value.syncing) {
+                    local.update { it.copy(message = "Attends la fin de la synchronisation pour importer ton historique Withings") }
+                } else {
+                    runImport { withingsImporter.import(contentResolver, uri).message() }
+                }
+                return@launch
+            }
             // Fichier illisible : l'import le dira avec son message habituel.
             val encrypted = runCatching { importer.isEncrypted(contentResolver, uri) }.getOrDefault(false)
             local.update {
@@ -1016,7 +1027,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
         if (!current.pendingImportEncrypted) {
             passphrase?.wipe()
-            runImport { importer.import(contentResolver, uri) }
+            runImport { importer.import(contentResolver, uri).message() }
             return
         }
         if (passphrase == null) return
@@ -1042,19 +1053,20 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 return@launch
             }
             local.update { it.copy(importChecking = false) }
-            runImport { key.use { importer.importEncrypted(contentResolver, uri, it) } }
+            runImport { key.use { importer.importEncrypted(contentResolver, uri, it) }.message() }
         }
     }
 
-    private fun runImport(import: suspend () -> com.boucle.app.data.export.ImportSummary) {
+    /** Lance un import (sauvegarde ou archive Withings) ; [import] rend le message à montrer une fois terminé. */
+    private fun runImport(import: suspend () -> String) {
         local.update {
             it.copy(pendingImport = null, pendingImportEncrypted = false, importPassphraseError = null, importing = true, message = null)
         }
         viewModelScope.launch {
             try {
-                val summary = import()
+                val message = import()
                 onDataChanged()
-                local.update { it.copy(message = summary.message()) }
+                local.update { it.copy(message = message) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: WrongPassphraseException) {

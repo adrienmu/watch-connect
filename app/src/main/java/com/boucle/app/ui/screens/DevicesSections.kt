@@ -208,6 +208,7 @@ private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
  * Carte de réglages : configuration du bracelet (bracelet connecté), objectifs quotidiens, carte d'exploration, mode démo, export, import,
+ * import de l'historique Withings,
  * sauvegarde automatique et effacement des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
@@ -249,6 +250,7 @@ internal fun DevicesSettingsCard(
         add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
         add(SettingsRow("import") { ImportRow(importing, onImport) })
+        add(SettingsRow("withings") { WithingsImportRow(importing, onImport) })
         add(
             SettingsRow("backup") {
                 AutoBackupRow(
@@ -375,6 +377,34 @@ private fun ImportRow(importing: Boolean, onImport: () -> Unit) {
             Text("Importer une sauvegarde", style = rowTitleStyle)
             Text(
                 "Archive créée par « Exporter mes données » : ajoute seulement ce qui manque",
+                style = BoucleType.small,
+                color = BoucleColors.OnSurfaceVariant,
+            )
+        }
+        SetupOutlinedButton(if (importing) "Import…" else "Importer", onImport, enabled = !importing)
+    }
+}
+
+/**
+ * Import de tout l'historique Withings (montre et balance) depuis l'archive d'export du compte : Health Connect ne
+ * remonte que quelques semaines en arrière. Même sélecteur de fichiers que l'import d'une sauvegarde : le contenu du
+ * fichier choisi est reconnu.
+ */
+@Composable
+private fun WithingsImportRow(importing: Boolean, onImport: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Importer mon historique Withings", style = rowTitleStyle)
+            Text(
+                "Archive ZIP reçue par e-mail (app Withings : Profil, Réglages, Exporter mes données) : " +
+                    "fréquence cardiaque, pas, sommeil, séances et pesées, sans toucher aux jours déjà là",
                 style = BoucleType.small,
                 color = BoucleColors.OnSurfaceVariant,
             )

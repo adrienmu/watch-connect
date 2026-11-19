@@ -98,6 +98,7 @@ import com.boucle.app.domain.RouteSource
 import com.boucle.app.domain.RouteStats
 import com.boucle.app.domain.RouteStatus
 import com.boucle.app.domain.Vo2MaxEstimation
+import com.boucle.app.withings.WithingsExport
 import com.boucle.app.ui.RouteAccess
 import com.boucle.app.ui.SessionDetailUiState
 import com.boucle.app.ui.PHONE_SESSION_PREFIX
@@ -440,12 +441,14 @@ private fun DetailHeader(title: String, session: TrainingSessionEntity, state: S
         val fromPhone = session.path.startsWith(PHONE_SESSION_PREFIX)
         val detected = session.path.startsWith(DetectedActivity.PATH_PREFIX)
         val fromHealthConnect = session.path.startsWith("healthconnect:") || state.routeSource == RouteSource.HEALTH_CONNECT
-        val fromBand = !session.path.startsWith("healthconnect:") && !fromPhone
+        val fromWithings = session.path.startsWith(WithingsExport.PREFIX)
+        val fromBand = !session.path.startsWith("healthconnect:") && !fromPhone && !fromWithings
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (fromPhone) SourceChip(BoucleIcons.Phone, "Téléphone")
             if (fromBand) SourceChip(BoucleIcons.Band, if (detected) "Détectée" else "Bracelet")
             state.terrain?.let { SourceChip(BoucleIcons.Mountain, it.label) }
             if (fromHealthConnect) SourceChip(BoucleIcons.Refresh, "Health Connect")
+            if (fromWithings) SourceChip(BoucleIcons.Refresh, "Withings")
             if (state.routeStatus == RouteStatus.AVAILABLE) SourceChip(BoucleIcons.Pin, "GPS", filled = true)
         }
     }
@@ -936,6 +939,7 @@ private fun SourceNote(session: TrainingSessionEntity, state: SessionDetailUiSta
         session.path.startsWith(PHONE_SESSION_PREFIX) -> "Enregistré par Boucle avec le GPS du téléphone."
         session.path.startsWith(DetectedActivity.PATH_PREFIX) -> "Activité détectée dans les pas du bracelet, sans tracé GPS."
         fromHealthConnect -> "Enregistré par la montre, synchronisé via Health Connect."
+        session.path.startsWith(WithingsExport.PREFIX) -> "Enregistré par la montre, importé de votre archive Withings."
         state.routeSource == RouteSource.HEALTH_CONNECT -> "Enregistré par le bracelet, synchronisé via Health Connect."
         else -> "Enregistré par le bracelet, synchronisé en Bluetooth."
     }

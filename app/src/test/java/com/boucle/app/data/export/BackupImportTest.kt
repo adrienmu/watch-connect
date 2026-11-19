@@ -550,6 +550,7 @@ private class FakeDao : CollectingSink(), HealthDao {
     override suspend fun deleteTrainingSession(path: String): Unit = unused()
     override suspend fun deleteTrainingRoute(path: String): Unit = unused()
     override suspend fun deleteTrainingExercises(path: String): Unit = unused()
+    override suspend fun deleteExternalMeasurements(ids: List<String>): Unit = unused()
     override suspend fun hasTrainingSession(path: String) = sessions.any { it.path == path }
 
     override suspend fun upsertDailyActivity(items: List<DailyActivityEntity>) { daily += items }
