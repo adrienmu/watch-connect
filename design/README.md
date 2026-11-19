@@ -13,6 +13,7 @@ sur le canevas. L'app doit rester fidèle à ces écrans.
 | Sommeil | `Sommeil.dc.html` | `SleepScreen` |
 | Récupération | `Recuperation.dc.html` | `RecoveryScreen` |
 | Énergie | `Energie.dc.html` | `EnergyScreen` |
+| Bien-être (score sur 7 jours, stress du jour et sur 4 semaines, explications) | `BienEtre.dc.html` | `WellbeingScreen` |
 | Fréquence cardiaque | `Coeur.dc.html` | `HeartScreen` |
 | Forme (historique des pas : semaine, mois) | `Activite.dc.html`, `ActiviteMois.dc.html` | `ActivityScreen` (`StepsHistoryTile`) |
 | VO2max | `Vo2max.dc.html` | `Vo2MaxScreen` |
@@ -42,6 +43,8 @@ Conventions de passage de la maquette au code :
   tuiles OpenStreetMap (`ui/map/`), à la place du fond dessiné de la maquette.
 - Police : Google Sans Flex, axe d'arrondi « ROND » à 100 (`app/src/main/res/font/google_sans_flex.ttf`, licence OFL
   dans `app/licences/`).
+- Bien-être et stress : palette prune (`MetricPalette.Wellbeing`), zones de stress du plus clair (repos) au plus
+  foncé (élevé) (`ChartColors.Stress…`).
 - Macarons (formes festonnées `MaterialShapes`) et jauges (arc, demi-arc, anneau, linéaire) :
   `ui/components/Expressive.kt` (`BadgeShape`) et `ui/components/Gauges.kt`.
 - Icônes au trait : `ui/theme/BoucleIcons.kt` (mêmes tracés SVG que la maquette).

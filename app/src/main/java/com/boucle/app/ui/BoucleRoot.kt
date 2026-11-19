@@ -84,6 +84,7 @@ import com.boucle.app.ui.screens.PairingScreen
 import com.boucle.app.ui.screens.GoalsScreen
 import com.boucle.app.ui.screens.ProfileScreen
 import com.boucle.app.ui.screens.RecoveryScreen
+import com.boucle.app.ui.screens.WellbeingScreen
 import com.boucle.app.ui.screens.SleepScreen
 import com.boucle.app.ui.screens.TodayScreen
 import com.boucle.app.ui.screens.Vo2MaxScreen
@@ -551,6 +552,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                         )
                         Destination.Recovery -> RecoveryScreen(dayState, ::back, screenModifier)
                         Destination.Energy -> EnergyScreen(dayState, ::back, screenModifier)
+                        Destination.Wellbeing -> WellbeingScreen(dayState, ::back, screenModifier)
                         Destination.Heart -> HeartScreen(dayState, ::back, screenModifier)
                         Destination.Vo2Max -> Vo2MaxScreen(dayState, ::back, ::navigate, screenModifier)
                         Destination.Body -> BodyScreen(dayState, deviceState.healthConnect, ::back, ::navigate, screenModifier)

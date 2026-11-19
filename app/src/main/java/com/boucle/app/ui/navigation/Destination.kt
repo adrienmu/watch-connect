@@ -8,6 +8,8 @@ enum class Destination(val isTab: Boolean) {
     Devices(true),
     Recovery(false),
     Energy(false),
+    /** Score de bien-être, stress du jour et tendance sur 4 semaines. */
+    Wellbeing(false),
     Heart(false),
     Vo2Max(false),
     Body(false),

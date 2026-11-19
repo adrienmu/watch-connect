@@ -17,6 +17,7 @@ import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.SleepScore
 import com.boucle.app.domain.Spo2Stats
 import com.boucle.app.domain.Vo2MaxEstimate
+import com.boucle.app.domain.WellbeingDay
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -63,6 +64,8 @@ data class DayUiState(
     val sleepScore: SleepScore? = null,
     val recovery: RecoveryScore? = null,
     val battery: BodyBatteryDay? = null,
+    /** Bien-être sur 7 jours et stress sur 4 semaines ; `null` tant qu'il n'est pas calculé. */
+    val wellbeing: WellbeingDay? = null,
     val vo2Max: Vo2MaxEstimate? = null,
     val body: BodySummary? = null,
     val spo2: Spo2Stats? = null,

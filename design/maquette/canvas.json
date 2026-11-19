@@ -14,7 +14,7 @@
       "x": 0,
       "y": 0,
       "w": 390,
-      "h": 1270,
+      "h": 1444,
       "title": "Aujourd'hui",
       "is_interactive": true
     },
@@ -257,6 +257,14 @@
       "h": 844,
       "title": "Carte d'exploration — aucun tracé",
       "is_interactive": true
+    },
+    "BienEtre.dc.html": {
+      "x": 3260,
+      "y": 0,
+      "w": 390,
+      "h": 2260,
+      "title": "Bien-être",
+      "is_interactive": true
     }
   },
   "order": [
@@ -290,7 +298,8 @@
     "ActiviteModifier.dc.html",
     "Exploration.dc.html",
     "ExplorationLarge.dc.html",
-    "ExplorationVide.dc.html"
+    "ExplorationVide.dc.html",
+    "BienEtre.dc.html"
   ],
   "notes": {
     "t1": {

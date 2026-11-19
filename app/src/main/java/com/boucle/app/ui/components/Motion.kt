@@ -44,6 +44,7 @@ object SharedKeys {
     const val ACTIVITY = "metric-activity"
     const val BODY = "metric-body"
     const val VO2MAX = "metric-vo2max"
+    const val WELLBEING = "metric-wellbeing"
 }
 
 /**

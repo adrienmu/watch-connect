@@ -41,7 +41,7 @@ Quand vous lancez une marche, une course ou une sortie vélo depuis Boucle, l'ap
 
 ## À quoi servent ces données
 
-Uniquement à afficher vos mesures et à calculer vos scores (sommeil, récupération, Énergie, VO2max estimé, stress) sur votre téléphone. Elles ne servent ni à la publicité, ni au profilage, ni à des décisions automatisées vous concernant.
+Uniquement à afficher vos mesures et à calculer vos scores (sommeil, récupération, Énergie, VO2max estimé, stress, bien-être) sur votre téléphone. Elles ne servent ni à la publicité, ni au profilage, ni à des décisions automatisées vous concernant.
 
 L'utilisation par Boucle des informations reçues de Health Connect respecte la [politique relative aux données utilisateur de Google Play](https://support.google.com/googleplay/android-developer/answer/9888076), y compris ses exigences d'utilisation limitée : ces données ne sont ni vendues, ni utilisées pour la publicité, ni transmises à des tiers, et personne chez Boucle ne les consulte.
 

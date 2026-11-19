@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Boucle — Bien-être</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,ROND@6..144,1..1000,0..100&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-variation-settings:'ROND' 100}
+button{font:inherit;font-variation-settings:inherit;color:inherit;cursor:pointer}
+a{color:#7B3486}a:hover{color:#43154A}
+</style>
+</helmet>
+<div style="width: 390px; height: 2260px; box-sizing: border-box; display: flex; flex-direction: column; background: #F2F5F1; color: #16201B; font-family: 'Google Sans Flex', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+<a href="Main.dc.html" aria-label="Retour à Aujourd'hui" style="width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #16201B">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+</a>
+<h1 style="margin: 0; font-size: 26px; font-weight: 700">Bien-être</h1>
+</header>
+
+<main style="display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 24px">
+
+<section style="display: flex; flex-direction: column; gap: 16px; padding: 28px 24px; border-radius: 48px; background: #F1E1F2; color: #43154A">
+<div style="display: flex; align-items: flex-end; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">Score de bien-être · 7 jours</span>
+<span style="font-size: 120px; font-weight: 800; line-height: 0.82">72</span>
+</div>
+<span style="padding: 10px 18px; border-radius: 999px; background: #FFFFFF; color: #43154A; font-size: 18px; font-weight: 800">Équilibré</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div role="img" aria-label="Échelle : À surveiller, Fragile, Équilibré, Serein. Niveau actuel : Équilibré" style="display: flex; gap: 3px; height: 12px">
+<div style="flex: 1; border-radius: 999px 4px 4px 999px; background: #FFFFFF"></div>
+<div style="flex: 1; border-radius: 4px; background: #FFFFFF"></div>
+<div style="flex: 1; border-radius: 999px; background: #7B3486"></div>
+<div style="flex: 1; border-radius: 4px 999px 999px 4px; background: #FFFFFF"></div>
+</div>
+<div style="display: flex; gap: 3px; font-size: 12px; text-align: center">
+<span style="flex: 1">À surveiller</span><span style="flex: 1">Fragile</span><span style="flex: 1; font-weight: 800">Équilibré</span><span style="flex: 1">Serein</span>
+</div>
+</div>
+<span style="font-size: 14px; line-height: 1.4">Ton stress monte par moments, puis il redescend : ton corps récupère bien.</span>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; border-radius: 28px; background: #FFFFFF">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 20px; font-weight: 700">Stress aujourd'hui</h2>
+<span style="font-size: 15px; font-weight: 700; color: #7B3486">34 · Faible</span>
+</div>
+<div role="img" aria-label="Stress par demi-heure de 6 h à 22 h : calme le matin, pic moyen à élevé entre 14 h et 16 h, retour au calme en soirée" style="display: flex; align-items: flex-end; gap: 3px; height: 110px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="32">
+<span style="flex: 1 1 0; height: {{b.h}}px; border-radius: 4px; background: {{b.c}}"></span>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #55635B">
+<span>6 h</span><span>10 h</span><span>14 h</span><span>18 h</span><span>22 h</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #55635B">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #E3C8E8"></span>Repos 0–25</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #C79AD0"></span>Faible 26–50</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #8F4A9B"></span>Moyen 51–75</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #43154A"></span>Élevé 76–100</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px; padding: 18px 16px; border-radius: 28px; background: #FFFFFF">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 20px; font-weight: 700">Sur 4 semaines</h2>
+<span style="font-size: 13px; color: #55635B">stress moyen par jour</span>
+</div>
+<div style="position: relative; height: 96px">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 27px; height: 15px; border-radius: 6px; background: #F2F5F1"></div>
+<div role="img" aria-label="Stress moyen de chacun des 28 derniers jours : 3 de stress moyen ou élevé sur 28 mesurés" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: flex-end; gap: 3px">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="28">
+<span style="flex: 1 1 0; height: {{d.h}}px; border-radius: 4px; background: {{d.c}}"></span>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #55635B">
+<span>22 oct.</span><span>28 oct.</span><span>4 nov.</span><span>11 nov.</span><span>18 nov.</span>
+</div>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #55635B"><span style="width: 18px; height: 10px; border-radius: 3px; background: #F2F5F1; border: 1px solid #C9D3CC"></span>Ta zone habituelle</span>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 20px; background: #F1E1F2; color: #43154A">
+<span style="font-size: 16px; font-weight: 800">Pas de stress installé</span>
+<span style="font-size: 14px; line-height: 1.45">3 jours de stress moyen ou élevé sur 28 : ton stress redescend. Boucle parle de stress installé à partir de 14 jours sur 28.</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; padding: 6px 16px; border-radius: 32px; background: #FFFFFF">
+<h2 style="margin: 0; padding: 14px 0 4px; font-size: 20px; font-weight: 700">Ce qui compose ton score</h2>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">Stress en journée</span>
+<span style="font-size: 24px; font-weight: 700">38</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 68%; height: 8px; border-radius: 999px; background: #7B3486"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #E9D3EC"></div></div>
+<span style="font-size: 13px; color: #55635B">Moyenne sur 7 jours · faible</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">VFC nocturne</span>
+<span style="font-size: 24px; font-weight: 700">46 ms</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 74%; height: 8px; border-radius: 999px; background: #7B3486"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #E9D3EC"></div></div>
+<span style="font-size: 13px; color: #55635B">Référence 45 ms · dans ta normale</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #E3E9E4">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">Retour au calme</span>
+<span style="font-size: 24px; font-weight: 700">32 %</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 64%; height: 8px; border-radius: 999px; background: #7B3486"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #E9D3EC"></div></div>
+<span style="font-size: 13px; color: #55635B">Part du temps d'éveil mesuré en zone de repos</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 0">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">Sommeil</span>
+<span style="font-size: 24px; font-weight: 700">79</span>
+</div>
+<div style="display: flex; gap: 4px"><div style="width: 79%; height: 8px; border-radius: 999px; background: #7B3486"></div><div style="flex: 1; height: 8px; border-radius: 999px; background: #E9D3EC"></div></div>
+<span style="font-size: 13px; color: #55635B">Score moyen des 7 dernières nuits</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; padding: 10px 4px 8px; font-size: 20px; font-weight: 700">Comprendre</h2>
+
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border-radius: 24px 24px 6px 6px">
+<button onClick="{{toggle.vfc}}" aria-expanded="{{open.vfc}}" style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px 16px; border: 0; background: transparent; text-align: left">
+<span style="flex-grow: 1; font-size: 16px; font-weight: 700">La VFC, c'est quoi ?</span>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#55635B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<sc-if value="{{open.vfc}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.5; color: #2B3530">Ton cœur ne bat pas comme un métronome : l'écart entre deux battements change sans cesse de quelques millisecondes. C'est la variabilité de la fréquence cardiaque (VFC). Au calme, le « frein » de ton système nerveux (le nerf vague) domine et ces écarts sont grands. Sous stress, l'« accélérateur » prend la main : le cœur bat plus régulièrement et la VFC baisse. Boucle compare ta VFC à ta propre normale des 7 derniers jours.</p>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border-radius: 6px">
+<button onClick="{{toggle.inflam}}" aria-expanded="{{open.inflam}}" style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px 16px; border: 0; background: transparent; text-align: left">
+<span style="flex-grow: 1; font-size: 16px; font-weight: 700">Stress chronique et inflammation</span>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#55635B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<sc-if value="{{open.inflam}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px">
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #2B3530">Un pic de stress est normal : il mobilise ton énergie, puis il retombe. Le problème, c'est le stress qui ne redescend plus pendant des semaines. Le cortisol reste alors élevé et ton corps finit par moins bien y répondre : le système immunitaire libère trop de protéines inflammatoires.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="padding: 6px 12px; border-radius: 999px; background: #F1E1F2; color: #43154A; font-size: 13px; font-weight: 700">IL-6</span>
+<span style="padding: 6px 12px; border-radius: 999px; background: #F1E1F2; color: #43154A; font-size: 13px; font-weight: 700">TNF-α</span>
+<span style="padding: 6px 12px; border-radius: 999px; background: #F1E1F2; color: #43154A; font-size: 13px; font-weight: 700">Protéine C-réactive (CRP)</span>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #2B3530">Cette inflammation discrète mais permanente est associée, sur le long terme, à plus de maladies cardiovasculaires, de diabète de type 2 et de dépression. Le nerf vague freine normalement l'inflammation : une VFC basse pendant longtemps est le signe que ce frein travaille moins.</p>
+</div>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border-radius: 6px">
+<button onClick="{{toggle.mental}}" aria-expanded="{{open.mental}}" style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px 16px; border: 0; background: transparent; text-align: left">
+<span style="flex-grow: 1; font-size: 16px; font-weight: 700">Et la surcharge mentale ?</span>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#55635B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<sc-if value="{{open.mental}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.5; color: #2B3530">Ton corps ne distingue pas un danger physique d'une tête trop pleine : trop de tâches en même temps, des décisions en continu, des ruminations, aucune vraie pause. Il réagit de la même façon, même assis à un bureau. Une charge mentale qui dure entretient donc le même mécanisme que le stress chronique. C'est pourquoi Boucle regarde surtout le stress mesuré quand tu ne bouges pas.</p>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border-radius: 6px 6px 24px 24px">
+<button onClick="{{toggle.limites}}" aria-expanded="{{open.limites}}" style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px 16px; border: 0; background: transparent; text-align: left">
+<span style="flex-grow: 1; font-size: 16px; font-weight: 700">Ce que le score ne dit pas</span>
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#55635B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<sc-if value="{{open.limites}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.5; color: #2B3530">Boucle ne mesure ni le cortisol ni l'inflammation : seule une prise de sang le peut. Le score est une tendance, pas un diagnostic. L'alcool, une maladie, la caféine ou une nuit courte font aussi baisser la VFC. Si tu te sens épuisé ou dépassé depuis plusieurs semaines, parles-en à un médecin, quel que soit ton score.</p>
+</sc-if>
+</div>
+</section>
+
+<p style="margin: 0; padding: 0 4px; font-size: 13px; line-height: 1.45; color: #55635B">Calculé sur ton téléphone à partir de la VFC mesurée par ton bracelet, comparée à tes propres habitudes.</p>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2260}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { open: 'inflam' };
+}
+renderVals() {
+var self = this;
+var vals = [18, 22, 30, 41, 36, 28, 24, 33, 45, 48, 39, 30, 22, 18, 27, 44, 58, 72, 81, 66, 52, 40, 35, 31, 26, 22, 28, 24, 19, 16, 14, 12];
+var bars = vals.map(function (v) {
+return { h: Math.max(8, Math.round(v * 1.1)), c: v <= 25 ? '#E3C8E8' : v <= 50 ? '#C79AD0' : v <= 75 ? '#8F4A9B' : '#43154A' };
+});
+var open = {}, toggle = {};
+['vfc', 'inflam', 'mental', 'limites'].forEach(function (k) {
+open[k] = self.state.open === k;
+toggle[k] = function () { self.setState({ open: self.state.open === k ? null : k }); };
+});
+var month = [34, 31, 38, 36, 29, 27, 33, 35, 40, 37, 32, 30, 28, 36, 39, 34, 31, 33, 29, 35, 38, 28, 52, 56, 51, 24, 21, 34];
+var days = month.map(function (v) {
+return { h: Math.max(8, Math.round(v * 0.96)), c: v <= 25 ? '#E3C8E8' : v <= 50 ? '#C79AD0' : v <= 75 ? '#8F4A9B' : '#43154A' };
+});
+return { bars: bars, days: days, open: open, toggle: toggle };
+}
+}
+</script>
+</body>
+</html>

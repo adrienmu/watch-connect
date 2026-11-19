@@ -4,7 +4,7 @@ title: Boucle
 
 # Boucle : Santé, confidentialité
 
-Boucle affiche et analyse sur votre téléphone les données de votre bracelet connecté : sommeil, fréquence cardiaque, récupération, activité, VO2max estimé.
+Boucle affiche et analyse sur votre téléphone les données de votre bracelet connecté : sommeil, fréquence cardiaque, récupération, stress et bien-être, activité, VO2max estimé.
 
 ## Tout reste en local
 
