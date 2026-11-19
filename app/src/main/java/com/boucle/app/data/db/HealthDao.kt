@@ -102,6 +102,10 @@ interface HealthDao {
     @Query("DELETE FROM training_exercise WHERE sessionPath = :path")
     suspend fun deleteTrainingExercises(path: String)
 
+    /** Au plus quelques centaines d'identifiants par appel (limite de SQLite sur les paramètres). */
+    @Query("DELETE FROM external_measurement WHERE id IN (:ids)")
+    suspend fun deleteExternalMeasurements(ids: List<String>)
+
     @Query("SELECT EXISTS(SELECT 1 FROM training_session WHERE path = :path)")
     suspend fun hasTrainingSession(path: String): Boolean
 

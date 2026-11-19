@@ -61,7 +61,14 @@ data class HcExercise(
     val route: HcRoute = HcRoute.None,
 )
 
-data class HcDayTotals(val date: LocalDate, val steps: Long?, val distanceMeters: Double?, val activeCalories: Double?)
+data class HcDayTotals(
+    val date: LocalDate,
+    val steps: Long?,
+    val distanceMeters: Double?,
+    val activeCalories: Double?,
+    /** Calories du métabolisme de base, quand la source les donne (archive Withings). */
+    val bmrCalories: Double? = null,
+)
 
 /**
  * Traduit les données de la montre (via Health Connect) dans les tables remplies d'habitude par le bracelet
@@ -110,18 +117,19 @@ object HealthConnectMapping {
                 t = stepEnd
             }
         }
-        return perDay.toSortedMap().map { (date, minutes) ->
-            ActivitySamplesEntity(
-                date = date.toString(),
-                startTime = date.atStartOfDay().toString(),
-                stepIntervalSec = 60,
-                stepSamples = minutes.joinToString(",") { it.roundToInt().toString() },
-                metIntervalSec = 60,
-                metSamples = minutes.joinToString(",") { "%.1f".format(java.util.Locale.ROOT, metFromCadence(it)) },
-                activityInfo = "",
-            )
-        }
+        return perDay.toSortedMap().map { (date, minutes) -> activitySamplesOf(date, minutes) }
     }
+
+    /** Bloc d'une journée à partir de ses pas à la minute ([minutes] : 1 440 valeurs depuis minuit). */
+    fun activitySamplesOf(date: LocalDate, minutes: DoubleArray) = ActivitySamplesEntity(
+        date = date.toString(),
+        startTime = date.atStartOfDay().toString(),
+        stepIntervalSec = 60,
+        stepSamples = minutes.joinToString(",") { it.roundToInt().toString() },
+        metIntervalSec = 60,
+        metSamples = minutes.joinToString(",") { "%.1f".format(java.util.Locale.ROOT, metFromCadence(it)) },
+        activityInfo = "",
+    )
 
     /**
      * MET estimé d'après la cadence (pas/min), faute de mesure d'effort : repos 1,2, marche ≈ 1,2 + 0,025 × cadence
@@ -196,16 +204,26 @@ object HealthConnectMapping {
         val breath = respiration.filter { during(it.time) && it.value > 0 }.map { it.value }
         val meanRri = hr.takeIf { it.size >= MIN_NIGHT_HR_SAMPLES }?.let { (60_000.0 / it.average()).roundToInt() }
         val meanRmssd = rmssd.takeIf { it.isNotEmpty() }?.average()?.roundToInt()
-        if (meanRri == null && meanRmssd == null) return@mapNotNull null
-        NightlyRechargeEntity(
+        nightlyMeasure(
             date = sleep.date,
+            meanRriMs = meanRri,
+            meanRmssdMs = meanRmssd,
+            meanRespirationIntervalMs = breath.takeIf { it.isNotEmpty() }?.let { (60_000.0 / it.average()).roundToInt() },
+        )
+    }
+
+    /** Mesures d'une nuit sans statut Polar ; `null` sans FC ni VFC. */
+    fun nightlyMeasure(date: String, meanRriMs: Int?, meanRmssdMs: Int?, meanRespirationIntervalMs: Int?): NightlyRechargeEntity? {
+        if (meanRriMs == null && meanRmssdMs == null) return null
+        return NightlyRechargeEntity(
+            date = date,
             ansStatus = null,
             recoveryIndicator = null,
             recoveryIndicatorSubLevel = null,
             ansRate = null,
-            meanRriMs = meanRri,
-            meanRmssdMs = meanRmssd,
-            meanRespirationIntervalMs = breath.takeIf { it.isNotEmpty() }?.let { (60_000.0 / it.average()).roundToInt() },
+            meanRriMs = meanRriMs,
+            meanRmssdMs = meanRmssdMs,
+            meanRespirationIntervalMs = meanRespirationIntervalMs,
             baselineRriMs = null,
             baselineRriSd = null,
             baselineRmssdMs = null,
@@ -219,14 +237,14 @@ object HealthConnectMapping {
     }
 
     fun dailyActivity(totals: List<HcDayTotals>): List<DailyActivityEntity> = totals
-        .filter { it.steps != null || it.distanceMeters != null || it.activeCalories != null }
+        .filter { it.steps != null || it.distanceMeters != null || it.activeCalories != null || it.bmrCalories != null }
         .map {
             DailyActivityEntity(
                 date = it.date.toString(),
                 steps = it.steps?.toInt(),
                 activityCalories = it.activeCalories?.roundToInt(),
                 trainingCalories = null,
-                bmrCalories = null,
+                bmrCalories = it.bmrCalories?.roundToInt(),
                 distanceMeters = it.distanceMeters?.toFloat(),
                 activityGoal = null,
                 achievedActivity = null,

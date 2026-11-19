@@ -70,6 +70,9 @@ class SyncEngine(
                 val entities = api.getDailySummaryData(deviceId, from, to).mapNotNull {
                     it.toEntity(fallbackSteps = steps[it.date], fallbackDistance = distances[it.date])
                 }
+                    // Un jour sans rien de mesuré (bracelet pas encore porté) ne remplace pas le jour déjà en base,
+                    // par exemple celui de l'historique Withings importé avant de passer au bracelet.
+                    .filterNot { (it.steps ?: 0) == 0 && (it.activityCalories ?: 0) == 0 && (it.distanceMeters ?: 0f) == 0f }
                 dao.upsertDailyActivity(entities)
                 entities.size
             }

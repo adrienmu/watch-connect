@@ -278,7 +278,7 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                 stack = listOf(Destination.Devices, Destination.Pairing)
                 permissionLauncher.launch(bluetoothPermissions)
             },
-            onTryDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
+            onContinueWithoutBand = { viewModel.skipOnboarding { stack = listOf(Destination.Devices) } },
             modifier = Modifier.fillMaxSize(),
         )
         return
@@ -533,7 +533,6 @@ fun BoucleRoot(viewModel: MainViewModel = viewModel(factory = MainViewModel.Fact
                             onInstallHealthConnect = {
                                 runCatching { context.startActivity(viewModel.healthConnectInstallIntent()) }
                             },
-                            onLoadDemo = { viewModel.loadDemo { stack = listOf(Destination.Today) } },
                             onExportData = { exportLauncher.launch(viewModel.exportFileName()) },
                             // Archive .zip ou sauvegarde chiffrée .boucle, dont le type annoncé varie selon le
                             // fournisseur : le contenu est reconnu à l'import.

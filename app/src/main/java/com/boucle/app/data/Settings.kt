@@ -41,13 +41,14 @@ data class AppSettings(
     val lastHealthConnectSyncAt: String? = null,
     /** Jour de la dernière lecture Health Connect réussie (yyyy-MM-dd), pour reprendre à partir de là. */
     val lastHealthConnectSyncedDate: String? = null,
-    /** Vrai une fois l'écran de première ouverture passé (Bluetooth autorisé ou démo chargée). */
+    /** Vrai une fois l'écran de première ouverture passé (Bluetooth autorisé, ou « Continuer sans bracelet »). */
     val onboardingDone: Boolean = false,
     val backup: BackupSettings = BackupSettings(),
     /** Augmente à chaque modification des données (synchro, lecture Health Connect, import) : décide des sauvegardes. */
     val dataVersion: Long = 0,
     /**
-     * Vrai depuis le chargement de la démo jusqu'à « Tout effacer » : la base contient des données fictives, que la
+     * Vrai depuis le chargement de la démo (anciennes versions : le mode démo a été retiré) jusqu'à « Tout effacer »
+     * ou l'import de l'historique Withings : la base contient des données fictives, que la
      * sauvegarde (automatique ou manuelle) ne doit ni copier ni laisser évincer les vraies sauvegardes du dossier.
      */
     val demoMode: Boolean = false,

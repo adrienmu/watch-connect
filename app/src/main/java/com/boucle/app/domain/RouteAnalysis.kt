@@ -29,6 +29,8 @@ enum class RouteSource {
     HEALTH_CONNECT,
     /** GPS du téléphone, activité lancée depuis l'app. */
     PHONE,
+    /** Tracé repris de l'archive d'export Withings. */
+    WITHINGS,
 }
 
 /** Point GPS horodaté, avec la FC mesurée à cet instant quand on la connaît. */

@@ -56,6 +56,7 @@ class PrivacyPolicyActivity : ComponentActivity() {
 
     companion object {
         const val POLICY_URL = "https://adrienmu.github.io/watch-connect/confidentialite/"
+        const val TERMS_URL = "https://adrienmu.github.io/watch-connect/conditions/"
     }
 }
 
