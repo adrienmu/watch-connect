@@ -64,7 +64,7 @@ internal val healthConnectUsages = listOf(
     "Poids" to "écran Corps : dernière pesée, courbe sur 30 jours, évolution sur 7 et 30 jours.",
     "Masse grasse, masse maigre, masse osseuse, eau corporelle" to "écran Corps, carte « Composition corporelle ».",
     "Saturation en oxygène" to "écran Corps, carte « SpO2 · nuit » (moyenne et minimum).",
-    "Variabilité de la fréquence cardiaque" to "scores de récupération et de stress.",
+    "Variabilité de la fréquence cardiaque" to "scores de récupération, de stress et de bien-être.",
     "Fréquence cardiaque, sommeil, fréquence respiratoire" to
         "écrans Cœur et Sommeil, scores de sommeil, de récupération et Énergie (si la montre remplace le bracelet).",
     "Pas, distance, calories actives" to

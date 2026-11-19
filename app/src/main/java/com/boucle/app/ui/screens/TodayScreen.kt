@@ -58,6 +58,10 @@ import androidx.compose.ui.unit.dp
 import com.boucle.app.data.db.TrainingSessionEntity
 import com.boucle.app.domain.BodySummary
 import com.boucle.app.domain.RecoveryScore
+import com.boucle.app.domain.StressDay
+import com.boucle.app.domain.Wellbeing
+import com.boucle.app.domain.WellbeingDay
+import androidx.compose.foundation.border
 import com.boucle.app.domain.Vo2MaxEstimation
 import com.boucle.app.domain.band
 import com.boucle.app.ui.DayUiState
@@ -372,7 +376,7 @@ private fun StreakChip(days: Int) {
     }
 }
 
-/** Grille 2 × 2 : sommeil, récupération, Body Battery, fréquence cardiaque. */
+/** Tuile large du bien-être, puis grille 2 × 2 : sommeil, récupération, Body Battery, fréquence cardiaque. */
 @Composable
 private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modifier: Modifier = Modifier) {
     val sleep = day.sleep
@@ -385,13 +389,14 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
         ?: day.heartRate?.min
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        WellbeingTile(day.wellbeing, day.date) { onNavigate(Destination.Wellbeing) }
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             MetricTile(
                 label = "Sommeil",
                 icon = BoucleIcons.Moon,
                 colors = MetricPalette.Sleep,
                 shape = BadgeShape.Cookie,
-                radii = Radii.GridTopStart,
+                radii = Radii.GridMiddle,
                 value = sleepScore?.total,
                 gauge = sleepScore?.total?.let { it / 100f },
                 detail = when {
@@ -408,7 +413,7 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
                 icon = BoucleIcons.Shield,
                 colors = MetricPalette.Activity,
                 shape = BadgeShape.Clover,
-                radii = Radii.GridTopEnd,
+                radii = Radii.GridMiddle,
                 value = recovery?.total,
                 gauge = recovery?.total?.let { it / 100f },
                 detail = recovery?.let { score ->
@@ -450,6 +455,101 @@ private fun MetricGrid(day: DayUiState, onNavigate: (Destination) -> Unit, modif
         }
     }
 }
+
+/**
+ * Tuile large du bien-être : score sur 7 jours et son palier, stress moyen de chacun des 7 derniers
+ * jours, puis une phrase sur la journée. Sans score, elle garde sa place et affiche « — ».
+ */
+@Composable
+private fun WellbeingTile(wellbeing: WellbeingDay?, date: LocalDate, onClick: () -> Unit) {
+    val colors = MetricPalette.Wellbeing
+    val score = wellbeing?.score
+    val detail = listOfNotNull(
+        wellbeing?.today?.let { "${it.zone.phrase} ${if (date == LocalDate.now()) "aujourd'hui" else "ce jour-là"}" },
+        score?.hrvPosition?.let { "VFC $it" },
+    ).takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    ExpressiveSurface(
+        color = colors.container,
+        radii = Radii.GridTop,
+        modifier = Modifier
+            .fillMaxWidth()
+            .sharedContainer(SharedKeys.WELLBEING, Radii.GridTop, entrance = false),
+        contentColor = colors.onContainer,
+        onClick = onClick,
+        onClickLabel = "Voir le détail",
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconBadge(BoucleIcons.Wave, colors.accent, Color.White, shape = BadgeShape.Pentagon, size = 32.dp, iconSize = 16.dp)
+            Text("Bien-être · ${Wellbeing.SCORE_DAYS} jours", style = BoucleType.smallStrong, modifier = Modifier.weight(1f))
+            score?.let {
+                Text(
+                    it.level.label,
+                    style = BoucleType.smallStrong.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier
+                        .background(BoucleColors.Surface, CircleShape)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (score != null) AnimatedNumber(score.total, BoucleType.heroS) else Text("—", style = BoucleType.heroS)
+            wellbeing?.let { WeekStress(it.week, date, Modifier.weight(1f)) }
+        }
+        Text(
+            detail ?: "Pas assez de mesures de VFC",
+            style = BoucleType.small,
+            color = if (detail == null) colors.onContainer.copy(alpha = 0.7f) else Color.Unspecified,
+        )
+    }
+}
+
+/** Stress moyen des 7 derniers jours : une barre par jour, plus haute et plus foncée quand le stress monte. */
+@Composable
+private fun WeekStress(week: List<StressDay?>, date: LocalDate, modifier: Modifier = Modifier) {
+    val ink = MetricPalette.Wellbeing.onContainer
+    val summary = week.joinToString { it?.zone?.label?.lowercase(Locale.FRENCH) ?: "pas de mesure" }
+    Column(
+        modifier.clearAndSetSemantics { contentDescription = "Stress moyen des 7 derniers jours : $summary" },
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(34.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            week.forEachIndexed { index, day ->
+                val shape = RoundedCornerShape(6.dp)
+                val height = day?.let { (34 * it.mean / WEEK_STRESS_FULL).toFloat().coerceIn(8f, 34f).dp } ?: 6.dp
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(height)
+                        .background(day?.zone?.color ?: BoucleColors.Surface, shape)
+                        .then(if (index == week.lastIndex && day != null) Modifier.border(2.dp, ink, shape) else Modifier),
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            week.indices.forEach { index ->
+                val weekday = date.minusDays((week.lastIndex - index).toLong()).dayOfWeek.value
+                Text(
+                    DAY_INITIALS[weekday - 1].toString(),
+                    style = if (index == week.lastIndex) BoucleType.captionStrong.copy(fontWeight = FontWeight.ExtraBold) else BoucleType.captionStrong,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/** Stress moyen d'une journée qui remplit la hauteur des barres de la tuile. */
+private const val WEEK_STRESS_FULL = 75.0
+private const val DAY_INITIALS = "LMMJVSD"
 
 /**
  * Tuile de la grille : macaron de la métrique, valeur, puis [detail]. Un score sur 100 s'accompagne d'une

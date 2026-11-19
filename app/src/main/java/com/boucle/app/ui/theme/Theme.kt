@@ -57,10 +57,19 @@ object MetricPalette {
     val Heart = MetricColors(Color(0xFFF9E0E5), Color(0xFF63111F), Color(0xFFA82C44))
     /** Corps et VO2max : bleu. */
     val Body = MetricColors(Color(0xFFD8EDF4), Color(0xFF083A4C), Color(0xFF0F5F7A))
+    /** Bien-être et stress : prune. */
+    val Wellbeing = MetricColors(Color(0xFFF1E1F2), Color(0xFF43154A), Color(0xFF7B3486))
 }
 
 /** Couleurs propres à certains graphiques. */
 object ChartColors {
+    // Zones de stress, de la plus claire (repos) à la plus foncée (élevé), et piste des barres du bien-être.
+    val StressRest = Color(0xFFE3C8E8)
+    val StressLow = Color(0xFFC79AD0)
+    val StressMedium = Color(0xFF8F4A9B)
+    val StressHigh = Color(0xFF43154A)
+    val WellbeingTrack = Color(0xFFE9D3EC)
+
     // Anneaux de l'écran Aujourd'hui (bloc vert plein).
     val RingTrack = Color(0xFF1F6E5C)
     val RingSteps = Color(0xFFA9F0D6)

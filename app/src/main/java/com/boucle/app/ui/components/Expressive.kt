@@ -73,8 +73,9 @@ data class Radii(val topStart: Dp, val topEnd: Dp, val bottomEnd: Dp, val bottom
         val Inner = Radii(16.dp)
         val PairStart = Radii(28.dp, 8.dp, 8.dp, 28.dp)
         val PairEnd = Radii(8.dp, 28.dp, 28.dp, 8.dp)
-        val GridTopStart = Radii(32.dp, 8.dp, 8.dp, 8.dp)
-        val GridTopEnd = Radii(8.dp, 32.dp, 8.dp, 8.dp)
+        /** Tuile large posée au-dessus de la grille, et tuiles de la grille qui la touchent. */
+        val GridTop = Radii(32.dp, 32.dp, 8.dp, 8.dp)
+        val GridMiddle = Radii(8.dp)
         val GridBottomStart = Radii(8.dp, 8.dp, 8.dp, 32.dp)
         val GridBottomEnd = Radii(8.dp, 8.dp, 32.dp, 8.dp)
         val ListTop = Radii(24.dp, 24.dp, 6.dp, 6.dp)
@@ -227,9 +228,9 @@ fun cookieShape(): Shape = MaterialShapes.Cookie12Sided.toShape()
 /**
  * Formes des pastilles d'icône de la maquette. Les « macarons » (formes festonnées de Material 3 Expressive)
  * distinguent les métriques : [Cookie] le sommeil et les pas, [Clover] la récupération et le corps,
- * [Sunny] l'énergie et les séries, [Flower] le cœur.
+ * [Sunny] l'énergie et les séries, [Flower] le cœur, [Pentagon] le bien-être.
  */
-enum class BadgeShape { Cookie, Clover, Sunny, Flower, Square, Arch, Circle }
+enum class BadgeShape { Cookie, Clover, Sunny, Flower, Pentagon, Square, Arch, Circle }
 
 /** Forme Compose d'une pastille. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -239,6 +240,7 @@ fun BadgeShape.toShape(): Shape = when (this) {
     BadgeShape.Clover -> MaterialShapes.Clover4Leaf.toShape()
     BadgeShape.Sunny -> MaterialShapes.Sunny.toShape()
     BadgeShape.Flower -> MaterialShapes.Cookie6Sided.toShape()
+    BadgeShape.Pentagon -> MaterialShapes.Pentagon.toShape()
     BadgeShape.Square -> RoundedCornerShape(14.dp)
     BadgeShape.Arch -> RoundedCornerShape(topStartPercent = 50, topEndPercent = 50, bottomEndPercent = 27, bottomStartPercent = 27)
     BadgeShape.Circle -> RoundedCornerShape(percent = 50)

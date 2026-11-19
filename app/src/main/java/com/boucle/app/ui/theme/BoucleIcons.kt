@@ -47,6 +47,8 @@ object BoucleIcons {
         "M8.5 9.5a5 5 0 0 1 7 0M12 9.5l1.5-1.5",
     )
     val Pulse = stroke("Pulse", "M3 12h4l3-7 4 14 3-7h4")
+    val Wave = stroke("Wave", "M3 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0")
+    val ChevronDown = stroke("ChevronDown", "M6 9l6 6 6-6")
     val Today = stroke(
         "Today",
         "M20 12a8 8 0 1 1-16 0a8 8 0 1 1 16 0z",

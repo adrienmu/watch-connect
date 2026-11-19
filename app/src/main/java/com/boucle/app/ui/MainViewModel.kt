@@ -34,6 +34,13 @@ import com.boucle.app.domain.RecoveryScore
 import com.boucle.app.domain.RecoveryScoring
 import com.boucle.app.domain.SleepScore
 import com.boucle.app.domain.Vo2MaxEstimation
+import com.boucle.app.domain.Wellbeing
+import com.boucle.app.domain.WellbeingDay
+import com.boucle.app.domain.WellbeingNight
+import com.boucle.app.data.db.ExternalMeasurementEntity
+import com.boucle.app.data.db.PpiBlockEntity
+import com.boucle.app.data.db.SleepEntity
+import kotlinx.coroutines.flow.onStart
 import com.boucle.app.domain.scoreNight
 import com.boucle.app.domain.HrZoneTime
 import com.boucle.app.domain.RouteAnalysis
@@ -1469,16 +1476,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 recharges.lastOrNull { it.date <= key && (it.meanRriMs ?: 0) > 0 }?.meanRriMs,
                 hrBlocks,
             )
-            val stress = HrvStress.score(
-                windows = (
-                    HrvStress.windows(ppiBlocks) +
-                        HrvStress.windowsFromRmssd(
-                            hrvMeasures.map { Instant.parse(it.time).atZone(ZoneId.systemDefault()).toLocalDateTime() to it.value },
-                        )
-                    ).distinctBy { it.start },
-                asleep = HrvStress.sleepIntervals(sleeps),
-                restingHr = restingHr,
-            )
+            val stress = hrvStress(ppiBlocks, hrvMeasures, sleeps, restingHr)
             val grid = BodyBatteryInputs.build(
                 date = date,
                 now = LocalDateTime.now(),
@@ -1492,6 +1490,36 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             val battery = BodyBatteryModel.summarize(simulation, grid.slots, grid.start, grid.dayFrom, grid.dayTo)
             DayScores(tonight.sleep, tonight.recovery, battery)
         }.flowOn(Dispatchers.Default)
+        // Bien-être : stress VFC des 28 derniers jours (plus les 7 jours de sa ligne de base) et scores des
+        // 7 dernières nuits, eux-mêmes comparés aux 28 nuits qui précèdent. Calcul plus long que le reste :
+        // la journée s'affiche sans l'attendre.
+        val trendStart = date.minusDays(Wellbeing.TREND_DAYS - 1L)
+        val stressStart = trendStart.minusDays(HrvStress.BASELINE_DAYS).toString()
+        val nightsStart = date.minusDays(Wellbeing.SCORE_DAYS + RecoveryScoring.BASELINE_WINDOW_NIGHTS.toLong()).toString()
+        val wellbeing: Flow<WellbeingDay?> = combine(
+            dao.ppiBlocksRange(stressStart, key),
+            dao.externalMeasurementsOfType(MeasurementType.HRV_RMSSD.name, stressStart, key),
+            dao.sleepRange(minOf(stressStart, nightsStart), key),
+            dao.nightlyRechargeRange(nightsStart, key),
+        ) { ppiBlocks, hrvMeasures, sleeps, recharges ->
+            val restingHr = BodyBatteryInputs.restingHeartRate(
+                recharges.lastOrNull { (it.meanRriMs ?: 0) > 0 }?.meanRriMs,
+                emptyList(),
+            )
+            val nights = (0 until Wellbeing.SCORE_DAYS).map { ago ->
+                val wake = date.minusDays(ago.toLong())
+                val scores = scoreNight(wake.toString(), sleeps, recharges)
+                WellbeingNight(
+                    date = wake,
+                    hrvScore = scores.recovery?.hrv,
+                    rmssdMs = scores.recovery?.rmssdMs,
+                    rmssdBaselineMs = scores.recovery?.rmssdBaselineMs,
+                    sleepScore = scores.sleep?.total,
+                )
+            }
+            Wellbeing.build(date, hrvStress(ppiBlocks, hrvMeasures, sleeps, restingHr), nights)
+                .takeUnless { it.isEmpty }
+        }.flowOn(Dispatchers.Default).onStart<WellbeingDay?> { emit(null) }
         // VO2max : profil (âge, sexe, FC max), courses des 6 dernières semaines, FC nocturne des 2 dernières.
         val vo2Max = combine(
             settings.flow.map { it.profile }.distinctUntilChanged(),
@@ -1511,7 +1539,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         // Poids : la dernière pesée peut dater de plusieurs jours, et l'évolution remonte jusqu'à 30 jours avant.
         val body = dao.externalMeasurementsRange(date.minusDays(BodyMeasurements.HISTORY_DAYS).toString(), key)
             .map { BodyReadings(BodyMeasurements.body(it, date), BodyMeasurements.spo2(it, date), weightHistory(it, date.minusDays(30), date)) }
-        return combine(activity, night, scores, vo2Max, body) { a, n, scores, vo2, readings ->
+        val day = combine(activity, night, scores, vo2Max, body) { a, n, scores, vo2, readings ->
             a.copy(
                 sleep = n.sleep,
                 recharge = n.recharge,
@@ -1526,7 +1554,28 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 weightHistory = readings.weights,
             )
         }
+        return combine(day, wellbeing) { state, score -> state.copy(wellbeing = score) }
     }
+
+    /**
+     * Stress VFC par créneau d'éveil : intervalles PPI du bracelet, complétés par les mesures ponctuelles
+     * de VFC d'une montre lues dans Health Connect.
+     */
+    private fun hrvStress(
+        ppiBlocks: List<PpiBlockEntity>,
+        hrvMeasures: List<ExternalMeasurementEntity>,
+        sleeps: List<SleepEntity>,
+        restingHr: Double,
+    ): Map<LocalDateTime, Double> = HrvStress.score(
+        windows = (
+            HrvStress.windows(ppiBlocks) +
+                HrvStress.windowsFromRmssd(
+                    hrvMeasures.map { Instant.parse(it.time).atZone(ZoneId.systemDefault()).toLocalDateTime() to it.value },
+                )
+            ).distinctBy { it.start },
+        asleep = HrvStress.sleepIntervals(sleeps),
+        restingHr = restingHr,
+    )
 
     companion object {
         private const val SCAN_TIMEOUT_MS = 30_000L
