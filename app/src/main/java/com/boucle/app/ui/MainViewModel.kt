@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.boucle.app.BoucleApp
-import com.boucle.app.data.DemoData
 import com.boucle.app.data.PendingBackupEnable
 import com.boucle.app.data.SavedDevice
 import com.boucle.app.data.UserProfile
@@ -65,7 +64,6 @@ import com.boucle.app.tracking.RecordedActivity
 import com.boucle.app.tracking.RecordingState
 import java.time.LocalTime
 import androidx.health.connect.client.records.ExerciseRoute
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import com.boucle.app.healthconnect.HealthConnectAvailability
 import com.boucle.app.withings.WithingsImporter
@@ -558,25 +556,11 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         }
     }
 
-    /** Remplace le contenu de la base par des données fictives, sans bracelet. */
-    fun loadDemo(onDone: () -> Unit) {
+    /** « Continuer sans bracelet » à la première ouverture : montre et balance via Health Connect ou l'archive Withings. */
+    fun skipOnboarding(onDone: () -> Unit) {
         viewModelScope.launch {
-            try {
-                // Avant de toucher à la base : aucune sauvegarde ne doit copier les données fictives, ni laisser la
-                // rotation évincer les vraies sauvegardes du dossier.
-                settings.setDemoMode(true)
-                withContext(Dispatchers.IO) { database.clearAllTables() }
-                DemoData.load(dao)
-                // Un profil fictif seulement s'il n'y en a pas : on n'écrase jamais le vrai.
-                if (settings.flow.first().profile == null) settings.saveProfile(DemoData.profile)
-                settings.markOnboardingDone()
-                selectedDate.value = LocalDate.now()
-                onDone()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                report("Chargement de la démo impossible", e)
-            }
+            settings.markOnboardingDone()
+            onDone()
         }
     }
 
@@ -587,8 +571,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
     }
 
     /**
-     * « Autoriser l'itinéraire » : [launchConsent] ouvre la demande d'accès de Health Connect pour la séance. En démo, le
-     * tracé fictif arrive après une courte attente, sans Health Connect.
+     * « Autoriser l'itinéraire » : [launchConsent] ouvre la demande d'accès de Health Connect pour la séance.
      */
     fun requestRoute(launchConsent: (healthConnectId: String) -> Unit) {
         val path = selectedSession.value ?: return
@@ -596,11 +579,9 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
             val route = dao.trainingRouteNow(path) ?: return@launch
             val id = route.healthConnectId ?: return@launch
             routeAccess.value = RouteAccess.LOADING
-            if (id.startsWith(DemoData.DEMO_ROUTE_PREFIX)) {
-                val session = dao.trainingSession(path).first() ?: return@launch
-                delay(DEMO_ROUTE_DELAY_MS)
-                dao.upsertTrainingRoutes(listOf(DemoData.route(session).copy(source = route.source, healthConnectId = id)))
-                routeAccess.value = RouteAccess.IDLE
+            // Tracé fictif d'une ancienne version (mode démo, retiré) : il n'existe pas dans Health Connect.
+            if (id.startsWith(LEGACY_DEMO_ROUTE_PREFIX)) {
+                routeAccess.value = RouteAccess.DENIED
             } else {
                 launchConsent(id)
             }
@@ -992,7 +973,15 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 if (local.value.syncing) {
                     local.update { it.copy(message = "Attends la fin de la synchronisation pour importer ton historique Withings") }
                 } else {
-                    runImport { withingsImporter.import(contentResolver, uri).message() }
+                    runImport {
+                        // Données fictives d'une ancienne version (mode démo) : elles prendraient la place des vrais
+                        // jours, l'import n'ajoutant que ce qui manque. On les efface d'abord.
+                        if (settings.flow.first().demoMode) {
+                            withContext(Dispatchers.IO) { database.clearAllTables() }
+                            settings.setDemoMode(false)
+                        }
+                        withingsImporter.import(contentResolver, uri).message()
+                    }
                 }
                 return@launch
             }
@@ -1596,8 +1585,7 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
         private const val EDIT_PROFILE_POINTS = 60
         private const val FIRST_SYNC_DAYS = 14L
         private const val HEALTH_CONNECT_FIRST_SYNC_DAYS = 30L
-        /** Attente simulée de l'autorisation d'un tracé de démo, comme le temps de lecture dans Health Connect. */
-        private const val DEMO_ROUTE_DELAY_MS = 1_400L
+        private const val LEGACY_DEMO_ROUTE_PREFIX = "demo-route:"
         private const val IMPORT_TOO_LARGE_MESSAGE =
             "Cette sauvegarde est trop volumineuse ou endommagée pour être importée. Rien n'a été modifié."
         private const val BACKUP_DEMO_MESSAGE =

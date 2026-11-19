@@ -36,6 +36,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.boucle.app.healthconnect.HealthConnectAvailability
+import com.boucle.app.privacy.PrivacyPolicyActivity
+import androidx.compose.ui.platform.LocalUriHandler
 import com.boucle.app.ui.BackupUiState
 import com.boucle.app.ui.HealthConnectUiState
 import com.boucle.app.data.backup.BackupNaming
@@ -207,19 +209,18 @@ private fun lastReadLabel(state: HealthConnectUiState): String {
 private class SettingsRow(val key: String, val content: @Composable () -> Unit)
 
 /**
- * Carte de réglages : configuration du bracelet (bracelet connecté), objectifs quotidiens, carte d'exploration, mode démo, export, import,
+ * Carte de réglages : configuration du bracelet (bracelet connecté), objectifs quotidiens, carte d'exploration, export, import,
  * import de l'historique Withings,
+ * politique de confidentialité et conditions d'utilisation (dans le navigateur),
  * sauvegarde automatique et effacement des données, oubli du bracelet (bracelet enregistré).
  */
 @Composable
 internal fun DevicesSettingsCard(
     hasBand: Boolean,
     connected: Boolean,
-    hasSyncedData: Boolean,
     onConfigure: () -> Unit,
     onGoals: () -> Unit,
     onExploration: () -> Unit,
-    onLoadDemo: () -> Unit,
     exporting: Boolean,
     onExport: () -> Unit,
     importing: Boolean,
@@ -237,6 +238,8 @@ internal fun DevicesSettingsCard(
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Sans navigateur, le lien ne fait rien : le résumé reste lisible dans l'app (écran Health Connect).
+    val uriHandler = LocalUriHandler.current
     val rows = buildList {
         if (hasBand && connected) {
             add(
@@ -247,7 +250,6 @@ internal fun DevicesSettingsCard(
         }
         add(SettingsRow("goals") { SettingsLinkRow("Objectifs quotidiens", "Pas et calories actives", onGoals) })
         add(SettingsRow("exploration") { SettingsLinkRow("Carte d'exploration", "Les carrés où vous êtes passé", onExploration) })
-        add(SettingsRow("demo") { DemoRow(warn = hasBand || hasSyncedData, onLoadDemo = onLoadDemo) })
         add(SettingsRow("export") { ExportRow(exporting, onExport) })
         add(SettingsRow("import") { ImportRow(importing, onImport) })
         add(SettingsRow("withings") { WithingsImportRow(importing, onImport) })
@@ -264,6 +266,20 @@ internal fun DevicesSettingsCard(
                     onReenterPassphrase = onReenterPassphrase,
                     onDisableEncryption = onDisableEncryption,
                 )
+            },
+        )
+        add(
+            SettingsRow("privacy") {
+                SettingsLinkRow("Politique de confidentialité", "Ce que l'app lit, et où restent tes données") {
+                    runCatching { uriHandler.openUri(PrivacyPolicyActivity.POLICY_URL) }
+                }
+            },
+        )
+        add(
+            SettingsRow("terms") {
+                SettingsLinkRow("Conditions d'utilisation", "Règles d'usage et avertissement santé") {
+                    runCatching { uriHandler.openUri(PrivacyPolicyActivity.TERMS_URL) }
+                }
             },
         )
         add(SettingsRow("clear") { SettingsActionRow("Tout effacer", BoucleColors.OnSurface, onClear) })
@@ -308,34 +324,6 @@ private fun SettingsLinkRow(title: String, subtitle: String, onClick: () -> Unit
             Text(subtitle, style = BoucleType.small, color = BoucleColors.OnSurfaceVariant)
         }
         RowChevron()
-    }
-}
-
-/** Ligne du mode démo, avec l'avertissement quand des données réelles seraient remplacées. */
-@Composable
-private fun DemoRow(warn: Boolean, onLoadDemo: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 64.dp)
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Mode démo", style = rowTitleStyle)
-            Text("14 jours de données fictives", style = BoucleType.small, color = BoucleColors.OnSurfaceVariant)
-            if (warn) {
-                Text(
-                    "Remplace les données locales. Attention : les jours déjà synchronisés sont effacés du " +
-                        "bracelet, ils seraient perdus.",
-                    style = BoucleType.caption,
-                    color = MetricPalette.Energy.accent,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-        SetupOutlinedButton("Charger la démo", onLoadDemo)
     }
 }
 

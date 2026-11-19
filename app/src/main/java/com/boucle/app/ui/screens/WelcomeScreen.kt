@@ -31,6 +31,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.boucle.app.privacy.PrivacyPolicyActivity
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 import com.boucle.app.ui.components.BadgeShape
 import com.boucle.app.ui.components.IconBadge
 import com.boucle.app.ui.components.staggeredEntrance
@@ -61,7 +65,7 @@ private val welcomeRings = listOf(
 @Composable
 fun WelcomeScreen(
     onAllowBluetooth: () -> Unit,
-    onTryDemo: () -> Unit,
+    onContinueWithoutBand: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -126,21 +130,36 @@ fun WelcomeScreen(
                     textStyle = BoucleType.buttonXL,
                 )
                 SetupOutlinedButton(
-                    text = "Essayer avec la démo",
-                    onClick = onTryDemo,
+                    text = "Continuer sans bracelet",
+                    onClick = onContinueWithoutBand,
                     modifier = Modifier.fillMaxWidth(),
                     height = 56.dp,
                     textStyle = BoucleType.bodyStrong.copy(fontSize = BoucleType.bodyLarge.fontSize),
                     shape = RoundedCornerShape(20.dp),
                 )
                 Text(
-                    "La démo charge 14 jours de données fictives, sans bracelet.",
+                    "Montre et balance Withings via Health Connect, ou import de ton historique.",
                     style = BoucleType.caption,
                     color = BoucleColors.OnSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                LegalLinks(Modifier.fillMaxWidth())
             }
+        }
+    }
+}
+
+/** Liens vers la politique de confidentialité et les conditions d'utilisation, ouverts dans le navigateur. */
+@Composable
+private fun LegalLinks(modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
+    Row(modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = { runCatching { uriHandler.openUri(PrivacyPolicyActivity.POLICY_URL) } }) {
+            Text("Confidentialité", style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, textDecoration = TextDecoration.Underline)
+        }
+        TextButton(onClick = { runCatching { uriHandler.openUri(PrivacyPolicyActivity.TERMS_URL) } }) {
+            Text("Conditions d'utilisation", style = BoucleType.caption, color = BoucleColors.OnSurfaceVariant, textDecoration = TextDecoration.Underline)
         }
     }
 }
