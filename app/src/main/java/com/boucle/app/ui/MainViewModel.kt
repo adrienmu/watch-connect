@@ -97,9 +97,10 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.LocalDateTime
-import java.time.ZonedDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.util.Locale
 
 private data class BodyReadings(
     val summary: com.boucle.app.domain.BodySummary?,
@@ -1618,10 +1619,19 @@ class MainViewModel(app: BoucleApp) : ViewModel() {
                 vo2Max = number(vo2Max, "VO2max").toInt(),
                 restingHeartRate = number(restingHr, "FC de repos").toInt(),
                 trainingBackground = trainingBackground,
-                deviceTime = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                deviceTime = polarDeviceTime(Instant.now()),
                 typicalDay = typicalDay,
                 sleepGoalMinutes = (number(sleepGoalHours, "Objectif de sommeil") * 60).toInt(),
             )
         }
     }
 }
+
+private val POLAR_DEVICE_TIME: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH).withZone(ZoneOffset.UTC)
+
+/**
+ * Heure attendue par `doFirstTimeUse` du SDK Polar : UTC, à la seconde, suffixe `Z` littéral.
+ * Le SDK la relit avec ce motif exact ; une fraction de seconde ou un décalage `+01:00` le fait échouer.
+ */
+internal fun polarDeviceTime(now: Instant): String = POLAR_DEVICE_TIME.format(now)
