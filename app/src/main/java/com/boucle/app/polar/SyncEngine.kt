@@ -6,7 +6,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import java.time.LocalDateTime
 
 /**
@@ -119,8 +118,23 @@ class SyncEngine(
             val cleanUntil = to.minusDays(KEEP_RECENT_DAYS)
             if (allOk && !from.isAfter(cleanUntil)) {
                 step("Nettoyage du bracelet (du $from au $cleanUntil)") {
-                    api.deleteDeviceDateFolders(deviceId, from, cleanUntil)
-                    (ChronoUnit.DAYS.between(from, cleanUntil) + 1).toInt()
+                    // Jour par jour : le SDK échoue sur toute la plage dès qu'un dossier est absent du bracelet
+                    // (jour sans données, ou déjà nettoyé) ; un dossier absent n'est pas une erreur.
+                    var deleted = 0
+                    var day = from
+                    while (!day.isAfter(cleanUntil)) {
+                        try {
+                            api.deleteDeviceDateFolders(deviceId, day, day)
+                            deleted++
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            val missing = e.message?.let { "NO_SUCH_FILE_OR_DIRECTORY" in it || "(103)" in it || "Error: 103" in it } == true
+                            if (!missing) throw e
+                        }
+                        day = day.plusDays(1)
+                    }
+                    deleted
                 }
             } else if (!allOk) {
                 log("· Bracelet non nettoyé : une étape a échoué, ses données y restent pour la prochaine fois.")
